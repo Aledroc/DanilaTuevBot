@@ -31,7 +31,10 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8849496078:AAHCpL3iUdTGDKOdAIwaVMo
 XKIRO_API_KEY = os.getenv('XKIRO_API_KEY', 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec')
 
 # OpenRouter TTS credentials (set OPENROUTER_API_KEY in environment).
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_API_KEY = os.getenv(
+    'OPENROUTER_API_KEY',
+    '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',
+)
 VOICE_ID = os.getenv('OPENROUTER_VOICE_ID', 'alloy')
 # NordRouter multimodal audio input for transcription. Its documented API uses
 # chat completions with input_audio; it does not document /audio/transcriptions.
