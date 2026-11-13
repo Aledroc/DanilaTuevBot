@@ -147,6 +147,7 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
 
     headers = {
         "Authorization": f"Bearer {FISH_AUDIO_API_KEY}",
+        "model": "s2.1-pro-free",
     }
 
     # Если есть бинарный образец голоса и установлен msgpack, используем zero-shot voice cloning через msgpack

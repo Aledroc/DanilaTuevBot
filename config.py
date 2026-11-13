@@ -31,7 +31,7 @@ TELEGRAM_TOKEN = '8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU'
 XKIRO_API_KEY = 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec'
 
 # Fish Audio direct TTS credentials (set FISH_AUDIO_API_KEY in environment or config).
-FISH_AUDIO_API_KEY = os.getenv('FISH_AUDIO_API_KEY', '').strip()
+FISH_AUDIO_API_KEY = os.getenv('FISH_AUDIO_API_KEY', 'sk-fish-9Gk1DW-UdDIzRRE7dL0GTyXpJpUdIKG270r4zIDNGS4').strip()
 FISH_AUDIO_TTS_URL = os.getenv('FISH_AUDIO_TTS_URL', 'https://api.fish.audio/v1/tts')
 # Fallback OpenRouter TTS credentials
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '').strip()
