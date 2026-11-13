@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>2048 Классика — Classic Swipe</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #faf8ef;
+      font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+      color: #776e65;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      touch-action: none;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .back-btn {
+      background: #8f7a66;
+      border: none;
+      color: #f9f6f2;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-btn:active {
+      background: #7f6a56;
+      transform: scale(0.96);
+    }
+    .sound-btn {
+      background: #bbada0;
+      border: none;
+      color: #f9f6f2;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .sound-btn:active {
+      transform: scale(0.96);
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .title-col h1 {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1;
+      color: #776e65;
+    }
+    .title-col .subtitle {
+      font-size: 13px;
+      color: #8f7a66;
+      font-weight: 600;
+    }
+    .scores-col {
+      display: flex;
+      gap: 8px;
+    }
+    .score-box {
+      background: #bbada0;
+      padding: 6px 14px;
+      border-radius: 6px;
+      color: #fff;
+      text-align: center;
+      min-width: 72px;
+      position: relative;
+    }
+    .score-box .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #eee4da;
+    }
+    .score-box .value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .score-addition {
+      position: absolute;
+      top: -15px;
+      right: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #e74c3c;
+      animation: floatUp 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-25px); }
+    }
+    .board-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #bbada0;
+      border-radius: 10px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 12px;
+      touch-action: none;
+    }
+    .grid-cell {
+      background: rgba(238, 228, 218, 0.35);
+      border-radius: 6px;
+      width: 100%;
+      height: 100%;
+    }
+    .tiles-layer {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      pointer-events: none;
+    }
+    .tile {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      border-radius: 6px;
+      transition: transform 100ms ease-in-out, top 100ms ease-in-out, left 100ms ease-in-out;
+      will-change: transform, top, left;
+      font-size: 28px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    .tile.tile-appear {
+      animation: appear 150ms ease-out forwards;
+    }
+    .tile.tile-merged {
+      animation: pop 180ms ease-in-out forwards;
+    }
+    @keyframes appear {
+      0% { opacity: 0; transform: scale(0); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes pop {
+      0% { transform: scale(0.9); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    /* Цвета плиток gabrielecirulli */
+    .tile-2 { background: #eee4da; color: #776e65; }
+    .tile-4 { background: #ede0c8; color: #776e65; }
+    .tile-8 { background: #f2b179; color: #f9f6f2; }
+    .tile-16 { background: #f59563; color: #f9f6f2; }
+    .tile-32 { background: #f67c5f; color: #f9f6f2; }
+    .tile-64 { background: #f65e3b; color: #f9f6f2; }
+    .tile-128 { background: #edcf72; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 10px 1px rgba(237, 207, 114, 0.4); }
+    .tile-256 { background: #edcc61; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 12px 2px rgba(237, 204, 97, 0.45); }
+    .tile-512 { background: #edc850; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 14px 3px rgba(237, 200, 80, 0.5); }
+    .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 20px; box-shadow: 0 0 16px 4px rgba(237, 197, 63, 0.55); }
+    .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 20px; box-shadow: 0 0 20px 6px rgba(237, 194, 46, 0.65); }
+    .tile-super { background: #3c3a32; color: #f9f6f2; font-size: 18px; }
+
+    /* Оверлей окончания игры */
+    .game-message {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(238, 228, 218, 0.85);
+      border-radius: 10px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      animation: fadeIn 350ms ease-in-out forwards;
+      backdrop-filter: blur(4px);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .game-message.active {
+      display: flex;
+    }
+    .game-message h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #776e65;
+      margin-bottom: 8px;
+    }
+    .game-message p {
+      font-size: 16px;
+      font-weight: 600;
+      color: #8f7a66;
+      margin-bottom: 18px;
+    }
+    .game-message .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .game-message button {
+      background: #8f7a66;
+      color: #f9f6f2;
+      border: none;
+      font-weight: bold;
+      font-size: 15px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .game-message button:active {
+      background: #7f6a56;
+      transform: scale(0.96);
+    }
+    .game-message button.keep-going {
+      background: #f59563;
+    }
+
+    .bottom-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      color: #776e65;
+      font-size: 13px;
+    }
+    .restart-btn {
+      background: #8f7a66;
+      color: #f9f6f2;
+      border: none;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .restart-btn:active {
+      background: #7f6a56;
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div class="top-bar">
+      <button class="back-btn" id="btn-back">← Меню</button>
+      <button class="sound-btn" id="btn-sound">🔊 Звук: Вкл</button>
+    </div>
+
+    <div class="header-row">
+      <div class="title-col">
+        <h1>2048</h1>
+        <div class="subtitle">Свайпай плитки и объединяй!</div>
+      </div>
+      <div class="scores-col">
+        <div class="score-box">
+          <div class="label">Счёт</div>
+          <div class="value" id="current-score">0</div>
+        </div>
+        <div class="score-box">
+          <div class="label">Рекорд</div>
+          <div class="value" id="best-score">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-container" id="board-container">
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+
+      <div class="tiles-layer" id="tiles-layer"></div>
+
+      <div class="game-message" id="game-message">
+        <h2 id="msg-title">Конец игры!</h2>
+        <p id="msg-desc">Счёт сохранён в Зал Славы</p>
+        <div class="actions">
+          <button id="btn-retry">Сыграть ещё</button>
+          <button id="btn-keep" class="keep-going" style="display:none;">Продолжить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-info">
+      <div>Свайпайте в 4 стороны 👆👇👈👉</div>
+      <button class="restart-btn" id="btn-restart">Сброс</button>
+    </div>
+  </div>
+
+  <script src="/games/game2048/game.js"></script>
+</body>
+</html>

@@ -44,6 +44,9 @@
         <button class="game-select-btn" data-game="knife_hit" id="select-game-knife">🎯 Ножи</button>
         <button class="game-select-btn" data-game="timberjack" id="select-game-timber">🪓 Дровосек</button>
         <button class="game-select-btn" data-game="swipe_basketball" id="select-game-basketball">🏀 Баскетбол</button>
+        <button class="game-select-btn" data-game="air_hockey" id="select-game-airhockey">🏒 Аэрохоккей</button>
+        <button class="game-select-btn" data-game="game_2048" id="select-game-2048">🔢 2048</button>
+        <button class="game-select-btn" data-game="whack_mole" id="select-game-whack">🔨 Крот</button>
       </div>
 
       <!-- Карточка Башня коробок / Tower Stack -->
@@ -182,6 +185,52 @@
           </div>
         </div>
         <button class="primary-button play-game-btn" id="launch-bricks" style="background: linear-gradient(135deg, #00c6ff, #0072ff);">🧱 Играть в Арканоид</button>
+      </div>
+
+      <!-- Карточка 2048 Классика -->
+      <div class="game-card featured-game" id="card-game_2048" style="display: none;">
+        <div class="game-badge" style="background: linear-gradient(135deg, #f2b179, #edc22e); color: #fff;">МАТЕМАТИКА</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #edc22e; border-color: #f2b179; color: #fff; font-weight: bold; font-size: 18px;">2048</div>
+          <div class="game-info">
+            <h3 class="game-title">2048 Классика • Classic Swipe</h3>
+            <p class="game-desc">Культовая математическая головоломка! Свайпайте плитки во все 4 стороны, объединяйте одинаковые числа и доберитесь до плитки 2048 и выше!</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="game2048-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Свайпы 4 стороны</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-2048" style="background: linear-gradient(135deg, #f59563, #edc22e);">🔢 Играть в 2048</button>
+      </div>
+
+      <!-- Карточка Ударь крота / Whack-a-Mole -->
+      <div class="game-card featured-game" id="card-whack_mole" style="display: none;">
+        <div class="game-badge" style="background: linear-gradient(135deg, #70e000, #9ef01a); color: #0f1a08;">ХАРДКОР РЕАКЦИЯ</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #1e2c18; border-color: #9ef01a;">🔨</div>
+          <div class="game-info">
+            <h3 class="game-title">Ударь крота • Whack-a-Mole</h3>
+            <p class="game-desc">Молниеносная аркада на реакцию! Тапайте по выскакивающим кротам молотком, ловите золотых кротов за x2 очков и берегитесь бомб с таймером в 45 секунд!</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="whack-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Быстрый тап</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-whack" style="background: linear-gradient(135deg, #70e000, #38b000); color: #fff;">🔨 Играть в Крота</button>
       </div>
 
       <div class="section-heading" style="margin-top: 24px;">

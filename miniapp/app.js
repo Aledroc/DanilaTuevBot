@@ -295,6 +295,10 @@
       const bricksBest = parseInt(localStorage.getItem("brick_breaker_best_score") || "0", 10);
       const bricksBestNode = $("#bricks-my-best");
       if (bricksBestNode) bricksBestNode.textContent = bricksBest;
+
+      const game2048Best = parseInt(localStorage.getItem("game_2048_best") || "0", 10);
+      const game2048BestNode = $("#game2048-my-best");
+      if (game2048BestNode) game2048BestNode.textContent = game2048Best;
     } catch (_) {}
 
     const titleNode = $("#leaderboard-game-title");
@@ -309,6 +313,8 @@
         titleNode.textContent = "Лидеры Ножевого тира";
       } else if (selectedGame === "timberjack") {
         titleNode.textContent = "Лидеры Дровосека";
+      } else if (selectedGame === "game_2048") {
+        titleNode.textContent = "Лидеры 2048 Классика";
       } else {
         titleNode.textContent = "Лидеры Баскетбола";
       }
@@ -329,6 +335,7 @@
         else if (selectedGame === "knife_hit") emptyMsg = "Рекордов в Ножевом тире пока нет. Метните первый нож!";
         else if (selectedGame === "timberjack") emptyMsg = "Рекордов пока нет. Будьте первым, кто срубит дерево!";
         else if (selectedGame === "swipe_basketball") emptyMsg = "Рекордов в Баскетболе пока нет. Сделайте первый бросок!";
+        else if (selectedGame === "game_2048") emptyMsg = "Рекордов в 2048 пока нет. Соберите первое легендарное число!";
         list.innerHTML = `<p class="empty-state">${emptyMsg}</p>`;
         return;
       }
@@ -351,6 +358,7 @@
     const launchTimberBtn = $("#launch-timber");
     const launchKnifeBtn = $("#launch-knife");
     const launchBasketBtn = $("#launch-basketball");
+    const launch2048Btn = $("#launch-2048");
     const modal = $("#game-modal");
     const iframe = $("#game-iframe");
     const closeBtn = $("#close-game-modal");
@@ -363,12 +371,14 @@
     const knifeTabBtn = $("#select-game-knife");
     const timberTabBtn = $("#select-game-timber");
     const basketTabBtn = $("#select-game-basketball");
+    const game2048TabBtn = $("#select-game-2048");
     const towerCard = $("#card-tower_stack");
     const colorswitchCard = $("#card-colorswitch");
     const bricksCard = $("#card-brick_breaker");
     const knifeCard = $("#card-knife_hit");
     const timberCard = $("#card-timberjack");
     const basketCard = $("#card-swipe_basketball");
+    const game2048Card = $("#card-game_2048");
 
     function switchGame(game) {
       selectedGame = game;
@@ -378,6 +388,7 @@
       if (knifeTabBtn) knifeTabBtn.classList.toggle("active", game === "knife_hit");
       if (timberTabBtn) timberTabBtn.classList.toggle("active", game === "timberjack");
       if (basketTabBtn) basketTabBtn.classList.toggle("active", game === "swipe_basketball");
+      if (game2048TabBtn) game2048TabBtn.classList.toggle("active", game === "game_2048");
 
       if (towerCard) towerCard.style.display = game === "tower_stack" ? "grid" : "none";
       if (colorswitchCard) colorswitchCard.style.display = game === "colorswitch" ? "grid" : "none";
@@ -385,6 +396,7 @@
       if (knifeCard) knifeCard.style.display = game === "knife_hit" ? "grid" : "none";
       if (timberCard) timberCard.style.display = game === "timberjack" ? "grid" : "none";
       if (basketCard) basketCard.style.display = game === "swipe_basketball" ? "grid" : "none";
+      if (game2048Card) game2048Card.style.display = game === "game_2048" ? "grid" : "none";
 
       loadGameLeaderboard().catch(() => {});
     }
@@ -395,6 +407,7 @@
     if (knifeTabBtn) knifeTabBtn.addEventListener("click", () => switchGame("knife_hit"));
     if (timberTabBtn) timberTabBtn.addEventListener("click", () => switchGame("timberjack"));
     if (basketTabBtn) basketTabBtn.addEventListener("click", () => switchGame("swipe_basketball"));
+    if (game2048TabBtn) game2048TabBtn.addEventListener("click", () => switchGame("game_2048"));
 
     if (launchTowerBtn && modal && iframe) {
       launchTowerBtn.addEventListener("click", () => {
@@ -446,6 +459,15 @@
         const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
         if (modalTitle) modalTitle.textContent = "🏀 Свайп-Баскетбол";
         iframe.src = `/games/basketball/index.html${query}`;
+        modal.showModal();
+      });
+    }
+
+    if (launch2048Btn && modal && iframe) {
+      launch2048Btn.addEventListener("click", () => {
+        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
+        if (modalTitle) modalTitle.textContent = "🔢 2048 Классика";
+        iframe.src = `/games/game2048/index.html${query}`;
         modal.showModal();
       });
     }
