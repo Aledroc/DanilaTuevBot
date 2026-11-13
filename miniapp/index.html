@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111316">
-  <title>Железный зал — профиль бойца</title>
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Deep Dark Gym — профиль бойца</title>
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/gachi.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -13,7 +13,7 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">ЖЕЛЕЗНЫЙ ЗАЛ • RPG</p>
+        <p class="eyebrow">DEEP DARK GYM • LEATHER CLUB</p>
         <h1 id="greeting">Инвентарь</h1>
         <div class="user-economy-bar" id="user-economy-bar">
           <div class="economy-badge coins-badge" title="Монеты">
@@ -44,7 +44,7 @@
     </nav>
 
     <section class="view active" id="inventory-view">
-      <div class="section-heading"><div><p class="eyebrow">СНАРЯЖЕНИЕ</p><h2>Мои вещи</h2></div><span class="count" id="item-count">0</span></div>
+      <div class="section-heading"><div><p class="eyebrow">DUNGEON GEAR • СНАРЯЖЕНИЕ</p><h2>Мои вещи</h2></div><span class="count" id="item-count">0</span></div>
       <div id="inventory-list" class="inventory-list"></div>
       <p id="inventory-empty" class="empty-state" hidden>Инвентарь пока пуст.</p>
     </section>
@@ -53,7 +53,7 @@
     <section class="view" id="shop-view">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">КИБЕР-МАРКЕТ • БУСТЫ И СТАТУС</p>
+          <p class="eyebrow">DUNGEON SHOP • БУСТЫ И СТАТУС</p>
           <h2>🏪 Магазин перков</h2>
         </div>
         <div class="shop-balance-pill" id="shop-balance-pill">
@@ -79,7 +79,7 @@
     <section class="view" id="tournament-view">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">ГРАН-ПРИ НЕДЕЛИ • АРЕНА ЧЕМПИОНОВ</p>
+          <p class="eyebrow">BOSS OF THIS GYM • АРЕНА ЧЕМПИОНОВ</p>
           <h2>🏆 Еженедельный кубок</h2>
         </div>
         <button class="icon-button" id="refresh-tournament" title="Обновить кубок" aria-label="Обновить">↻</button>
@@ -92,7 +92,7 @@
           <div class="cup-trophy-icon">🏆</div>
           <div class="cup-details">
             <h3 class="cup-title" id="cup-title">Еженедельный гран-при</h3>
-            <p class="cup-desc">Сумма всех лучших очков из 9 мини-игр! Стань чемпионом недели, забери золотой кубок и солидный банк монет!</p>
+            <p class="cup-desc">Сумма всех лучших очков из 9 мини-игр! Стань Boss of this Gym, забери золотой кубок и солидный банк монет!</p>
           </div>
         </div>
         <div class="cup-timer-bar">
@@ -108,24 +108,24 @@
           <div class="reward-tier tier-gold">
             <div class="tier-medal">🥇 1 Место</div>
             <div class="tier-prize">🪙 +500 монет</div>
-            <div class="tier-title">👑 Титул «Чемпион Зала»</div>
+            <div class="tier-title">👑 Титул «Boss of this Gym»</div>
           </div>
           <div class="reward-tier tier-silver">
             <div class="tier-medal">🥈 2 Место</div>
             <div class="tier-prize">🪙 +250 монет</div>
-            <div class="tier-title">⚡ Титул «Мастер Арены»</div>
+            <div class="tier-title">⚡ Титул «Dungeon Master»</div>
           </div>
           <div class="reward-tier tier-bronze">
             <div class="tier-medal">🥉 3 Место</div>
             <div class="tier-prize">🪙 +100 монет</div>
-            <div class="tier-title">🔥 Титул «Гладиатор»</div>
+            <div class="tier-title">🔥 Титул «Leather Master»</div>
           </div>
         </div>
       </div>
 
       <!-- Турнирная таблица -->
       <div class="section-heading" style="margin-top: 20px;">
-        <div><p class="eyebrow">ТУРНИРНАЯ ТАБЛИЦА</p><h3>Лидеры недели по сумме очков</h3></div>
+        <div><p class="eyebrow">LEADERBOARD • РЕЙТИНГ</p><h3>Лидеры недели по сумме очков</h3></div>
       </div>
       <div id="tournament-leaderboard-list" class="leaderboard-list">
         <div class="loading-state">Загрузка турнирной таблицы…</div>
@@ -133,218 +133,214 @@
     </section>
 
     <section class="view" id="games-view">
-      <div class="section-heading">
-        <div><p class="eyebrow">АРЕНА СОРЕВНОВАНИЙ</p><h2>Мини-игры</h2></div>
+      <div class="section-heading games-hub-header">
+        <div>
+          <p class="eyebrow">IRON ARENA • ИГРОВАЯ ВИТРИНА</p>
+          <h2>🎮 Мини-игры (9 хитов)</h2>
+        </div>
       </div>
 
-      <div class="game-selector" role="tablist" aria-label="Выбор игры">
-        <button class="game-select-btn active" data-game="tower_stack" id="select-game-tower">🏗 Башня</button>
-        <button class="game-select-btn" data-game="colorswitch" id="select-game-colorswitch">🌈 Переключатель</button>
-        <button class="game-select-btn" data-game="brick_breaker" id="select-game-bricks">🧱 Арканоид</button>
-        <button class="game-select-btn" data-game="knife_hit" id="select-game-knife">🎯 Ножи</button>
-        <button class="game-select-btn" data-game="timberjack" id="select-game-timber">🪓 Дровосек</button>
-        <button class="game-select-btn" data-game="swipe_basketball" id="select-game-basketball">🏀 Баскетбол</button>
-        <button class="game-select-btn" data-game="air_hockey" id="select-game-airhockey">🏒 Аэрохоккей</button>
-        <button class="game-select-btn" data-game="game_2048" id="select-game-2048">🔢 2048</button>
-        <button class="game-select-btn" data-game="whack_mole" id="select-game-whack">🔨 Крот</button>
+      <!-- Адаптивная витрина карточек игр (Game Hub Grid) -->
+      <div class="games-grid" id="games-grid">
+        <!-- 1. Башня коробок (Tower Stack) -->
+        <article class="game-hub-card" data-game="tower_stack">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffd8a8;">🏗</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#e53935,#f39c12);color:#fff;">🏗 СТЕК И ТАЙМИНГ</span>
+              <h3 class="game-hub-title">Башня коробок</h3>
+              <p class="game-hub-desc">Стройте небоскреб из раскачивающихся блоков крана с комбо и Perfect-таймингом!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="tower-my-best">0</strong></span>
+            <span class="game-control-tag">Тап по экрану</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-tower" style="background:linear-gradient(135deg,#e74c3c,#f39c12);">▶ Играть</button>
+            <button class="btn-game-top active" data-leaderboard-for="tower_stack">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 2. Дровосек (Timberman) -->
+        <article class="game-hub-card" data-game="timberjack">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#2b2219;border-color:#8d4925;">🪓</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#d35400,#e67e22);color:#fff;">🪓 РЕАКЦИЯ И СКОРОСТЬ</span>
+              <h3 class="game-hub-title">Timberman • Дровосек</h3>
+              <p class="game-hub-desc">Рубите ствол слева и справа, уворачивайтесь от сучьев и разгоняйте комбо!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="timber-my-best">0</strong></span>
+            <span class="game-control-tag">Тап L / R</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-timber" style="background:linear-gradient(135deg,#d35400,#f39c12);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="timberjack">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 3. Ножевой тир (Knife Hit) -->
+        <article class="game-hub-card" data-game="knife_hit">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffb74d;">🎯</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;">🎯 ТОЧНОСТЬ</span>
+              <h3 class="game-hub-title">Ножевой тир • Knife Hit</h3>
+              <p class="game-hub-desc">Втыкайте ножи во вращающуюся деревянную мишень и не задевайте лезвия!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="knife-my-best">0</strong></span>
+            <span class="game-control-tag">Одиночный тап</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-knife" style="background:linear-gradient(135deg,#e67e22,#f39c12);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="knife_hit">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 4. Свайп-Баскетбол (Basketball) -->
+        <article class="game-hub-card" data-game="swipe_basketball">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffb74d;">🏀</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#ff9800,#e65100);color:#fff;">🏀 СПОРТ И ФИЗИКА</span>
+              <h3 class="game-hub-title">Свайп-Баскетбол</h3>
+              <p class="game-hub-desc">Точным свайпом забрасывайте мяч в корзину, выбивайте Swish и зажигайте режим On Fire!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="basketball-my-best">0</strong></span>
+            <span class="game-control-tag">Свайп вверх</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-basketball" style="background:linear-gradient(135deg,#f57c00,#ff9800);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="swipe_basketball">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 5. Неоновый Арканоид (Brick Breaker) -->
+        <article class="game-hub-card" data-game="brick_breaker">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#0d1b2a;border-color:#00f0ff;">🧱</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#00f0ff,#bd00ff);color:#fff;">🧱 КИБЕР-АРКАДА</span>
+              <h3 class="game-hub-title">Неоновый Арканоид</h3>
+              <p class="game-hub-desc">Управляйте платформой пальцем, разрушайте неоновые блоки, ловите лазеры и шары!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="bricks-my-best">0</strong></span>
+            <span class="game-control-tag">Тач / Свайп</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-bricks" style="background:linear-gradient(135deg,#00c6ff,#0072ff);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="brick_breaker">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 6. Color Switch -->
+        <article class="game-hub-card" data-game="colorswitch">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#111319;border-color:#16e0e6;">🌈</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#f6e21b,#ff017b);color:#fff;">🌈 НЕОН-РИТМ</span>
+              <h3 class="game-hub-title">Color Switch</h3>
+              <p class="game-hub-desc">Тапайте для прыжка, проходите препятствия только через свой цвет и меняйте палитру!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="colorswitch-my-best">0</strong></span>
+            <span class="game-control-tag">Тап по экрану</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-colorswitch" style="background:linear-gradient(135deg,#16e0e6,#8d12d6);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="colorswitch">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 7. Неоновый Аэрохоккей (Air Hockey) -->
+        <article class="game-hub-card" data-game="air_hockey">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#0a0e27;border-color:#38bdf8;">🏒</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;">🏒 ДУЭЛЬ И ДРАЙВ</span>
+              <h3 class="game-hub-title">Неоновый Аэрохоккей</h3>
+              <p class="game-hub-desc">Сочная дуэль против умного AI! Забивайте шайбы с рикошетом и бейте серию побед!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="airhockey-my-best">0</strong></span>
+            <span class="game-control-tag">Тач-бита</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-airhockey" style="background:linear-gradient(135deg,#06b6d4,#2563eb);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="air_hockey">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 8. Ударь крота (Whack-a-Mole) -->
+        <article class="game-hub-card" data-game="whack_mole">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#1e2c18;border-color:#9ef01a;">🔨</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#70e000,#38b000);color:#fff;">🔨 ХАРДКОР РЕАКЦИЯ</span>
+              <h3 class="game-hub-title">Ударь крота • Whack</h3>
+              <p class="game-hub-desc">Молниеносный тап молотком по выскакивающим кротам! Ловите золотых x2 и избегайте бомб!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="whack-my-best">0</strong></span>
+            <span class="game-control-tag">Быстрый тап</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-whack" style="background:linear-gradient(135deg,#70e000,#38b000);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="whack_mole">🏆 Топ</button>
+          </div>
+        </article>
+
+        <!-- 9. 2048 Классика (2048 Swipe) -->
+        <article class="game-hub-card" data-game="game_2048">
+          <div class="game-hub-top">
+            <div class="game-hub-icon-wrap" style="background:#2a2415;border-color:#f59e0b;color:#fde047;font-weight:900;font-size:16px;">2048</div>
+            <div class="game-hub-info">
+              <span class="game-genre-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">🔢 ЛОГИКА</span>
+              <h3 class="game-hub-title">2048 Классика</h3>
+              <p class="game-hub-desc">Культовая числовая головоломка со свайпами во все стороны. Доберитесь до плитки 2048!</p>
+            </div>
+          </div>
+          <div class="game-hub-meta">
+            <span class="game-my-best">Рекорд: <strong id="game2048-my-best">0</strong></span>
+            <span class="game-control-tag">Свайпы 4 стороны</span>
+          </div>
+          <div class="game-hub-actions">
+            <button class="btn-play-game" id="launch-2048" style="background:linear-gradient(135deg,#f59563,#edc22e);">▶ Играть</button>
+            <button class="btn-game-top" data-leaderboard-for="game_2048">🏆 Топ</button>
+          </div>
+        </article>
       </div>
 
-      <!-- Карточка Башня коробок / Tower Stack -->
-      <div class="game-card featured-game" id="card-tower_stack">
-        <div class="game-badge" style="background: linear-gradient(135deg, #e53935, #f39c12); color: #fff;">ГЛАВНЫЙ СТЕК</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #fff3e0; border-color: #ffd8a8;">🏗</div>
-          <div class="game-info">
-            <h3 class="game-title">Башня коробок • Tower Stack</h3>
-            <p class="game-desc">Культовый хит на точность и тайминг! Блоки раскачиваются на подъемном кране. Тапайте в нужный момент, чтобы строить гигантский небоскреб, делайте Perfect-комбо и поднимайтесь выше облаков!</p>
+      <!-- Секция лидерборда выбранной игры -->
+      <div class="games-leaderboard-section" id="games-leaderboard-section">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-game-badge">
+            <span id="leaderboard-game-icon">🏗</span>
+            <span id="leaderboard-game-title">Лидеры Башни коробок</span>
           </div>
+          <button class="icon-button" id="refresh-leaderboard" title="Обновить рекорд" aria-label="Обновить рекорд">↻</button>
         </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="tower-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Одиночный тап</span>
-          </div>
+        <div id="game-leaderboard-list" class="leaderboard-list">
+          <div class="loading-state">Загрузка рекордов…</div>
         </div>
-        <button class="primary-button play-game-btn" id="launch-tower" style="background: linear-gradient(135deg, #e74c3c, #f39c12);">🏗 Строить башню</button>
-      </div>
-
-      <!-- Карточка Color Switch -->
-      <div class="game-card featured-game" id="card-colorswitch" style="display: none;">
-        <div class="game-badge" style="background: linear-gradient(135deg, #f6e21b, #ff017b); color: #fff;">НЕОН-ХИТ</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #111319; border-color: #16e0e6;">🌈</div>
-          <div class="game-info">
-            <h3 class="game-title">Цветной переключатель • Color Switch</h3>
-            <p class="game-desc">Культовая ритм-аркада! Тапайте для прыжка, проходите сквозь вращающиеся фигуры только через свой цвет, меняйте цвет в сферах и бейте рекорды чата!</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="colorswitch-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Тап по экрану</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-colorswitch" style="background: linear-gradient(135deg, #16e0e6, #8d12d6);">🌈 Играть в Color Switch</button>
-      </div>
-
-      <!-- Карточка Knife Hit -->
-      <div class="game-card featured-game" id="card-knife_hit" style="display: none;">
-        <div class="game-badge">ХИТ СЕЗОНА</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #fff3e0; border-color: #ffd8a8;">🎯</div>
-          <div class="game-info">
-            <h3 class="game-title">Ножевой тир • Knife Hit</h3>
-            <p class="game-desc">Абсурдный гаражный тир! Втыкайте ножи во вращающуюся деревянную мишень, раскалывайте пни и избегайте рукояток других ножей.</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="knife-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Одиночный тап</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-knife" style="background: #e67e22;">🎯 Играть в Ножевой тир</button>
-      </div>
-
-      <!-- Карточка Timberman -->
-      <div class="game-card featured-game" id="card-timberjack" style="display: none;">
-        <div class="game-badge">ТУРНИР ЧАТА</div>
-        <div class="game-card-header">
-          <div class="game-icon">🪓</div>
-          <div class="game-info">
-            <h3 class="game-title">Timberman • Дровосек</h3>
-            <p class="game-desc">Культовая аркада на реакцию и скорость! Рубите дерево слева и справа, уворачивайтесь от смертоносных веток и следите за таймером.</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="timber-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Тап L / R</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-timber">▶ Играть в Дровосека</button>
-      </div>
-
-      <!-- Карточка Свайп-Баскетбол -->
-      <div class="game-card featured-game" id="card-swipe_basketball" style="display: none;">
-        <div class="game-badge" style="background: linear-gradient(135deg, #ff9800, #e65100); color: #fff;">МЕССЕНДЖЕР ХИТ</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #fff3e0; border-color: #ffb74d;">🏀</div>
-          <div class="game-info">
-            <h3 class="game-title">Свайп-Баскетбол • Basketball</h3>
-            <p class="game-desc">Культовая игра Messenger! Точным свайпом отправляйте мяч в кольцо, делайте чистые броски Swish и активируйте режим On Fire 🔥</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="basketball-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Свайп вверх</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-basketball" style="background: linear-gradient(135deg, #f57c00, #ff9800);">🏀 Играть в Баскетбол</button>
-      </div>
-
-      <!-- Карточка Неоновый Арканоид -->
-      <div class="game-card featured-game" id="card-brick_breaker" style="display: none;">
-        <div class="game-badge" style="background: linear-gradient(135deg, #00f0ff, #bd00ff); color: #fff;">КИБЕР-ХИТ</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #0d1b2a; border-color: #00f0ff;">🧱</div>
-          <div class="game-info">
-            <h3 class="game-title">Неоновый Арканоид • Brick Breaker</h3>
-            <p class="game-desc">Сочный киберпанк-арканоид! Управляйте платформой пальцем, разрушайте неоновые блоки, ловите лазеры и мульти-шары, и набивайте комбо очков!</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="bricks-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Свайп / Тач</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-bricks" style="background: linear-gradient(135deg, #00c6ff, #0072ff);">🧱 Играть в Арканоид</button>
-      </div>
-
-      <!-- Карточка 2048 Классика -->
-      <div class="game-card featured-game" id="card-game_2048" style="display: none;">
-        <div class="game-badge" style="background: linear-gradient(135deg, #f2b179, #edc22e); color: #fff;">МАТЕМАТИКА</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #edc22e; border-color: #f2b179; color: #fff; font-weight: bold; font-size: 18px;">2048</div>
-          <div class="game-info">
-            <h3 class="game-title">2048 Классика • Classic Swipe</h3>
-            <p class="game-desc">Культовая математическая головоломка! Свайпайте плитки во все 4 стороны, объединяйте одинаковые числа и доберитесь до плитки 2048 и выше!</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="game2048-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Свайпы 4 стороны</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-2048" style="background: linear-gradient(135deg, #f59563, #edc22e);">🔢 Играть в 2048</button>
-      </div>
-
-      <!-- Карточка Ударь крота / Whack-a-Mole -->
-      <div class="game-card featured-game" id="card-whack_mole" style="display: none;">
-        <div class="game-badge" style="background: linear-gradient(135deg, #70e000, #9ef01a); color: #0f1a08;">ХАРДКОР РЕАКЦИЯ</div>
-        <div class="game-card-header">
-          <div class="game-icon" style="background: #1e2c18; border-color: #9ef01a;">🔨</div>
-          <div class="game-info">
-            <h3 class="game-title">Ударь крота • Whack-a-Mole</h3>
-            <p class="game-desc">Молниеносная аркада на реакцию! Тапайте по выскакивающим кротам молотком, ловите золотых кротов за x2 очков и берегитесь бомб с таймером в 45 секунд!</p>
-          </div>
-        </div>
-        <div class="game-stats-bar">
-          <div class="game-stat">
-            <span class="stat-label">Мой рекорд</span>
-            <span class="stat-value" id="whack-my-best">0</span>
-          </div>
-          <div class="game-stat">
-            <span class="stat-label">Управление</span>
-            <span class="stat-value">Быстрый тап</span>
-          </div>
-        </div>
-        <button class="primary-button play-game-btn" id="launch-whack" style="background: linear-gradient(135deg, #70e000, #38b000); color: #fff;">🔨 Играть в Крота</button>
-      </div>
-
-      <div class="section-heading" style="margin-top: 24px;">
-        <div><p class="eyebrow">ТАБЛИЦА РЕКОРДОВ</p><h3 id="leaderboard-game-title">Лидеры Ножевого тира</h3></div>
-        <button class="icon-button" id="refresh-leaderboard" title="Обновить рекорд">↻</button>
-      </div>
-      <div id="game-leaderboard-list" class="leaderboard-list">
-        <div class="loading-state">Загрузка рекордов…</div>
       </div>
     </section>
 
     <section class="view" id="fame-view">
       <div class="section-heading">
-        <div><p class="eyebrow">ЗАЛ СЛАВЫ • РЕЙТИНГ ЧАТА</p><h2>Топ игроков</h2></div>
+        <div><p class="eyebrow">HALL OF FAME • FELLOW SLAVES</p><h2>Топ игроков</h2></div>
         <span class="count" id="fame-count">0</span>
       </div>
       <div id="fame-list" class="fame-list"></div>
@@ -352,17 +348,17 @@
     </section>
 
     <section class="view" id="archetypes-view">
-      <div class="section-heading"><div><p class="eyebrow">ХАРАКТЕР ПЕРСОНАЖА</p><h2>Архетипы</h2></div><button class="primary-button" id="new-archetype">＋ Предложить архетип</button></div>
+      <div class="section-heading"><div><p class="eyebrow">SLAVE OR MASTER • ХАРАКТЕР</p><h2>Архетипы</h2></div><button class="primary-button" id="new-archetype">＋ Предложить архетип</button></div>
       <div id="archetype-list" class="archetype-list"></div>
     </section>
 
     <section class="view" id="prompt-view">
-      <div class="section-heading"><div><p class="eyebrow">ТЕКУЩИЙ ОБРАЗ</p><h2 id="prompt-title">Промпт</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">ROLEPLAY PROMPT • ОБРАЗ</p><h2 id="prompt-title">Промпт</h2></div></div>
       <pre id="prompt-content" class="prompt-content"></pre>
       <p id="prompt-empty" class="empty-state">Выберите архетип, чтобы увидеть его промпт.</p>
     </section>
     <section class="view" id="help-view">
-      <div class="section-heading"><div><p class="eyebrow">КОМАНДЫ БОТА</p><h2>Справка</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">DUNGEON RULES • СПРАВКА</p><h2>Справка</h2></div></div>
       <p class="help-intro">Нажмите на пример — Telegram откроет общий чат с друзьями и подставит готовый черновик. Проверьте его и отправьте сами.</p>
       <div id="command-list" class="command-list"></div>
     </section>

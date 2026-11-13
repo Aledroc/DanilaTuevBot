@@ -272,13 +272,25 @@
     $("#app-status").hidden = true;
   }
 
-  let selectedGame = "tower_stack"; // 'tower_stack' | 'knife_hit' | 'timberjack' | 'swipe_basketball'
+  let selectedGame = "tower_stack"; // 'tower_stack' | 'timberjack' | 'knife_hit' | 'swipe_basketball' | 'brick_breaker' | 'colorswitch' | 'air_hockey' | 'whack_mole' | 'game_2048'
+
+  const GAME_INFO_MAP = {
+    tower_stack: { title: "Лидеры Башни коробок", icon: "🏗", empty: "Рекордов в Башне коробок пока нет. Постройте первый этаж!" },
+    timberjack: { title: "Лидеры Дровосека", icon: "🪓", empty: "Рекордов в Дровосеке пока нет. Срубите дерево первым!" },
+    knife_hit: { title: "Лидеры Ножевого тира", icon: "🎯", empty: "Рекордов в Ножевом тире пока нет. Метните первый нож!" },
+    swipe_basketball: { title: "Лидеры Баскетбола", icon: "🏀", empty: "Рекордов в Баскетболе пока нет. Сделайте первый бросок!" },
+    brick_breaker: { title: "Лидеры Неонового Арканоида", icon: "🧱", empty: "Рекордов в Арканоиде пока нет. Разбейте первый кирпич!" },
+    colorswitch: { title: "Лидеры Color Switch", icon: "🌈", empty: "Рекордов в Color Switch пока нет. Сделайте первый прыжок!" },
+    air_hockey: { title: "Лидеры Неонового Аэрохоккея", icon: "🏒", empty: "Рекордов в Аэрохоккее пока нет. Выиграйте первый матч!" },
+    whack_mole: { title: "Лидеры «Ударь крота»", icon: "🔨", empty: "Рекордов в игре «Ударь крота» пока нет. Поймайте первого крота!" },
+    game_2048: { title: "Лидеры 2048 Классика", icon: "🔢", empty: "Рекордов в 2048 пока нет. Соберите первое легендарное число!" }
+  };
 
   async function loadGameLeaderboard() {
     const list = $("#game-leaderboard-list");
     if (!list) return;
 
-    // Обновляем персональные рекорды для всех игр
+    // Обновляем персональные рекорды для всех 9 игр
     try {
       const towerBest = parseInt(localStorage.getItem("tower_stack_best_score") || "0", 10);
       const towerBestNode = $("#tower-my-best");
@@ -296,37 +308,40 @@
       const basketBestNode = $("#basketball-my-best");
       if (basketBestNode) basketBestNode.textContent = basketBest;
 
+      const bricksBest = parseInt(localStorage.getItem("brick_breaker_best_score") || "0", 10);
+      const bricksBestNode = $("#bricks-my-best");
+      if (bricksBestNode) bricksBestNode.textContent = bricksBest;
+
       const colorswitchBest = parseInt(localStorage.getItem("colorswitch_best_score") || "0", 10);
       const colorswitchBestNode = $("#colorswitch-my-best");
       if (colorswitchBestNode) colorswitchBestNode.textContent = colorswitchBest;
 
-      const bricksBest = parseInt(localStorage.getItem("brick_breaker_best_score") || "0", 10);
-      const bricksBestNode = $("#bricks-my-best");
-      if (bricksBestNode) bricksBestNode.textContent = bricksBest;
+      const airHockeyBest = parseInt(localStorage.getItem("air_hockey_best_score") || "0", 10);
+      const airHockeyBestNode = $("#airhockey-my-best");
+      if (airHockeyBestNode) airHockeyBestNode.textContent = airHockeyBest;
+
+      const whackBest = parseInt(localStorage.getItem("whack_mole_best_score") || "0", 10);
+      const whackBestNode = $("#whack-my-best");
+      if (whackBestNode) whackBestNode.textContent = whackBest;
 
       const game2048Best = parseInt(localStorage.getItem("game_2048_best") || "0", 10);
       const game2048BestNode = $("#game2048-my-best");
       if (game2048BestNode) game2048BestNode.textContent = game2048Best;
     } catch (_) {}
 
+    const info = GAME_INFO_MAP[selectedGame] || GAME_INFO_MAP.tower_stack;
     const titleNode = $("#leaderboard-game-title");
-    if (titleNode) {
-      if (selectedGame === "tower_stack") {
-        titleNode.textContent = "Лидеры Башни коробок";
-      } else if (selectedGame === "colorswitch") {
-        titleNode.textContent = "Лидеры Color Switch";
-      } else if (selectedGame === "brick_breaker") {
-        titleNode.textContent = "Лидеры Неонового Арканоида";
-      } else if (selectedGame === "knife_hit") {
-        titleNode.textContent = "Лидеры Ножевого тира";
-      } else if (selectedGame === "timberjack") {
-        titleNode.textContent = "Лидеры Дровосека";
-      } else if (selectedGame === "game_2048") {
-        titleNode.textContent = "Лидеры 2048 Классика";
-      } else {
-        titleNode.textContent = "Лидеры Баскетбола";
-      }
-    }
+    const iconNode = $("#leaderboard-game-icon");
+    if (titleNode) titleNode.textContent = info.title;
+    if (iconNode) iconNode.textContent = info.icon;
+
+    // Подсвечиваем активную кнопку Топ и карточку
+    document.querySelectorAll(".game-hub-card").forEach((card) => {
+      card.classList.toggle("active-leaderboard-card", card.dataset.game === selectedGame);
+    });
+    document.querySelectorAll("[data-leaderboard-for]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.leaderboardFor === selectedGame);
+    });
 
     try {
       const queryParams = [`game=${encodeURIComponent(selectedGame)}`];
@@ -336,15 +351,7 @@
       const data = await request(`/api/game/leaderboard${query}`);
       const leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
       if (!leaders.length) {
-        let emptyMsg = "Рекордов пока нет. Будьте первым!";
-        if (selectedGame === "tower_stack") emptyMsg = "Рекордов в Башне коробок пока нет. Постройте первый этаж!";
-        else if (selectedGame === "colorswitch") emptyMsg = "Рекордов в Color Switch пока нет. Сделайте первый прыжок!";
-        else if (selectedGame === "brick_breaker") emptyMsg = "Рекордов в Арканоиде пока нет. Разбейте первый кирпич!";
-        else if (selectedGame === "knife_hit") emptyMsg = "Рекордов в Ножевом тире пока нет. Метните первый нож!";
-        else if (selectedGame === "timberjack") emptyMsg = "Рекордов пока нет. Будьте первым, кто срубит дерево!";
-        else if (selectedGame === "swipe_basketball") emptyMsg = "Рекордов в Баскетболе пока нет. Сделайте первый бросок!";
-        else if (selectedGame === "game_2048") emptyMsg = "Рекордов в 2048 пока нет. Соберите первое легендарное число!";
-        list.innerHTML = `<p class="empty-state">${emptyMsg}</p>`;
+        list.innerHTML = `<p class="empty-state">${info.empty}</p>`;
         return;
       }
       list.innerHTML = leaders.map((item, index) => `
@@ -749,125 +756,46 @@
   }
 
   function setupGameModal() {
-    const launchTowerBtn = $("#launch-tower");
-    const launchColorswitchBtn = $("#launch-colorswitch");
-    const launchBricksBtn = $("#launch-bricks");
-    const launchTimberBtn = $("#launch-timber");
-    const launchKnifeBtn = $("#launch-knife");
-    const launchBasketBtn = $("#launch-basketball");
-    const launch2048Btn = $("#launch-2048");
     const modal = $("#game-modal");
     const iframe = $("#game-iframe");
     const closeBtn = $("#close-game-modal");
     const modalTitle = $(".game-modal-title");
 
-    // Переключатель игр
-    const towerTabBtn = $("#select-game-tower");
-    const colorswitchTabBtn = $("#select-game-colorswitch");
-    const bricksTabBtn = $("#select-game-bricks");
-    const knifeTabBtn = $("#select-game-knife");
-    const timberTabBtn = $("#select-game-timber");
-    const basketTabBtn = $("#select-game-basketball");
-    const game2048TabBtn = $("#select-game-2048");
-    const towerCard = $("#card-tower_stack");
-    const colorswitchCard = $("#card-colorswitch");
-    const bricksCard = $("#card-brick_breaker");
-    const knifeCard = $("#card-knife_hit");
-    const timberCard = $("#card-timberjack");
-    const basketCard = $("#card-swipe_basketball");
-    const game2048Card = $("#card-game_2048");
-
-    function switchGame(game) {
-      selectedGame = game;
-      if (towerTabBtn) towerTabBtn.classList.toggle("active", game === "tower_stack");
-      if (colorswitchTabBtn) colorswitchTabBtn.classList.toggle("active", game === "colorswitch");
-      if (bricksTabBtn) bricksTabBtn.classList.toggle("active", game === "brick_breaker");
-      if (knifeTabBtn) knifeTabBtn.classList.toggle("active", game === "knife_hit");
-      if (timberTabBtn) timberTabBtn.classList.toggle("active", game === "timberjack");
-      if (basketTabBtn) basketTabBtn.classList.toggle("active", game === "swipe_basketball");
-      if (game2048TabBtn) game2048TabBtn.classList.toggle("active", game === "game_2048");
-
-      if (towerCard) towerCard.style.display = game === "tower_stack" ? "grid" : "none";
-      if (colorswitchCard) colorswitchCard.style.display = game === "colorswitch" ? "grid" : "none";
-      if (bricksCard) bricksCard.style.display = game === "brick_breaker" ? "grid" : "none";
-      if (knifeCard) knifeCard.style.display = game === "knife_hit" ? "grid" : "none";
-      if (timberCard) timberCard.style.display = game === "timberjack" ? "grid" : "none";
-      if (basketCard) basketCard.style.display = game === "swipe_basketball" ? "grid" : "none";
-      if (game2048Card) game2048Card.style.display = game === "game_2048" ? "grid" : "none";
-
-      loadGameLeaderboard().catch(() => {});
+    function openGame(gameKey, title, path) {
+      if (!modal || !iframe) return;
+      selectedGame = gameKey;
+      const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
+      if (modalTitle) modalTitle.textContent = title;
+      iframe.src = `${path}${query}`;
+      modal.showModal();
     }
 
-    if (towerTabBtn) towerTabBtn.addEventListener("click", () => switchGame("tower_stack"));
-    if (colorswitchTabBtn) colorswitchTabBtn.addEventListener("click", () => switchGame("colorswitch"));
-    if (bricksTabBtn) bricksTabBtn.addEventListener("click", () => switchGame("brick_breaker"));
-    if (knifeTabBtn) knifeTabBtn.addEventListener("click", () => switchGame("knife_hit"));
-    if (timberTabBtn) timberTabBtn.addEventListener("click", () => switchGame("timberjack"));
-    if (basketTabBtn) basketTabBtn.addEventListener("click", () => switchGame("swipe_basketball"));
-    if (game2048TabBtn) game2048TabBtn.addEventListener("click", () => switchGame("game_2048"));
+    // Слушатели кнопок запуска игр
+    $("#launch-tower")?.addEventListener("click", () => openGame("tower_stack", "🏗 Башня коробок", "/games/tower/index.html"));
+    $("#launch-timber")?.addEventListener("click", () => openGame("timberjack", "🪓 Timberman", "/games/timberman/index.html"));
+    $("#launch-knife")?.addEventListener("click", () => openGame("knife_hit", "🎯 Ножевой тир", "/games/knife/index.html"));
+    $("#launch-basketball")?.addEventListener("click", () => openGame("swipe_basketball", "🏀 Свайп-Баскетбол", "/games/basketball/index.html"));
+    $("#launch-bricks")?.addEventListener("click", () => openGame("brick_breaker", "🧱 Неоновый Арканоид", "/games/bricks/index.html"));
+    $("#launch-colorswitch")?.addEventListener("click", () => openGame("colorswitch", "🌈 Color Switch", "/games/colorswitch/index.html"));
+    $("#launch-airhockey")?.addEventListener("click", () => openGame("air_hockey", "🏒 Неоновый Аэрохоккей", "/games/airhockey/index.html"));
+    $("#launch-whack")?.addEventListener("click", () => openGame("whack_mole", "🔨 Ударь крота", "/games/whack/index.html"));
+    $("#launch-2048")?.addEventListener("click", () => openGame("game_2048", "🔢 2048 Классика", "/games/game2048/index.html"));
 
-    if (launchTowerBtn && modal && iframe) {
-      launchTowerBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🏗 Башня коробок";
-        iframe.src = `/games/tower/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launchColorswitchBtn && modal && iframe) {
-      launchColorswitchBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🌈 Color Switch";
-        iframe.src = `/games/colorswitch/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launchBricksBtn && modal && iframe) {
-      launchBricksBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🧱 Неоновый Арканоид";
-        iframe.src = `/games/bricks/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launchKnifeBtn && modal && iframe) {
-      launchKnifeBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🎯 Ножевой тир";
-        iframe.src = `/games/knife/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launchTimberBtn && modal && iframe) {
-      launchTimberBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🪓 Timberman";
-        iframe.src = `/games/timberman/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launchBasketBtn && modal && iframe) {
-      launchBasketBtn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🏀 Свайп-Баскетбол";
-        iframe.src = `/games/basketball/index.html${query}`;
-        modal.showModal();
-      });
-    }
-
-    if (launch2048Btn && modal && iframe) {
-      launch2048Btn.addEventListener("click", () => {
-        const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
-        if (modalTitle) modalTitle.textContent = "🔢 2048 Классика";
-        iframe.src = `/games/game2048/index.html${query}`;
-        modal.showModal();
-      });
-    }
+    // Быстрый переключатель таблицы рекордов по кнопкам «🏆 Топ» у каждой карточки
+    $("#games-grid")?.addEventListener("click", (event) => {
+      const topBtn = event.target.closest("[data-leaderboard-for]");
+      if (topBtn) {
+        const gameKey = topBtn.dataset.leaderboardFor;
+        if (gameKey) {
+          selectedGame = gameKey;
+          loadGameLeaderboard().catch(() => {});
+          const section = $("#games-leaderboard-section");
+          if (section) {
+            section.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }
+      }
+    });
 
     if (closeBtn && modal && iframe) {
       closeBtn.addEventListener("click", () => {

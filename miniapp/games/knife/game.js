@@ -65,7 +65,11 @@
   const KNIFE_HEIGHT = 130;
   const KNIFE_START_Y = 1000;
   const KNIFE_SPEED = 42; // px per frame
-  const COLLISION_ANGLE_DIST = 0.22; // ~12.6 градусов дистанция столкновения
+  // Дистанция столкновения ножей по дуге окружности.
+  // Радиус столкновения ~ TARGET_RADIUS + KNIFE_HEIGHT * 0.4 ≈ 180px.
+  // Ширина зоны поражения ножа ~ KNIFE_WIDTH + 6 = 40px => 40 / 180 ≈ 0.222 рад.
+  // Добавим запас на гарду: 0.24 рад (~13.75°).
+  const COLLISION_ANGLE_DIST = 0.24;
 
   // Состояние игры
   let gameState = 'START'; // 'START' | 'PLAYING' | 'GAMEOVER' | 'VICTORY'
@@ -84,6 +88,7 @@
   let remainingKnives = 7;
   let readyKnife = null;
   let flyingKnife = null;
+  let deflectedKnife = null; // Отскочивший при столкновении нож
   let stuckKnives = []; // Array of angles relative to target: number[]
   let particles = []; // Щепки, искры, осколки дерева
   let woodDebris = []; // Большие куски спила при взрыве
@@ -96,6 +101,7 @@
     targetAngle = 0;
     stuckKnives = [];
     flyingKnife = null;
+    deflectedKnife = null;
     remainingKnives = Math.min(6 + stage, 12);
     
     // Предварительно воткнутые ножи на мишени (как в классическом Knife Hit)
@@ -237,10 +243,11 @@
   }
 
   // Завершение игры
-  function gameOver(deflectedKnife) {
+  function gameOver(deflectKnife) {
     gameState = 'GAMEOVER';
+    deflectedKnife = deflectKnife;
     playSfx('collision');
-    createMetalSparkParticles(deflectedKnife.x, deflectedKnife.y);
+    createMetalSparkParticles(deflectKnife.x, deflectKnife.y);
     screenShake = 22;
 
     if (tg?.HapticFeedback) {
@@ -330,13 +337,14 @@
 
         if (collided) {
           // Столкновение металл об металл!
+          // Отлёт ножа вниз и в сторону с красивым вращением
           const deflectKnife = {
             x: flyingKnife.x,
             y: flyingKnife.y,
-            vx: (Math.random() > 0.5 ? 1 : -1) * (7 + Math.random() * 5),
-            vy: 12 + Math.random() * 6,
+            vx: (Math.random() > 0.5 ? 1 : -1) * (5 + Math.random() * 5),
+            vy: -(6 + Math.random() * 4), // Небольшой отскок вверх перед падением
             rot: 0,
-            vrot: 0.35,
+            vrot: (Math.random() > 0.5 ? 1 : -1) * (0.2 + Math.random() * 0.15),
           };
           flyingKnife = null;
           gameOver(deflectKnife);
@@ -366,6 +374,17 @@
             spawnReadyKnife();
           }
         }
+      }
+    }
+
+    // Анимация отскочившего ножа (падение с вращением)
+    if (deflectedKnife) {
+      deflectedKnife.x += deflectedKnife.vx;
+      deflectedKnife.y += deflectedKnife.vy;
+      deflectedKnife.vy += 0.8; // гравитация
+      deflectedKnife.rot += deflectedKnife.vrot;
+      if (deflectedKnife.y > CH + 200) {
+        deflectedKnife = null;
       }
     }
 
@@ -461,6 +480,11 @@
       renderSingleKnife(readyKnife.x, readyKnife.y, 0);
     }
 
+    // Отскочивший при ударе нож (красивый кувырок и падение)
+    if (deflectedKnife) {
+      renderDeflectedKnife(deflectedKnife.x, deflectedKnife.y, deflectedKnife.rot);
+    }
+
     // Индикатор оставшихся ножей слева внизу
     renderRemainingKnivesIndicator();
 
@@ -534,10 +558,14 @@
     // Воткнутые ножи (вращаются вместе с мишенью)
     for (const angle of stuckKnives) {
       ctx.save();
-      ctx.rotate(angle);
-      // Нож торчит лезвием в дерево, рукоять наружу
-      // Смещение наружу от центра радиуса
-      ctx.translate(0, TARGET_RADIUS - 10);
+      // angle - угол ножа на мишени.
+      // angle = Math.PI / 2 соответствует нижней точке мишени.
+      // Поворачиваемся на angle, чтобы ось Y смотрела от центра к ножу,
+      // сдвигаемся к краю мишени и поворачиваем на Math.PI, чтобы острие
+      // смотрело в центр мишени, а рукоять торчала наружу.
+      ctx.rotate(angle - Math.PI / 2);
+      ctx.translate(0, TARGET_RADIUS);
+      ctx.rotate(Math.PI);
       renderKnifeSprite(0, 0, 0);
       ctx.restore();
     }
@@ -554,22 +582,35 @@
     ctx.restore();
   }
 
+  // Отрисовка отскакивающего/падающего ножа (с вращением вокруг центра тяжести)
+  function renderDeflectedKnife(x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    // Сдвигаем на середину ножа, чтобы вращение было вокруг центра масс
+    ctx.translate(0, -KNIFE_HEIGHT * 0.45);
+    renderKnifeSprite(0, 0, 0);
+    ctx.restore();
+  }
+
   function renderKnifeSprite(x, y, rot) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
     if (images.knife && images.knife.complete) {
-      // Спрайт knife.png: 92x372, остриё направлено вверх
+      // Спрайт knife.png: остриё направлено вверх (y=0), рукоятка внизу (y=h).
+      // Центр привязки у кончика острия ножа (x=0, y=0).
+      // Сдвигаем по Y на -12px вглубь дерева, чтобы кончик выглядел надежно вонзившимся.
       ctx.drawImage(
         images.knife,
         -KNIFE_WIDTH / 2,
-        -KNIFE_HEIGHT * 0.15, // Центр привязки у кончика
+        -12,
         KNIFE_WIDTH,
         KNIFE_HEIGHT
       );
     } else {
       // Запасная векторная отрисовка ножа
-      // Клинок
+      // Клинок (остриё вверху)
       ctx.fillStyle = '#e2e8f0';
       ctx.beginPath();
       ctx.moveTo(0, -10);
@@ -577,12 +618,12 @@
       ctx.lineTo(-KNIFE_WIDTH / 2, 45);
       ctx.closePath();
       ctx.fill();
-      // Рукоятка
-      ctx.fillStyle = '#c53030';
-      ctx.fillRect(-KNIFE_WIDTH * 0.35, 45, KNIFE_WIDTH * 0.7, KNIFE_HEIGHT - 45);
+      // Рукоятка (внизу)
+      ctx.fillStyle = '#2b6cb0';
+      ctx.fillRect(-KNIFE_WIDTH * 0.35, 52, KNIFE_WIDTH * 0.7, KNIFE_HEIGHT - 52);
       // Гарда
-      ctx.fillStyle = '#4a5568';
-      ctx.fillRect(-KNIFE_WIDTH * 0.5, 40, KNIFE_WIDTH, 7);
+      ctx.fillStyle = '#cbd5e0';
+      ctx.fillRect(-KNIFE_WIDTH * 0.5, 45, KNIFE_WIDTH, 7);
     }
     ctx.restore();
   }

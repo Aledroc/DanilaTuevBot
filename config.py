@@ -27,14 +27,14 @@ else:
     ARCHETYPES = dict(DEFAULT_ARCHETYPES)
 
 # Existing credentials retained as originally configured.
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU')
-XKIRO_API_KEY = os.getenv('XKIRO_API_KEY', 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec')
+TELEGRAM_TOKEN = '8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU'
+XKIRO_API_KEY = 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec'
 
-# OpenRouter TTS credentials (set OPENROUTER_API_KEY in environment).
-OPENROUTER_API_KEY = os.getenv(
-    'OPENROUTER_API_KEY',
-    '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',
-)
+# Fish Audio direct TTS credentials (set FISH_AUDIO_API_KEY in environment or config).
+FISH_AUDIO_API_KEY = os.getenv('FISH_AUDIO_API_KEY', '').strip()
+FISH_AUDIO_TTS_URL = os.getenv('FISH_AUDIO_TTS_URL', 'https://api.fish.audio/v1/tts')
+# Fallback OpenRouter TTS credentials
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '').strip()
 VOICE_ID = os.getenv('OPENROUTER_VOICE_ID', 'alloy')
 # NordRouter multimodal audio input for transcription. Its documented API uses
 # chat completions with input_audio; it does not document /audio/transcriptions.
@@ -43,28 +43,31 @@ STT_API_URL = os.getenv('STT_API_URL', 'https://nordrouter.com/v1/chat/completio
 STT_MODEL = os.getenv('STT_MODEL', 'google/gemini-omni-flash-preview')
 
 TEXT_MODELS = [
+    "deepseek/deepseek-v4-pro",
+    "qwen/qwen3.8-max:free",
     "mistralai/mistral-large-2512",
-    "mistralai/ministral-14b",
-    "mistralai/ministral-8b",
-    "cohere/command-r-plus-08-2024",
+    "minimax/minimax-m3:free",
+    "qwen/qwen3.7-max:free",
 ]
 
 VISION_MODELS = [
+    "qwen/qwen3-vl-plus:free",
+    "qwen/qwen3.8-max:free",
+    "mistralai/mistral-large-2512",
+    "minimax/minimax-m3:free",
     "sensenova/sensenova-6.8-flash-lite",
-    "mistralai/ministral-14b",
-    "mistralai/ministral-8b",
-    "cohere/command-a-vision",
 ]
 
 DEFAULT_GOAL = (
-    "Развивать динамичную сюжетную сцену вокруг своего персонажа: ставить ясную практическую цель, "
-    "сталкиваться с неожиданными трудностями, добывать нужные предметы, взаимодействовать с окружением "
-    "и активно вовлекать собеседников в общую историю, ни на секунду не выходя из образа."
+    "Отыгрывать заданную личность и двигать текущую сцену самостоятельными поступками персонажа. "
+    "В содержательном ролевом ответе персонаж сам делает один уместный шаг, получает или сообщает "
+    "новую деталь и естественно обращается к участнику чата по имени. Он действует сам, "
+    "не заставляя собеседника идти за ним и не придумывая необоснованных маршрутов или событий."
 )
 HISTORY_LIMIT = 30
 # Верхний запас для обычных вызовов модели. Для ролевых ответов точный лимит
 # выбирается в chat_manager.py в зависимости от сложности запроса.
-MAX_RESPONSE_TOKENS = 1200
+MAX_RESPONSE_TOKENS = 900
 MODIFIERS_KEYS = list(ARCHETYPES.keys())
 
 

@@ -11,6 +11,10 @@
 
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
+  const restartContainer = document.getElementById('restart-container');
+  const restartBtn = document.getElementById('btn-restart');
+  const touchLeft = document.getElementById('touch-left');
+  const touchRight = document.getElementById('touch-right');
 
   // Звуки
   let soundEnabled = true;
@@ -128,6 +132,11 @@
     flyingLogs.length = 0;
     initTrunk();
     gameState = STATE_START;
+    if (restartContainer) {
+      restartContainer.style.display = 'none';
+    }
+    if (touchLeft) touchLeft.style.pointerEvents = 'auto';
+    if (touchRight) touchRight.style.pointerEvents = 'auto';
   }
 
   function chop(side) {
@@ -194,6 +203,10 @@
     gameState = STATE_GAMEOVER;
     playSfx('death');
 
+    if (restartContainer) {
+      restartContainer.style.display = 'flex';
+    }
+
     if (tg?.HapticFeedback) {
       try { tg.HapticFeedback.notificationOccurred('error'); } catch (_) {}
     }
@@ -233,20 +246,39 @@
     const leftBtn = document.getElementById('touch-left');
     const rightBtn = document.getElementById('touch-right');
 
+    const handleRestart = (e) => {
+      if (e) e.preventDefault();
+      if (gameState === STATE_GAMEOVER) {
+        playSfx('menu');
+        startGame();
+      }
+    };
+
     const handleLeft = (e) => {
       e.preventDefault();
-      if (gameState === STATE_GAMEOVER) return;
+      if (gameState === STATE_GAMEOVER) {
+        handleRestart(e);
+        return;
+      }
       chop('left');
     };
 
     const handleRight = (e) => {
       e.preventDefault();
-      if (gameState === STATE_GAMEOVER) return;
+      if (gameState === STATE_GAMEOVER) {
+        handleRestart(e);
+        return;
+      }
       chop('right');
     };
 
     leftBtn.addEventListener('pointerdown', handleLeft);
     rightBtn.addEventListener('pointerdown', handleRight);
+
+    if (restartBtn) {
+      restartBtn.addEventListener('pointerdown', handleRestart);
+      restartBtn.addEventListener('click', handleRestart);
+    }
 
     // Клавиатура (для тестирования на десктопе / стрелки и A/D)
     window.addEventListener('keydown', (e) => {
