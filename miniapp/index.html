@@ -12,13 +12,30 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <div><p class="eyebrow">ЖЕЛЕЗНЫЙ ЗАЛ • RPG</p><h1 id="greeting">Инвентарь</h1></div>
+      <div>
+        <p class="eyebrow">ЖЕЛЕЗНЫЙ ЗАЛ • RPG</p>
+        <h1 id="greeting">Инвентарь</h1>
+        <div class="user-economy-bar" id="user-economy-bar">
+          <div class="economy-badge coins-badge" title="Монеты">
+            <span class="economy-icon">🪙</span>
+            <span class="economy-val" id="user-coins">0</span>
+            <span class="economy-lbl">монет</span>
+          </div>
+          <div class="economy-badge streak-badge" title="Серия ежедневных посещений">
+            <span class="economy-icon">🔥</span>
+            <span class="economy-val" id="user-streak">0</span>
+            <span class="economy-lbl">дней стрик</span>
+          </div>
+        </div>
+      </div>
       <button class="icon-button" id="refresh" title="Обновить" aria-label="Обновить">↻</button>
     </header>
     <p id="app-status" class="status-message" role="status" aria-live="polite">Загрузка профиля…</p>
 
     <nav class="tabs" aria-label="Разделы">
       <button class="tab active" data-tab="inventory">Инвентарь</button>
+      <button class="tab" data-tab="shop">🏪 Магазин</button>
+      <button class="tab" data-tab="tournament">🏆 Кубок</button>
       <button class="tab" data-tab="games">🎮 Игры</button>
       <button class="tab" data-tab="fame">Топ игроков</button>
       <button class="tab" data-tab="archetypes">Архетипы</button>
@@ -30,6 +47,89 @@
       <div class="section-heading"><div><p class="eyebrow">СНАРЯЖЕНИЕ</p><h2>Мои вещи</h2></div><span class="count" id="item-count">0</span></div>
       <div id="inventory-list" class="inventory-list"></div>
       <p id="inventory-empty" class="empty-state" hidden>Инвентарь пока пуст.</p>
+    </section>
+
+    <!-- Вкладка Магазин (Shop) -->
+    <section class="view" id="shop-view">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">КИБЕР-МАРКЕТ • БУСТЫ И СТАТУС</p>
+          <h2>🏪 Магазин перков</h2>
+        </div>
+        <div class="shop-balance-pill" id="shop-balance-pill">
+          🪙 <span id="shop-user-coins">0</span>
+        </div>
+      </div>
+
+      <!-- Активные перки -->
+      <div class="active-perks-box" id="active-perks-box" style="display:none;">
+        <div class="active-perks-header">
+          <span class="active-perks-title">⚡ Твои активные перки:</span>
+        </div>
+        <div class="active-perks-list" id="active-perks-list"></div>
+      </div>
+
+      <!-- Каталог товаров -->
+      <div class="shop-catalog" id="shop-catalog">
+        <div class="loading-state">Загрузка витрины товаров…</div>
+      </div>
+    </section>
+
+    <!-- Вкладка Еженедельный кубок (Tournament / Weekly Cup) -->
+    <section class="view" id="tournament-view">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ГРАН-ПРИ НЕДЕЛИ • АРЕНА ЧЕМПИОНОВ</p>
+          <h2>🏆 Еженедельный кубок</h2>
+        </div>
+        <button class="icon-button" id="refresh-tournament" title="Обновить кубок" aria-label="Обновить">↻</button>
+      </div>
+
+      <!-- Баннер кубка с таймером -->
+      <div class="cup-banner">
+        <div class="cup-badge">СЕЗОН АКТИВЕН</div>
+        <div class="cup-header-content">
+          <div class="cup-trophy-icon">🏆</div>
+          <div class="cup-details">
+            <h3 class="cup-title" id="cup-title">Еженедельный гран-при</h3>
+            <p class="cup-desc">Сумма всех лучших очков из 9 мини-игр! Стань чемпионом недели, забери золотой кубок и солидный банк монет!</p>
+          </div>
+        </div>
+        <div class="cup-timer-bar">
+          <span class="timer-label">⏳ До конца недели:</span>
+          <span class="timer-value" id="cup-countdown">Загрузка…</span>
+        </div>
+      </div>
+
+      <!-- Награды турнира -->
+      <div class="tournament-rewards-card">
+        <h4 class="rewards-heading">🎁 Призовой фонд кубка:</h4>
+        <div class="rewards-grid">
+          <div class="reward-tier tier-gold">
+            <div class="tier-medal">🥇 1 Место</div>
+            <div class="tier-prize">🪙 +500 монет</div>
+            <div class="tier-title">👑 Титул «Чемпион Зала»</div>
+          </div>
+          <div class="reward-tier tier-silver">
+            <div class="tier-medal">🥈 2 Место</div>
+            <div class="tier-prize">🪙 +250 монет</div>
+            <div class="tier-title">⚡ Титул «Мастер Арены»</div>
+          </div>
+          <div class="reward-tier tier-bronze">
+            <div class="tier-medal">🥉 3 Место</div>
+            <div class="tier-prize">🪙 +100 монет</div>
+            <div class="tier-title">🔥 Титул «Гладиатор»</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Турнирная таблица -->
+      <div class="section-heading" style="margin-top: 20px;">
+        <div><p class="eyebrow">ТУРНИРНАЯ ТАБЛИЦА</p><h3>Лидеры недели по сумме очков</h3></div>
+      </div>
+      <div id="tournament-leaderboard-list" class="leaderboard-list">
+        <div class="loading-state">Загрузка турнирной таблицы…</div>
+      </div>
     </section>
 
     <section class="view" id="games-view">
@@ -287,6 +387,38 @@
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close-use>Отмена</button><button class="primary-button" type="submit">Подготовить команду</button></div>
     </form>
   </dialog>
+  <dialog id="shop-dialog">
+    <form id="shop-buy-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">ОФОРМЛЕНИЕ ПЕРКА</p>
+          <h2 id="shop-dialog-title">Купить товар</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-shop aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="shop-dialog-item-summary">
+        <span class="shop-dialog-item-icon" id="shop-dialog-icon">🎯</span>
+        <div class="shop-dialog-item-text">
+          <h4 id="shop-dialog-item-name">Название перка</h4>
+          <p id="shop-dialog-item-desc">Описание перка</p>
+          <div class="shop-dialog-price-tag">
+            Стоимость: <strong id="shop-dialog-price">0</strong> 🪙
+          </div>
+        </div>
+      </div>
+
+      <div id="shop-custom-fields" class="shop-custom-fields">
+        <!-- Динамические поля ввода под конкретный товар -->
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" data-close-shop>Отмена</button>
+        <button class="primary-button" id="confirm-buy-btn" type="submit">Купить за 🪙 <span id="confirm-buy-price">0</span></button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="game-modal" class="game-fullscreen-modal">
     <div class="game-modal-header">
       <span class="game-modal-title">🪓 Timberman</span>

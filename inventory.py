@@ -1185,6 +1185,84 @@ def _connect():
             ON custom_archetypes(key)
             """
         )
+        # --- Экономика, Магазин и Турниры ---
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_economy (
+                user_id INTEGER PRIMARY KEY,
+                coins INTEGER NOT NULL DEFAULT 0,
+                daily_streak INTEGER NOT NULL DEFAULT 0,
+                last_daily_claim TEXT NOT NULL DEFAULT '',
+                last_message_award INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_perks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                chat_id INTEGER,
+                perk_id TEXT NOT NULL,
+                extra_data TEXT NOT NULL DEFAULT '',
+                active INTEGER NOT NULL DEFAULT 1,
+                purchased_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_mood_overrides (
+                chat_id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                mood_text TEXT NOT NULL,
+                set_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pending_roasts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                buyer_id INTEGER NOT NULL,
+                target_user_id INTEGER NOT NULL,
+                target_name TEXT NOT NULL,
+                hint TEXT NOT NULL DEFAULT '',
+                used INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS weekly_tournaments (
+                season_id TEXT PRIMARY KEY,
+                week_number INTEGER NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tournament_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season_id TEXT NOT NULL,
+                chat_id INTEGER,
+                user_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                points INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL,
+                UNIQUE(season_id, chat_id, user_id)
+            )
+            """
+        )
         yield conn
         conn.commit()
     except Exception:
@@ -2128,12 +2206,28 @@ def record_game_score(game_name: str, user_id: int, user_name: str, chat_id: int
         except Exception:
             pass
 
+    # Начисление монет и турнирных очков за сыгранную игру
+    coins_earned = 0
+    tournament_pts = 0
+    if user_id:
+        try:
+            # Рассчитываем награду: базовые 5 монет за участие + 1 монета за каждые 10 очков (макс 50 за игру)
+            coins_earned = max(5, min(50, 5 + max(0, score) // 10))
+            add_coins(user_id, coins_earned, reason=f"game:{game_key}")
+            # Турнирные очки: соответствуют счёту или эквиваленту монет
+            tournament_pts = max(10, min(500, max(0, score) if score > 0 else 10))
+            add_tournament_points(user_id, user_name, tournament_pts, chat_id=cid)
+        except Exception:
+            pass
+
     return {
         "game_id": game_key,
         "game_name": game_key,
         "score": score,
         "personal_best": personal_best,
         "is_new_record": score >= personal_best,
+        "coins_earned": coins_earned,
+        "tournament_points": tournament_pts,
     }
 
 
@@ -2188,3 +2282,667 @@ def get_all_games_leaderboards(chat_id: int | None = None) -> dict[str, list[dic
     """Возвращает лидерборды для всех основных соревновательных игр."""
     games = ["duel_dice", "duel_darts", "duel_bowling", "duel_football", "duel_basketball", "quiz_absurd", "timberjack", "game2048", "flappy"]
     return {g: get_game_leaderboard(g, chat_id=chat_id, limit=10) for g in games}
+
+
+# ==========================================
+# ЭКОНОМИКА, МОНЕТЫ И СТРИКИ (COINS & DAILY)
+# ==========================================
+
+SHOP_ITEMS = [
+    {
+        "item_id": "custom_roast",
+        "name": "Заказной подкол друга",
+        "price": 100,
+        "description": "Бот жестко и остроумно подколет выбранного друга при его следующем появлении в чате.",
+        "icon": "🎭",
+        "type": "usable",
+    },
+    {
+        "item_id": "mood_override",
+        "name": "Смена настроения бота (30 мин)",
+        "price": 150,
+        "description": "Принудительно меняет стиль общения или вайб бота в текущем чате на 30 минут.",
+        "icon": "⚡",
+        "type": "duration",
+    },
+    {
+        "item_id": "vip_badge",
+        "name": "VIP-статус",
+        "price": 300,
+        "description": "Постоянный статус VIP с эксклюзивным золотым бейджем [VIP] в профиле и чате.",
+        "icon": "👑",
+        "type": "passive",
+    },
+    {
+        "item_id": "custom_title",
+        "name": "Кастомный титул",
+        "price": 200,
+        "description": "Уникальный авторский титул в чате и профиле (до 40 символов).",
+        "icon": "🏷️",
+        "type": "title",
+    },
+]
+
+
+def get_shop_items() -> list[dict]:
+    """Возвращает актуальный каталог товаров магазина."""
+    return list(SHOP_ITEMS)
+
+
+def get_user_coins(user_id: int) -> int:
+    """Возвращает текущий баланс монет пользователя."""
+    if not user_id:
+        return 0
+    try:
+        with _connect() as conn:
+            row = conn.execute("SELECT coins FROM user_economy WHERE user_id = ?", (int(user_id),)).fetchone()
+            return row[0] if row and row[0] is not None else 0
+    except Exception:
+        return 0
+
+
+def add_coins(user_id: int, amount: int, reason: str = "") -> int:
+    """Начисляет монеты пользователю и возвращает обновленный баланс."""
+    if not user_id:
+        return 0
+    amt = int(amount)
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_economy (user_id, coins, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    coins = user_economy.coins + excluded.coins,
+                    updated_at = excluded.updated_at
+                """,
+                (int(user_id), amt, now),
+            )
+            row = conn.execute("SELECT coins FROM user_economy WHERE user_id = ?", (int(user_id),)).fetchone()
+            return row[0] if row else 0
+    except Exception:
+        return 0
+
+
+def spend_coins(user_id: int, amount: int, reason: str = "") -> bool:
+    """Списывает указанное количество монет, если на балансе достаточно средств."""
+    if not user_id:
+        return False
+    amt = int(amount)
+    if amt <= 0:
+        return True
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            row = conn.execute("SELECT coins FROM user_economy WHERE user_id = ?", (int(user_id),)).fetchone()
+            current = row[0] if row and row[0] is not None else 0
+            if current < amt:
+                return False
+            conn.execute(
+                "UPDATE user_economy SET coins = coins - ?, updated_at = ? WHERE user_id = ?",
+                (amt, now, int(user_id)),
+            )
+            return True
+    except Exception:
+        return False
+
+
+def claim_daily_streak(user_id: int) -> dict:
+    """Проверяет и начисляет ежедневную награду за вход (daily streak)."""
+    import datetime
+    if not user_id:
+        return {"streak": 0, "reward": 0, "claimed": False, "message": "Не указан пользователь"}
+    today = datetime.date.today().isoformat()
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    now = int(time.time())
+
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT coins, daily_streak, last_daily_claim FROM user_economy WHERE user_id = ?",
+                (int(user_id),),
+            ).fetchone()
+
+            if not row:
+                streak = 1
+                reward = 50
+                conn.execute(
+                    """
+                    INSERT INTO user_economy (user_id, coins, daily_streak, last_daily_claim, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (int(user_id), reward, streak, today, now),
+                )
+                return {
+                    "streak": streak,
+                    "reward": reward,
+                    "claimed": True,
+                    "coins": reward,
+                    "message": f"Ежедневная награда получена! +{reward} монет (Стрик 1 день)",
+                }
+
+            current_coins, current_streak, last_claim = row
+            if last_claim == today:
+                return {
+                    "streak": current_streak,
+                    "reward": 0,
+                    "claimed": False,
+                    "coins": current_coins,
+                    "message": "Сегодня вы уже забрали свою ежедневную награду!",
+                }
+
+            if last_claim == yesterday:
+                streak = current_streak + 1
+            else:
+                streak = 1
+
+            # Базовая награда 50 + 10 за каждый день стрика (до 200 монет)
+            reward = min(200, 50 + (streak - 1) * 10)
+            conn.execute(
+                """
+                UPDATE user_economy
+                SET coins = coins + ?, daily_streak = ?, last_daily_claim = ?, updated_at = ?
+                WHERE user_id = ?
+                """,
+                (reward, streak, today, now, int(user_id)),
+            )
+            new_coins = current_coins + reward
+            return {
+                "streak": streak,
+                "reward": reward,
+                "claimed": True,
+                "coins": new_coins,
+                "message": f"Ежедневная награда! +{reward} монет! Стрик: {streak} дн.",
+            }
+    except Exception as e:
+        return {"streak": 0, "reward": 0, "claimed": False, "message": f"Ошибка: {e}"}
+
+
+def record_chat_message_activity(chat_id: int, user_id: int) -> dict:
+    """Начисляет монеты за активность в чате с антиспам-кулдауном (60 секунд)."""
+    if not user_id:
+        return {"awarded": False, "coins_added": 0, "balance": 0}
+    now = int(time.time())
+    cooldown = 60
+
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT coins, last_message_award FROM user_economy WHERE user_id = ?",
+                (int(user_id),),
+            ).fetchone()
+
+            if not row:
+                conn.execute(
+                    """
+                    INSERT INTO user_economy (user_id, coins, last_message_award, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (int(user_id), 2, now, now),
+                )
+                return {"awarded": True, "coins_added": 2, "balance": 2}
+
+            coins, last_award = row
+            if (now - last_award) < cooldown:
+                return {"awarded": False, "coins_added": 0, "balance": coins}
+
+            # Начисляем 2 монеты за активность
+            coins_added = 2
+            conn.execute(
+                """
+                UPDATE user_economy
+                SET coins = coins + ?, last_message_award = ?, updated_at = ?
+                WHERE user_id = ?
+                """,
+                (coins_added, now, now, int(user_id)),
+            )
+            return {"awarded": True, "coins_added": coins_added, "balance": coins + coins_added}
+    except Exception:
+        return {"awarded": False, "coins_added": 0, "balance": 0}
+
+
+# ==========================================
+# МАГАЗИН И ПЕРКИ (SHOP & PERKS)
+# ==========================================
+
+def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
+    """Возвращает информацию об активных перках пользователя."""
+    if not user_id:
+        return {"vip": False, "has_roast": False, "titles": [], "perks": []}
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            # Очищаем или деактивируем просроченные временные перки
+            conn.execute(
+                "UPDATE user_perks SET active = 0 WHERE expires_at > 0 AND expires_at < ?",
+                (now,),
+            )
+            rows = conn.execute(
+                """
+                SELECT id, perk_id, chat_id, extra_data, expires_at, purchased_at
+                FROM user_perks
+                WHERE user_id = ? AND active = 1
+                """,
+                (int(user_id),),
+            ).fetchall()
+
+            perks_list = []
+            is_vip = False
+            has_roast = False
+            titles = []
+
+            for r in rows:
+                p_id = r[1]
+                p_chat = r[2]
+                extra = r[3]
+                exp = r[4]
+                if p_id == "vip_badge":
+                    is_vip = True
+                elif p_id == "custom_roast":
+                    has_roast = True
+                elif p_id == "custom_title":
+                    if extra:
+                        titles.append(extra)
+
+                perks_list.append({
+                    "id": r[0],
+                    "perk_id": p_id,
+                    "chat_id": p_chat,
+                    "extra_data": extra,
+                    "expires_at": exp,
+                    "purchased_at": r[5],
+                })
+
+            # Проверяем также титул из user_titles, если передан chat_id
+            if chat_id:
+                title_row = conn.execute(
+                    "SELECT title FROM user_titles WHERE chat_id = ? AND user_id = ?",
+                    (int(chat_id), int(user_id)),
+                ).fetchone()
+                if title_row and title_row[0] and title_row[0] not in titles:
+                    titles.append(title_row[0])
+
+            return {
+                "vip": is_vip,
+                "has_roast": has_roast,
+                "titles": titles,
+                "perks": perks_list,
+            }
+    except Exception:
+        return {"vip": False, "has_roast": False, "titles": [], "perks": []}
+
+
+def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_data: dict | None = None) -> dict:
+    """Обрабатывает покупку товара в магазине."""
+    item = next((i for i in SHOP_ITEMS if i["item_id"] == item_id), None)
+    if not item:
+        return {"success": False, "message": "Товар не найден"}
+
+    price = item["price"]
+    current_coins = get_user_coins(user_id)
+    if current_coins < price:
+        return {
+            "success": False,
+            "message": f"Недостаточно монет! Требуется: {price}, у вас: {current_coins}",
+            "balance": current_coins,
+        }
+
+    now = int(time.time())
+    extra_str = ""
+    expires_at = 0
+
+    if item_id == "vip_badge":
+        # Проверяем, есть ли уже VIP
+        perks = get_user_perks(user_id)
+        if perks["vip"]:
+            return {"success": False, "message": "У вас уже активирован статус VIP!"}
+
+    elif item_id == "custom_title":
+        title_text = ""
+        if extra_data and isinstance(extra_data, dict):
+            title_text = extra_data.get("title") or extra_data.get("text") or ""
+        title_text = " ".join(str(title_text).split())[:40].strip()
+        if not title_text:
+            return {"success": False, "message": "Укажите текст кастомного титула (до 40 символов)"}
+        extra_str = title_text
+        if chat_id:
+            grant_user_title(chat_id, user_id, title_text, granted_by="Магазин")
+
+    elif item_id == "mood_override":
+        mood_text = ""
+        if extra_data and isinstance(extra_data, dict):
+            mood_text = extra_data.get("mood") or extra_data.get("text") or ""
+        mood_text = " ".join(str(mood_text).split())[:120].strip() or "Безудержное веселье и сарказм"
+        extra_str = mood_text
+        expires_at = now + 1800  # 30 минут
+        if chat_id:
+            set_chat_mood_override(chat_id, user_id, mood_text, duration_seconds=1800)
+
+    elif item_id == "custom_roast":
+        target_id = 0
+        target_name = ""
+        hint = ""
+        if extra_data and isinstance(extra_data, dict):
+            target_id = int(extra_data.get("target_user_id") or 0)
+            target_name = str(extra_data.get("target_name") or "").strip()
+            hint = str(extra_data.get("hint") or "").strip()
+        if chat_id and target_id:
+            order_custom_roast(user_id, chat_id, target_id, target_name or f"Игрок {target_id}", hint)
+
+    # Списываем монеты
+    if not spend_coins(user_id, price, reason=f"buy:{item_id}"):
+        return {"success": False, "message": "Ошибка списания средств"}
+
+    # Записываем перк
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_perks (user_id, chat_id, perk_id, extra_data, active, purchased_at, expires_at)
+                VALUES (?, ?, ?, ?, 1, ?, ?)
+                """,
+                (int(user_id), int(chat_id) if chat_id else None, item_id, extra_str, now, expires_at),
+            )
+    except Exception:
+        pass
+
+    new_balance = get_user_coins(user_id)
+    return {
+        "success": True,
+        "item_id": item_id,
+        "item_name": item["name"],
+        "price": price,
+        "balance": new_balance,
+        "message": f"Вы успешно приобрели «{item['name']}»!",
+    }
+
+
+def get_chat_mood_override(chat_id: int) -> dict | None:
+    """Возвращает активный оверрайд настроения для чата или None."""
+    if not chat_id:
+        return None
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute("DELETE FROM chat_mood_overrides WHERE expires_at < ?", (now,))
+            row = conn.execute(
+                """
+                SELECT mood_text, expires_at, user_id
+                FROM chat_mood_overrides
+                WHERE chat_id = ? AND expires_at > ?
+                """,
+                (int(chat_id), now),
+            ).fetchone()
+            if row:
+                return {
+                    "mood": row[0],
+                    "expires_at": row[1],
+                    "buyer_id": row[2],
+                    "time_left_sec": max(0, row[1] - now),
+                }
+            return None
+    except Exception:
+        return None
+
+
+def set_chat_mood_override(chat_id: int, user_id: int, mood_text: str, duration_seconds: int = 1800) -> dict:
+    """Устанавливает временное настроение для бота в чате."""
+    now = int(time.time())
+    expires_at = now + max(60, int(duration_seconds))
+    clean_mood = " ".join(str(mood_text or "").split())[:200].strip()
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO chat_mood_overrides (chat_id, user_id, mood_text, set_at, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET
+                    user_id = excluded.user_id,
+                    mood_text = excluded.mood_text,
+                    set_at = excluded.set_at,
+                    expires_at = excluded.expires_at
+                """,
+                (int(chat_id), int(user_id), clean_mood, now, expires_at),
+            )
+            return {"chat_id": chat_id, "mood": clean_mood, "expires_at": expires_at}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def order_custom_roast(buyer_id: int, chat_id: int, target_user_id: int, target_name: str, hint: str = "") -> dict:
+    """Заказывает подкол на конкретного участника в чате."""
+    now = int(time.time())
+    t_name = str(target_name or "").strip()[:64] or f"Участник {target_user_id}"
+    h_text = str(hint or "").strip()[:200]
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pending_roasts (chat_id, buyer_id, target_user_id, target_name, hint, used, created_at)
+                VALUES (?, ?, ?, ?, ?, 0, ?)
+                """,
+                (int(chat_id), int(buyer_id), int(target_user_id), t_name, h_text, now),
+            )
+            return {"ordered": True, "target_name": t_name}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_pending_roast(chat_id: int, target_user_id: int | None = None) -> dict | None:
+    """Возвращает ожидающий выполнения подкол для чата/участника."""
+    if not chat_id:
+        return None
+    try:
+        with _connect() as conn:
+            if target_user_id:
+                row = conn.execute(
+                    """
+                    SELECT id, buyer_id, target_user_id, target_name, hint
+                    FROM pending_roasts
+                    WHERE chat_id = ? AND target_user_id = ? AND used = 0
+                    ORDER BY created_at ASC LIMIT 1
+                    """,
+                    (int(chat_id), int(target_user_id)),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """
+                    SELECT id, buyer_id, target_user_id, target_name, hint
+                    FROM pending_roasts
+                    WHERE chat_id = ? AND used = 0
+                    ORDER BY created_at ASC LIMIT 1
+                    """,
+                    (int(chat_id),),
+                ).fetchone()
+
+            if row:
+                return {
+                    "roast_id": row[0],
+                    "buyer_id": row[1],
+                    "target_user_id": row[2],
+                    "target_name": row[3],
+                    "hint": row[4],
+                }
+            return None
+    except Exception:
+        return None
+
+
+def consume_pending_roast(roast_id: int) -> bool:
+    """Помечает заказанный подкол как выполненный."""
+    try:
+        with _connect() as conn:
+            conn.execute("UPDATE pending_roasts SET used = 1 WHERE id = ?", (int(roast_id),))
+            return True
+    except Exception:
+        return False
+
+
+# ==========================================
+# ЕЖЕНЕДЕЛЬНЫЙ КУБОК ЧАТА / ТУРНИРНАЯ ЛИГА
+# ==========================================
+
+def _get_current_season_meta() -> tuple[str, int, str, str]:
+    """Вычисляет идентификатор сезона, номер недели и даты начала/конца текущей недели."""
+    import datetime
+    today = datetime.date.today()
+    # Номер недели по ISO
+    year, week, weekday = today.isocalendar()
+    season_id = f"season_{year}_w{week:02d}"
+    # Понедельник текущей недели
+    monday = today - datetime.timedelta(days=weekday - 1)
+    # Воскресенье текущей недели
+    sunday = monday + datetime.timedelta(days=6)
+    return season_id, week, monday.isoformat(), sunday.isoformat()
+
+
+def get_current_tournament(chat_id: int | None = None) -> dict:
+    """Возвращает информацию о текущем еженедельном турнире."""
+    season_id, week_num, start_d, end_d = _get_current_season_meta()
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO weekly_tournaments (season_id, week_number, start_date, end_date, active, created_at)
+                VALUES (?, ?, ?, ?, 1, ?)
+                ON CONFLICT(season_id) DO NOTHING
+                """,
+                (season_id, week_num, start_d, end_d, now),
+            )
+            # Деактивируем прошлые недели
+            conn.execute(
+                "UPDATE weekly_tournaments SET active = 0 WHERE season_id != ? AND end_date < ?",
+                (season_id, start_d),
+            )
+            t_row = conn.execute(
+                "SELECT season_id, week_number, start_date, end_date, active FROM weekly_tournaments WHERE season_id = ?",
+                (season_id,),
+            ).fetchone()
+            tournament_info = {
+                "season_id": t_row[0] if t_row else season_id,
+                "week_number": t_row[1] if t_row else week_num,
+                "start_date": t_row[2] if t_row else start_d,
+                "end_date": t_row[3] if t_row else end_d,
+                "active": bool(t_row[4]) if t_row else True,
+            }
+    except Exception:
+        tournament_info = {
+            "season_id": season_id,
+            "week_number": week_num,
+            "start_date": start_d,
+            "end_date": end_d,
+            "active": True,
+        }
+
+    leaderboard = get_tournament_leaderboard(season_id=season_id, chat_id=chat_id, limit=10)
+    tournament_info["leaderboard"] = leaderboard
+    return tournament_info
+
+
+def add_tournament_points(user_id: int, user_name: str, points: int, chat_id: int | None = None) -> dict:
+    """Начисляет турнирные очки игроку в текущий сезон."""
+    if not user_id or points <= 0:
+        return {"season_id": "", "points": 0}
+    season_id, _, _, _ = _get_current_season_meta()
+    now = int(time.time())
+    u_name = str(user_name or "").strip()[:64] or f"Игрок {user_id}"
+    cid = int(chat_id) if chat_id else None
+
+    try:
+        with _connect() as conn:
+            # Гарантируем регистрацию сезона
+            get_current_tournament(chat_id)
+            conn.execute(
+                """
+                INSERT INTO tournament_scores (season_id, chat_id, user_id, user_name, points, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(season_id, chat_id, user_id) DO UPDATE SET
+                    points = tournament_scores.points + excluded.points,
+                    user_name = excluded.user_name,
+                    updated_at = excluded.updated_at
+                """,
+                (season_id, cid, int(user_id), u_name, int(points), now),
+            )
+            row = conn.execute(
+                "SELECT points FROM tournament_scores WHERE season_id = ? AND user_id = ? AND (chat_id = ? OR (chat_id IS NULL AND ? IS NULL))",
+                (season_id, int(user_id), cid, cid),
+            ).fetchone()
+            total = row[0] if row else points
+            return {"season_id": season_id, "user_id": user_id, "total_points": total}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_tournament_leaderboard(season_id: str | None = None, chat_id: int | None = None, limit: int = 10) -> list[dict]:
+    """Возвращает лидерборд участников текущего или указанного турнира."""
+    if not season_id:
+        season_id, _, _, _ = _get_current_season_meta()
+    limit = max(1, min(int(limit or 10), 50))
+
+    try:
+        with _connect() as conn:
+            if chat_id:
+                query = """
+                    SELECT user_id, user_name, SUM(points) as total_pts
+                    FROM tournament_scores
+                    WHERE season_id = ? AND (chat_id = ? OR chat_id IS NULL)
+                    GROUP BY user_id
+                    ORDER BY total_pts DESC
+                    LIMIT ?
+                """
+                rows = conn.execute(query, (season_id, int(chat_id), limit)).fetchall()
+            else:
+                query = """
+                    SELECT user_id, user_name, SUM(points) as total_pts
+                    FROM tournament_scores
+                    WHERE season_id = ?
+                    GROUP BY user_id
+                    ORDER BY total_pts DESC
+                    LIMIT ?
+                """
+                rows = conn.execute(query, (season_id, limit)).fetchall()
+
+            result = []
+            for idx, r in enumerate(rows):
+                badge = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"#{idx+1}"))
+                result.append({
+                    "rank": idx + 1,
+                    "badge": badge,
+                    "user_id": r[0],
+                    "user_name": r[1] or f"Игрок {r[0]}",
+                    "points": r[2] or 0,
+                })
+            return result
+    except Exception:
+        return []
+
+
+def award_weekly_tournament_winners(season_id: str | None = None) -> list[dict]:
+    """Подводит итоги турнира: начисляет монеты и почетные титулы топ-3 призерам."""
+    if not season_id:
+        season_id, _, _, _ = _get_current_season_meta()
+
+    winners = get_tournament_leaderboard(season_id=season_id, limit=3)
+    awards = [
+        {"reward_coins": 500, "title": "🏆 Чемпион Кубка Чата"},
+        {"reward_coins": 300, "title": "🥈 Вице-чемпион Лиги"},
+        {"reward_coins": 150, "title": "🥉 Бронзовый призер Лиги"},
+    ]
+    results = []
+    for idx, winner in enumerate(winners):
+        if idx >= len(awards):
+            break
+        uid = winner["user_id"]
+        award = awards[idx]
+        add_coins(uid, award["reward_coins"], reason=f"tournament_reward:{season_id}")
+        results.append({
+            "user_id": uid,
+            "user_name": winner["user_name"],
+            "rank": idx + 1,
+            "coins": award["reward_coins"],
+            "title": award["title"],
+        })
+    return results
+

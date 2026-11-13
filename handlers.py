@@ -866,3 +866,126 @@ def grant_title_cmd(message):
         parse_mode='HTML',
     )
 
+
+@bot.message_handler(commands=['coins', 'balance', 'daily'])
+def economy_coins_cmd(message):
+    """Показывает баланс монет и забирает ежедневную награду (daily streak)."""
+    user = message.from_user
+    if not user:
+        return
+    cid = message.chat.id
+    # Забираем или проверяем ежедневную награду
+    daily_res = inventory_store.claim_daily_streak(user.id)
+    coins = inventory_store.get_user_coins(user.id)
+    perks = inventory_store.get_user_perks(user.id, chat_id=cid)
+    
+    vip_str = " 👑 [VIP]" if perks.get("vip") else ""
+    text = (
+        f"💰 <b>Кошелек игрока {html.escape(user.first_name)}</b>{vip_str}:\n"
+        f"🪙 Баланс: <b>{coins}</b> монет\n"
+        f"🔥 Ежедневный стрик: <b>{daily_res.get('streak', 1)}</b> дн.\n\n"
+    )
+    if daily_res.get("claimed"):
+        text += f"🎁 <i>{html.escape(daily_res.get('message', ''))}</i>\n"
+    else:
+        text += f"ℹ️ <i>{html.escape(daily_res.get('message', ''))}</i>\n"
+
+    if perks.get("titles"):
+        text += f"\n🎖️ Ваши титулы: {', '.join(html.escape(t) for t in perks['titles'])}\n"
+    text += "\n🛒 Напишите /shop чтобы посмотреть товары Магазина или /cup чтобы узнать турнирный кубок!"
+    bot.reply_to(message, text, parse_mode='HTML')
+
+
+@bot.message_handler(commands=['shop'])
+def shop_catalog_cmd(message):
+    """Каталог товаров Магазина и покупка."""
+    items = inventory_store.get_shop_items()
+    user = message.from_user
+    coins = inventory_store.get_user_coins(user.id) if user else 0
+    lines = [f"🛒 <b>Магазин чата</b> (Ваш баланс: <b>{coins}</b> 🪙)\n"]
+    for it in items:
+        lines.append(
+            f"{it['icon']} <b>{html.escape(it['name'])}</b> — <code>{it['price']}</code> 🪙\n"
+            f"   <i>{html.escape(it['description'])}</i>\n"
+            f"   👉 Команда: <code>/buy {it['item_id']}</code>\n"
+        )
+    lines.append("💡 Для покупки титула: <code>/buy custom_title Ваш Титул</code>")
+    lines.append("💡 Для смены настроения: <code>/buy mood_override Вайб</code>")
+    lines.append("💡 Для подкола: ответьте командой <code>/buy custom_roast</code> на сообщение друга!")
+    bot.reply_to(message, "\n".join(lines), parse_mode='HTML')
+
+
+@bot.message_handler(commands=['buy'])
+def shop_buy_cmd(message):
+    """Покупка предмета в магазине: /buy item_id [параметры]."""
+    user = message.from_user
+    if not user:
+        return
+    cid = message.chat.id
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 2:
+        bot.reply_to(message, "Использование: <code>/buy item_id</code>. Список товаров: /shop", parse_mode='HTML')
+        return
+
+    item_id = parts[1].strip()
+    extra_arg = parts[2].strip() if len(parts) >= 3 else ""
+    extra_data = {}
+
+    if item_id == "custom_title":
+        extra_data = {"title": extra_arg}
+    elif item_id == "mood_override":
+        extra_data = {"mood": extra_arg}
+    elif item_id == "custom_roast":
+        target_id = None
+        target_name = ""
+        if message.reply_to_message and message.reply_to_message.from_user:
+            tu = message.reply_to_message.from_user
+            target_id = tu.id
+            target_name = tu.first_name
+        elif extra_arg:
+            resolved = inventory_store.resolve_member(cid, extra_arg)
+            if resolved:
+                target_id, target_name = resolved
+        if not target_id:
+            bot.reply_to(
+                message,
+                "⚠️ Чтобы заказать подкол, ответьте командой <code>/buy custom_roast</code> на сообщение друга или укажите его ник!",
+                parse_mode='HTML'
+            )
+            return
+        extra_data = {"target_user_id": target_id, "target_name": target_name, "hint": "подкол от друга"}
+
+    res = inventory_store.buy_shop_item(user.id, item_id, chat_id=cid, extra_data=extra_data)
+    if not res.get("success"):
+        bot.reply_to(message, f"❌ {res.get('message', 'Ошибка покупки')}")
+    else:
+        bot.reply_to(
+            message,
+            f"✅ {res.get('message')}\n🪙 Оставшийся баланс: <b>{res.get('balance', 0)}</b> монет.",
+            parse_mode='HTML'
+        )
+
+
+@bot.message_handler(commands=['cup', 'tournament'])
+def tournament_cup_cmd(message):
+    """Информация о текущем еженедельном кубке чата и турнирный лидерборд."""
+    cid = message.chat.id
+    info = inventory_store.get_current_tournament(chat_id=cid)
+    leaderboard = info.get("leaderboard", [])
+
+    lines = [
+        f"🏆 <b>Еженедельный Кубок Чата (Неделя №{info.get('week_number', 1)})</b>",
+        f"📅 Период: <code>{info.get('start_date')}</code> — <code>{info.get('end_date')}</code>\n",
+        "Турнирные очки начисляются за участие и рекорды в мини-играх!\n"
+    ]
+    if not leaderboard:
+        lines.append("<i>В этой лиге пока нет сыгранных матчей. Сыграйте в мини-игры, чтобы открыть счёт!</i>")
+    else:
+        lines.append("<b>🏅 Топ игроков недели:</b>")
+        for p in leaderboard:
+            lines.append(f"{p['badge']} <b>{html.escape(p['user_name'])}</b>: <code>{p['points']}</code> очков")
+
+    lines.append("\n🎁 Награды призерам недели: 🥇 500 🪙 + Титул Чемпиона | 🥈 300 🪙 | 🥉 150 🪙")
+    bot.send_message(cid, "\n".join(lines), parse_mode='HTML')
+
+

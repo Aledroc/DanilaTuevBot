@@ -168,3 +168,144 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   text-shadow: 0 0 8px #d7ff3644;
 }
 .fame-score-label { color: #8e877c; }
+
+/* Cyber-Neon Dark styles for Shop & Tournament */
+.economy-badge {
+  background: linear-gradient(145deg, #242629, #1a1b1e);
+  border-color: #4b4640;
+  color: #fff4e4;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+.coins-badge {
+  color: #fbbf24;
+  border-color: #f59e0b55;
+  box-shadow: 0 0 10px #f59e0b22;
+}
+.coins-badge .economy-val {
+  color: #fde047;
+  text-shadow: 0 0 8px #facc1566;
+}
+.streak-badge {
+  color: #f87171;
+  border-color: #ef444455;
+  box-shadow: 0 0 10px #ef444422;
+}
+.streak-badge .economy-val {
+  color: #fca5a5;
+  text-shadow: 0 0 8px #f8717166;
+}
+
+.shop-balance-pill {
+  background: linear-gradient(145deg, #2a2415, #1c180e);
+  border-color: #d97706;
+  color: #fbbf24;
+  box-shadow: 0 0 14px rgba(217, 119, 6, 0.3);
+}
+
+.active-perks-box {
+  background: linear-gradient(145deg, #18231a, #0e1610);
+  border-color: #22c55e66;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.15);
+}
+.active-perks-header {
+  color: #4ade80;
+  text-shadow: 0 0 8px #22c55e44;
+}
+.active-perk-chip {
+  background: #1e2920;
+  border-color: #4ade8088;
+  color: #86efac;
+}
+
+.shop-card {
+  background: linear-gradient(145deg, #26282b, #1d1e21);
+  border-color: #4b4640;
+  box-shadow: 0 5px 0 #090a0b, 0 8px 20px rgba(0,0,0,0.5);
+}
+.shop-card:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 5px 0 #090a0b, 0 10px 25px rgba(245, 158, 11, 0.25);
+}
+.shop-card-icon {
+  background: #17181a;
+  border-color: #3f4247;
+}
+.shop-card-title {
+  color: #fff4e4;
+}
+.shop-card-desc {
+  color: #b0a99b;
+}
+.shop-card-bottom {
+  border-color: #3b3732;
+}
+.shop-card-price {
+  color: #fbbf24;
+  text-shadow: 0 0 8px #f59e0b55;
+}
+.shop-card-buy-btn {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  color: #0b0c0e;
+  box-shadow: 0 3px 0 #92400e;
+}
+.shop-card-buy-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.shop-dialog-item-summary {
+  background: #17181a;
+  border-color: #4b4640;
+}
+.shop-dialog-item-text h4 {
+  color: #fff4e4;
+}
+.shop-dialog-price-tag {
+  color: #fbbf24;
+}
+
+.cup-banner {
+  background: linear-gradient(135deg, #18192a 0%, #10101f 100%);
+  border-color: #6366f1;
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.25), 0 5px 0 #090a0b;
+}
+.cup-badge {
+  background: #fbbf24;
+  color: #0b0c0e;
+  box-shadow: 0 0 10px #fbbf2488;
+}
+.cup-title {
+  color: #fff;
+  text-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+}
+.cup-desc {
+  color: #cbd5e1;
+}
+.cup-timer-bar {
+  background: rgba(10, 11, 14, 0.6);
+  border-color: #4338ca;
+}
+.timer-value {
+  color: #fbbf24;
+  text-shadow: 0 0 10px #f59e0b88;
+}
+
+.tournament-rewards-card {
+  background: linear-gradient(145deg, #242629, #1c1d20);
+  border-color: #4b4640;
+}
+.tier-gold {
+  background: linear-gradient(145deg, #2a2415, #1c180e);
+  border-color: #d97706;
+  color: #fde047;
+  box-shadow: 0 0 12px rgba(217, 119, 6, 0.2);
+}
+.tier-silver {
+  background: linear-gradient(145deg, #22252a, #181a1d);
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+.tier-bronze {
+  background: linear-gradient(145deg, #291d17, #1c130e);
+  border-color: #9a3412;
+  color: #fed7aa;
+}

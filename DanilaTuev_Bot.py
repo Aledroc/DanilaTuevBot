@@ -362,6 +362,7 @@ def handle_text(message):
     if message.from_user:
         try:
             inventory_store.increment_stat(cid, message.from_user.id, "messages_count")
+            inventory_store.record_chat_message_activity(cid, message.from_user.id)
         except Exception:
             pass
 

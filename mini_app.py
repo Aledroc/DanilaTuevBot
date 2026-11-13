@@ -292,6 +292,57 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"Mini App all_leaderboards error: {type(error).__name__}: {error}", flush=True)
                 self._send(500, {"error": "Ошибка получения лидербордов"})
             return
+        if parsed.path == "/api/economy/profile":
+            try:
+                user = self._user()
+                coins = inventory.get_user_coins(user["id"])
+                perks_data = inventory.get_user_perks(user["id"])
+                # Загружаем также информацию о стрике
+                streak_info = inventory.claim_daily_streak(user["id"])
+                # Если streak_info вернул claimed=False (уже забран сегодня), мы все равно знаем стрик и баланс
+                self._send(200, {
+                    "user_id": user["id"],
+                    "coins": inventory.get_user_coins(user["id"]),
+                    "daily_streak": streak_info.get("streak", 1),
+                    "daily_claimed_today": not streak_info.get("claimed", False),
+                    "daily_message": streak_info.get("message", ""),
+                    "vip": perks_data.get("vip", False),
+                    "titles": perks_data.get("titles", []),
+                    "perks": perks_data.get("perks", []),
+                })
+            except (ValueError, TypeError, json.JSONDecodeError) as error:
+                self._send(401, {"error": str(error)})
+            except Exception as error:
+                print(f"Mini App economy profile error: {type(error).__name__}: {error}", flush=True)
+                self._send(500, {"error": "Ошибка получения профиля экономики"})
+            return
+        if parsed.path == "/api/shop/items":
+            try:
+                items = inventory.get_shop_items()
+                self._send(200, {"items": items})
+            except Exception as error:
+                print(f"Mini App shop items error: {type(error).__name__}: {error}", flush=True)
+                self._send(500, {"error": "Ошибка получения товаров магазина"})
+            return
+        if parsed.path == "/api/tournament/current":
+            try:
+                query_params = parse_qs(parsed.query)
+                chat_id_raw = (query_params.get("chat_id") or [""])[0].strip()
+                chat_id = int(chat_id_raw) if chat_id_raw and (chat_id_raw.isdigit() or chat_id_raw.startswith("-")) else None
+                if chat_id is None:
+                    try:
+                        user = self._user()
+                        chat_target = inventory.get_last_group_chat(user["id"])
+                        if chat_target and chat_target.get("chat_id"):
+                            chat_id = chat_target["chat_id"]
+                    except Exception:
+                        chat_id = None
+                info = inventory.get_current_tournament(chat_id=chat_id)
+                self._send(200, info)
+            except Exception as error:
+                print(f"Mini App tournament current error: {type(error).__name__}: {error}", flush=True)
+                self._send(500, {"error": "Ошибка получения турнирной информации"})
+            return
         relative = "index.html" if parsed.path in {"/", "/index.html"} else parsed.path.lstrip("/")
         target = (WEB_ROOT / relative).resolve()
         if WEB_ROOT.resolve() not in target.parents or not target.is_file():
@@ -354,6 +405,29 @@ class Handler(BaseHTTPRequestHandler):
                     chat_id=chat_id,
                     score=score,
                 )
+            elif route == "/api/shop/buy":
+                item_id = str(data.get("item_id") or "").strip()
+                if not item_id:
+                    raise ValueError("Не указан идентификатор товара (item_id)")
+                chat_id = data.get("chat_id")
+                if not chat_id:
+                    last_group = inventory.get_last_group_chat(user["id"])
+                    if last_group and last_group.get("chat_id"):
+                        chat_id = last_group["chat_id"]
+                try:
+                    chat_id = int(chat_id) if chat_id else None
+                except (ValueError, TypeError):
+                    chat_id = None
+                extra_data = data.get("extra_data") or {}
+                result = inventory.buy_shop_item(
+                    user_id=user["id"],
+                    item_id=item_id,
+                    chat_id=chat_id,
+                    extra_data=extra_data,
+                )
+                if not result.get("success"):
+                    self._send(400, {"error": result.get("message", "Ошибка покупки товара")})
+                    return
             elif route in {"/api/archetypes/custom", "/api/archetypes"}:
                 u_id = data.get("user_id") or user["id"]
                 u_name = data.get("user_name") or user.get("first_name", "")

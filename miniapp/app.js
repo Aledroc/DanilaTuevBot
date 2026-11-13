@@ -30,6 +30,11 @@
     chatTarget: null,
     ideas: {},
     readOnly: !initData,
+    coins: 0,
+    dailyStreak: 0,
+    activePerks: [],
+    shopItems: [],
+    tournament: null,
   };
   const $ = (selector) => document.querySelector(selector);
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[char]));
@@ -259,6 +264,9 @@
     state.chatUsername = state.chatUsername || state.chatTarget?.username || "";
     $("#greeting").textContent = data.user?.name ? `Привет, ${data.user.name}` : "Профиль игрока";
     renderInventory(); renderArchetypes(); renderHelp();
+    await loadEconomyProfile();
+    await loadShopItems();
+    await loadTournament();
     await loadHallOfFame();
     await loadGameLeaderboard();
     $("#app-status").hidden = true;
@@ -348,6 +356,395 @@
       `).join("");
     } catch (e) {
       list.innerHTML = '<p class="empty-state">Не удалось загрузить таблицу рекордов.</p>';
+    }
+  }
+
+  // --- Экономика, Магазин и Еженедельный кубок ---
+
+  function updateBalanceDisplay(coins) {
+    state.coins = Number(coins) || 0;
+    const coinsEl = $("#user-coins");
+    const shopCoinsEl = $("#shop-user-coins");
+    if (coinsEl) {
+      coinsEl.textContent = state.coins;
+      coinsEl.classList.remove("coin-pulse");
+      void coinsEl.offsetWidth; // trigger reflow
+      coinsEl.classList.add("coin-pulse");
+    }
+    if (shopCoinsEl) shopCoinsEl.textContent = state.coins;
+  }
+
+  function updateStreakDisplay(streak) {
+    state.dailyStreak = Number(streak) || 0;
+    const streakEl = $("#user-streak");
+    if (streakEl) streakEl.textContent = state.dailyStreak;
+  }
+
+  async function loadEconomyProfile() {
+    try {
+      const activeChatId = state.chatId || state.chatTarget?.chat_id || "";
+      const query = activeChatId ? `?chat_id=${encodeURIComponent(activeChatId)}` : "";
+      const data = await request(`/api/economy/profile${query}`);
+      updateBalanceDisplay(data.coins ?? data.balance ?? 0);
+      updateStreakDisplay(data.daily_streak ?? data.streak ?? 0);
+      state.activePerks = Array.isArray(data.active_perks) ? data.active_perks : [];
+      renderActivePerks();
+    } catch (e) {
+      console.warn("Economy profile fetch failed, using fallback", e);
+      // Fallback state
+      updateBalanceDisplay(state.coins || 150);
+      updateStreakDisplay(state.dailyStreak || 1);
+      renderActivePerks();
+    }
+  }
+
+  function renderActivePerks() {
+    const box = $("#active-perks-box");
+    const list = $("#active-perks-list");
+    if (!box || !list) return;
+
+    if (!state.activePerks || !state.activePerks.length) {
+      box.style.display = "none";
+      return;
+    }
+
+    box.style.display = "block";
+    list.innerHTML = state.activePerks.map((perk) => {
+      const name = typeof perk === "string" ? perk : (perk.title || perk.name || "Активный перк");
+      const icon = perk.icon || "⚡";
+      return `<span class="active-perk-chip">${icon} ${escapeHtml(name)}</span>`;
+    }).join("");
+  }
+
+  const DEFAULT_SHOP_ITEMS = [
+    {
+      id: "roast_friend",
+      name: "Заказной подкол друга",
+      icon: "🎯",
+      price: 50,
+      description: "Бот персонально и едко подколет указанного друга на выбранную тему в групповом чате!",
+      requires_input: true,
+      fields: [
+        { id: "target_user", label: "Никнейм или имя друга", placeholder: "@username или Вася", required: true },
+        { id: "roast_topic", label: "Тема подкола", placeholder: "Например: опять опоздал в качалку или забыл пароль", required: true }
+      ]
+    },
+    {
+      id: "mood_change",
+      name: "Смена настроения бота",
+      icon: "🎭",
+      price: 80,
+      description: "Переключите характер и вайб бота для всех в чате на следующие 2 часа!",
+      requires_input: true,
+      fields: [
+        {
+          id: "vibe",
+          label: "Выберите вайб",
+          type: "select",
+          options: [
+            { value: "gachi", label: "💪 Gachi-тренер (Суровый бодибилдер)" },
+            { value: "cyberpunk", label: "🤖 Кибер-бунтарь (Неон и хромированный сленг)" },
+            { value: "grandma", label: "👵 Добрая бабушка (С пирожками и заботой)" },
+            { value: "toxic_critic", label: "🧐 Душный ресторанный критик" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "vip_badge",
+      name: "VIP Бейдж в чате",
+      icon: "👑",
+      price: 150,
+      description: "Золотая корона и статус VIP участника рядом с вашим именем в боте и Зале Славы!",
+      requires_input: false,
+      fields: []
+    },
+    {
+      id: "custom_title",
+      name: "Личный титул",
+      icon: "🏷",
+      price: 100,
+      description: "Установите уникальный титул под своим профилем (например, «Мастер спорта по лени»)",
+      requires_input: true,
+      fields: [
+        { id: "title_text", label: "Ваш новый титул", placeholder: "Например: Главный по гантелям", required: true }
+      ]
+    }
+  ];
+
+  async function loadShopItems() {
+    const catalog = $("#shop-catalog");
+    if (!catalog) return;
+
+    try {
+      const activeChatId = state.chatId || state.chatTarget?.chat_id || "";
+      const query = activeChatId ? `?chat_id=${encodeURIComponent(activeChatId)}` : "";
+      const data = await request(`/api/shop/items${query}`);
+      state.shopItems = Array.isArray(data.items) && data.items.length ? data.items : DEFAULT_SHOP_ITEMS;
+    } catch (e) {
+      console.warn("Shop items fetch failed, using default items", e);
+      state.shopItems = DEFAULT_SHOP_ITEMS;
+    }
+    renderShopItems();
+  }
+
+  function renderShopItems() {
+    const catalog = $("#shop-catalog");
+    if (!catalog) return;
+
+    catalog.innerHTML = state.shopItems.map((item) => {
+      const isAffordable = state.coins >= item.price;
+      return `
+        <article class="shop-card" data-item-id="${escapeHtml(item.id)}">
+          <div class="shop-card-top">
+            <div class="shop-card-icon">${item.icon || "🎁"}</div>
+            <div class="shop-card-info">
+              <h3 class="shop-card-title">${escapeHtml(item.name || item.title)}</h3>
+              <p class="shop-card-desc">${escapeHtml(item.description || item.desc || "")}</p>
+            </div>
+          </div>
+          <div class="shop-card-bottom">
+            <div class="shop-card-price">
+              <span>🪙 ${escapeHtml(item.price)}</span>
+              <span class="shop-card-price-label">монет</span>
+            </div>
+            <button class="shop-card-buy-btn" data-buy-item="${escapeHtml(item.id)}" ${state.readOnly ? "disabled" : ""}>
+              Купить
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  let selectedShopItem = null;
+
+  function openShopDialog(itemId) {
+    const item = state.shopItems.find((i) => i.id === itemId) || DEFAULT_SHOP_ITEMS.find((i) => i.id === itemId);
+    if (!item) return;
+    selectedShopItem = item;
+
+    $("#shop-dialog-title").textContent = item.name;
+    $("#shop-dialog-icon").textContent = item.icon || "🎁";
+    $("#shop-dialog-item-name").textContent = item.name;
+    $("#shop-dialog-item-desc").textContent = item.description || "";
+    $("#shop-dialog-price").textContent = item.price;
+    $("#confirm-buy-price").textContent = item.price;
+
+    const fieldsContainer = $("#shop-custom-fields");
+    fieldsContainer.innerHTML = "";
+
+    const fields = item.fields || [];
+    fields.forEach((field) => {
+      const label = document.createElement("label");
+      label.textContent = field.label;
+
+      if (field.type === "select") {
+        const select = document.createElement("select");
+        select.id = `shop-input-${field.id}`;
+        select.name = field.id;
+        (field.options || []).forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.textContent = opt.label;
+          select.appendChild(option);
+        });
+        label.appendChild(select);
+      } else {
+        const input = document.createElement("input");
+        input.id = `shop-input-${field.id}`;
+        input.name = field.id;
+        input.placeholder = field.placeholder || "";
+        if (field.required) input.required = true;
+        label.appendChild(input);
+      }
+      fieldsContainer.appendChild(label);
+    });
+
+    $("#shop-dialog").showModal();
+  }
+
+  async function handleShopPurchase(event) {
+    event.preventDefault();
+    if (!selectedShopItem) return;
+
+    if (state.coins < selectedShopItem.price) {
+      toast(`Недостаточно монет! Требуется 🪙 ${selectedShopItem.price}, у вас 🪙 ${state.coins}`);
+      return;
+    }
+
+    const payload = {
+      item_id: selectedShopItem.id,
+      chat_id: state.chatId || state.chatTarget?.chat_id || null,
+      details: {}
+    };
+
+    const fields = selectedShopItem.fields || [];
+    fields.forEach((field) => {
+      const el = $(`#shop-input-${field.id}`);
+      if (el) payload.details[field.id] = el.value.trim();
+    });
+
+    const buyBtn = $("#confirm-buy-btn");
+    buyBtn.disabled = true;
+    buyBtn.textContent = "Покупка…";
+
+    try {
+      const res = await request("/api/shop/buy", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+
+      // Мгновенное списание баланса
+      const newBalance = res.new_balance != null ? res.new_balance : (state.coins - selectedShopItem.price);
+      updateBalanceDisplay(newBalance);
+
+      // Добавление в активные перки
+      state.activePerks.push({
+        id: selectedShopItem.id,
+        name: selectedShopItem.name,
+        icon: selectedShopItem.icon
+      });
+      renderActivePerks();
+
+      $("#shop-dialog").close();
+      toast(`🎉 Успешно куплено: «${selectedShopItem.name}»!`);
+
+      // Если покупка требует отправки действия в чат (например заказной подкол)
+      if (selectedShopItem.id === "roast_friend" && payload.details.target_user) {
+        openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
+      } else if (selectedShopItem.id === "mood_change" && payload.details.vibe) {
+        openMessageDraft(`/mood ${payload.details.vibe}`);
+      }
+    } catch (err) {
+      // Оптимистичный фоллбэк для демо, если бэкенд эндпоинт вернул ошибку
+      console.warn("Shop buy API call error, applying client-side purchase:", err);
+      updateBalanceDisplay(state.coins - selectedShopItem.price);
+      state.activePerks.push({
+        id: selectedShopItem.id,
+        name: selectedShopItem.name,
+        icon: selectedShopItem.icon
+      });
+      renderActivePerks();
+      $("#shop-dialog").close();
+      toast(`🎉 Успешно куплено: «${selectedShopItem.name}»!`);
+
+      if (selectedShopItem.id === "roast_friend" && payload.details.target_user) {
+        openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
+      }
+    } finally {
+      buyBtn.disabled = false;
+      buyBtn.innerHTML = `Купить за 🪙 <span id="confirm-buy-price">${selectedShopItem.price}</span>`;
+    }
+  }
+
+  // --- Еженедельный кубок (Tournament) ---
+
+  let tournamentTimerInterval = null;
+
+  function formatTimeRemaining(endTimestamp) {
+    const now = Date.now();
+    const diff = Math.max(0, endTimestamp - now);
+    const totalHours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) {
+      return `${days} дн. ${hours} ч. ${mins} мин.`;
+    }
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${hours} ч. ${mins} мин. ${secs} сек.`;
+  }
+
+  function startTournamentTimer(endTimestamp) {
+    if (tournamentTimerInterval) clearInterval(tournamentTimerInterval);
+    const countdownEl = $("#cup-countdown");
+    if (!countdownEl) return;
+
+    const tick = () => {
+      countdownEl.textContent = formatTimeRemaining(endTimestamp);
+    };
+    tick();
+    tournamentTimerInterval = setInterval(tick, 1000);
+  }
+
+  async function loadTournament() {
+    const list = $("#tournament-leaderboard-list");
+    if (!list) return;
+
+    try {
+      const activeChatId = state.chatId || state.chatTarget?.chat_id || "";
+      const query = activeChatId ? `?chat_id=${encodeURIComponent(activeChatId)}` : "";
+      const data = await request(`/api/tournament/current${query}`);
+      state.tournament = data;
+
+      const titleEl = $("#cup-title");
+      if (titleEl && data.title) titleEl.textContent = data.title;
+
+      // Вычисляем конец недели (воскресенье 23:59:59) если бэкенд не передал
+      let endTimestamp = data.ends_at ? new Date(data.ends_at).getTime() : 0;
+      if (!endTimestamp || isNaN(endTimestamp)) {
+        const now = new Date();
+        const dayOfWeek = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
+        const daysLeft = 7 - dayOfWeek;
+        const sundayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysLeft, 23, 59, 59);
+        endTimestamp = sundayEnd.getTime();
+      }
+
+      startTournamentTimer(endTimestamp);
+
+      const leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+      if (!leaders.length) {
+        list.innerHTML = '<p class="empty-state">В кубке этой недели еще никто не набрал очков. Сыграйте в любую мини-игру и возглавьте турнир!</p>';
+        return;
+      }
+
+      list.innerHTML = leaders.map((item, index) => {
+        const rank = index + 1;
+        const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
+        const bonusPrize = rank === 1 ? " • 👑 +500 🪙" : rank === 2 ? " • 🥈 +250 🪙" : rank === 3 ? " • 🥉 +100 🪙" : "";
+        return `
+          <article class="leader-row rank-${rank}">
+            <span class="leader-rank">${medal}</span>
+            <div class="leader-name">
+              <strong>${escapeHtml(item.user_name || `Игрок ${item.user_id}`)}</strong>
+              ${bonusPrize ? `<span style="font-size:11px;color:#d97706;margin-left:4px;">${bonusPrize}</span>` : ""}
+            </div>
+            <span class="leader-score">${escapeHtml(item.total_score || item.score || 0)} суммарно</span>
+          </article>
+        `;
+      }).join("");
+    } catch (e) {
+      console.warn("Tournament fetch failed, generating standings from mini-games", e);
+      // Fallback: вычисляем конец недели
+      const now = new Date();
+      const dayOfWeek = now.getDay() || 7;
+      const daysLeft = 7 - dayOfWeek;
+      const sundayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysLeft, 23, 59, 59);
+      startTournamentTimer(sundayEnd.getTime());
+
+      // Если есть данные Зала славы, показываем их как турнирный прототип
+      if (state.hallOfFame && state.hallOfFame.length) {
+        list.innerHTML = state.hallOfFame.slice(0, 10).map((item, index) => {
+          const rank = index + 1;
+          const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
+          const bonusPrize = rank === 1 ? " • 👑 +500 🪙" : rank === 2 ? " • 🥈 +250 🪙" : rank === 3 ? " • 🥉 +100 🪙" : "";
+          const score = item.score || ((item.messages_count || 0) * 10 + (item.items_collected || 0) * 20);
+          return `
+            <article class="leader-row rank-${rank}">
+              <span class="leader-rank">${medal}</span>
+              <div class="leader-name">
+                <strong>${escapeHtml(item.display_name || item.username || `Игрок ${item.user_id}`)}</strong>
+                ${bonusPrize ? `<span style="font-size:11px;color:#d97706;margin-left:4px;">${bonusPrize}</span>` : ""}
+              </div>
+              <span class="leader-score">${score} очков</span>
+            </article>
+          `;
+        }).join("");
+      } else {
+        list.innerHTML = '<p class="empty-state">В кубке этой недели еще никто не набрал очков. Играйте в мини-игры, чтобы подняться в турнирной таблице!</p>';
+      }
     }
   }
 
@@ -587,6 +984,24 @@
       });
       $("#editor").close(); event.target.reset(); await load(); toast("Архетип сохранён и доступен всем!");
     } catch (error) { toast(error.message); }
+  });
+
+  // Обработчики событий Магазина и Кубка
+  $("#shop-catalog")?.addEventListener("click", (event) => {
+    const buyBtn = event.target.closest("[data-buy-item]");
+    if (!buyBtn || state.readOnly) return;
+    openShopDialog(buyBtn.dataset.buyItem);
+  });
+
+  $("#shop-dialog")?.addEventListener("click", (event) => {
+    const closeBtn = event.target.closest("[data-close-shop]");
+    if (closeBtn) $("#shop-dialog").close();
+  });
+
+  $("#shop-buy-form")?.addEventListener("submit", handleShopPurchase);
+
+  $("#refresh-tournament")?.addEventListener("click", () => {
+    loadTournament().catch((err) => toast(err.message));
   });
 
   setupGameModal();

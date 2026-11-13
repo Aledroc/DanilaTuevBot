@@ -455,6 +455,42 @@ def midnight_reset() -> None:
             except Exception:
                 logging.exception("midnight_reset: ошибка для чата %s", cid)
 
+        # Каждое воскресенье в полночь (или в ночь с воскресенья на понедельник)
+        # подводим итоги недели Кубка чата
+        if now.weekday() == 6:  # Воскресенье
+            try:
+                announce_weekly_cup_winners()
+            except Exception:
+                logging.exception("midnight_reset: ошибка подведения итогов еженедельного кубка")
+
+
+def announce_weekly_cup_winners(chat_id: int | None = None) -> list[dict]:
+    """Подводит итоги еженедельного турнира и поздравляет победителей от лица персонажа."""
+    winners = inventory_store.award_weekly_tournament_winners()
+    if not winners:
+        return []
+
+    lines = [
+        "🏆 <b>ИТОГИ ЕЖЕНЕДЕЛЬНОГО КУБКА ЧАТА!</b>",
+        "Турнирная неделя завершена! Герои арены получают свои заслуженные награды:\n"
+    ]
+    for w in winners:
+        badge = "🥇" if w["rank"] == 1 else "🥈" if w["rank"] == 2 else "🥉"
+        lines.append(
+            f"{badge} <b>{html.escape(w['user_name'])}</b> — "
+            f"Звание: «<b>{html.escape(w['title'])}</b>» + <b>{w['coins']}</b> 🪙"
+        )
+    lines.append("\n🎉 Поздравляем чемпионов! Очки сброшены для нового сезона, арена снова открыта!")
+    text = "\n".join(lines)
+
+    target_chats = [chat_id] if chat_id else list(chat_states.keys())
+    for cid in target_chats:
+        try:
+            bot.send_message(cid, text, parse_mode='HTML')
+        except Exception:
+            pass
+    return winners
+
 
 def start_midnight_reset_thread() -> None:
     """Запускает midnight_reset в фоновом daemon-треде."""
@@ -793,6 +829,42 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                 system_prompt += (
                     f"\n\nУЧАСТНИК И ЕГО ЗВАНИЕ: участник {inventory_prompt_owner_name or 'Игрок'} "
                     f"носит звание '{owner_title}', учитывай это в диалоге."
+                )
+            user_perks = inventory_store.get_user_perks(inventory_prompt_owner_id, chat_id=cid)
+            if user_perks.get("vip"):
+                system_prompt += (
+                    f"\n\nVIP-СТАТУС УЧАСТНИКА: участник {inventory_prompt_owner_name or 'Игрок'} "
+                    "обладает VIP-статусом чата. Относись к нему с повышенным почтением, уважением и признанием его авторитета."
+                )
+        except Exception:
+            pass
+
+        # -------------------------------------------------------------------
+        # Заказной подкол (custom_roast)
+        # -------------------------------------------------------------------
+        pending_roast = None
+        try:
+            pending_roast = inventory_store.get_pending_roast(cid, target_user_id=inventory_prompt_owner_id)
+            if pending_roast:
+                hint_str = f" Тема/наводка: «{pending_roast['hint']}»." if pending_roast.get('hint') else ""
+                system_prompt += (
+                    f"\n\n🔥 ЗАКАЗНОЙ ПОДКОЛ: участника {inventory_prompt_owner_name or 'Игрок'} заказали подколоть!"
+                    f"{hint_str} Обязательно вверни в свою реплику острый, ироничный, но дружеский и смешной подкол "
+                    "в адрес этого участника, оставаясь на 100% в рамках своего архетипа."
+                )
+        except Exception:
+            pass
+
+        # -------------------------------------------------------------------
+        # Оверрайд настроения (mood_override на 30 минут)
+        # -------------------------------------------------------------------
+        try:
+            mood_override = inventory_store.get_chat_mood_override(cid)
+            if mood_override and mood_override.get("mood"):
+                system_prompt += (
+                    f"\n\n🎭 КУПЛЕННАЯ СМЕНА НАСТРОЕНИЯ (активна еще {mood_override.get('time_left_sec', 0) // 60} мин): "
+                    f"Сейчас персонаж находится под действием настроения/вайба: «{mood_override['mood']}». "
+                    "Адаптируй тон, манеру речи и реакции строго под этот вайб, сохраняя основу роли!"
                 )
         except Exception:
             pass
@@ -1255,6 +1327,11 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     f"🎒 Потрачен предмет: <b>{html.escape(item_name)}</b>",
                     parse_mode='HTML',
                 )
+        if pending_roast and pending_roast.get("roast_id"):
+            try:
+                inventory_store.consume_pending_roast(pending_roast["roast_id"])
+            except Exception:
+                pass
         if died and state is not None and not _entrance:
             _handle_death(cid, state)
         return True
