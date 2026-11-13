@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111316">
+  <title>Железный зал — профиль бойца</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/gachi.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div><p class="eyebrow">ЖЕЛЕЗНЫЙ ЗАЛ • RPG</p><h1 id="greeting">Инвентарь</h1></div>
+      <button class="icon-button" id="refresh" title="Обновить" aria-label="Обновить">↻</button>
+    </header>
+    <p id="app-status" class="status-message" role="status" aria-live="polite">Загрузка профиля…</p>
+
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab active" data-tab="inventory">Инвентарь</button>
+      <button class="tab" data-tab="games">🎮 Игры</button>
+      <button class="tab" data-tab="fame">Топ игроков</button>
+      <button class="tab" data-tab="archetypes">Архетипы</button>
+      <button class="tab" data-tab="prompt">Промпт</button>
+      <button class="tab" data-tab="help">Справка</button>
+    </nav>
+
+    <section class="view active" id="inventory-view">
+      <div class="section-heading"><div><p class="eyebrow">СНАРЯЖЕНИЕ</p><h2>Мои вещи</h2></div><span class="count" id="item-count">0</span></div>
+      <div id="inventory-list" class="inventory-list"></div>
+      <p id="inventory-empty" class="empty-state" hidden>Инвентарь пока пуст.</p>
+    </section>
+
+    <section class="view" id="games-view">
+      <div class="section-heading">
+        <div><p class="eyebrow">АРЕНА СОРЕВНОВАНИЙ</p><h2>Мини-игры</h2></div>
+      </div>
+
+      <div class="game-selector" role="tablist" aria-label="Выбор игры">
+        <button class="game-select-btn active" data-game="tower_stack" id="select-game-tower">🏗 Башня</button>
+        <button class="game-select-btn" data-game="colorswitch" id="select-game-colorswitch">🌈 Переключатель</button>
+        <button class="game-select-btn" data-game="brick_breaker" id="select-game-bricks">🧱 Арканоид</button>
+        <button class="game-select-btn" data-game="knife_hit" id="select-game-knife">🎯 Ножи</button>
+        <button class="game-select-btn" data-game="timberjack" id="select-game-timber">🪓 Дровосек</button>
+        <button class="game-select-btn" data-game="swipe_basketball" id="select-game-basketball">🏀 Баскетбол</button>
+      </div>
+
+      <!-- Карточка Башня коробок / Tower Stack -->
+      <div class="game-card featured-game" id="card-tower_stack">
+        <div class="game-badge" style="background: linear-gradient(135deg, #e53935, #f39c12); color: #fff;">ГЛАВНЫЙ СТЕК</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #fff3e0; border-color: #ffd8a8;">🏗</div>
+          <div class="game-info">
+            <h3 class="game-title">Башня коробок • Tower Stack</h3>
+            <p class="game-desc">Культовый хит на точность и тайминг! Блоки раскачиваются на подъемном кране. Тапайте в нужный момент, чтобы строить гигантский небоскреб, делайте Perfect-комбо и поднимайтесь выше облаков!</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="tower-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Одиночный тап</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-tower" style="background: linear-gradient(135deg, #e74c3c, #f39c12);">🏗 Строить башню</button>
+      </div>
+
+      <!-- Карточка Color Switch -->
+      <div class="game-card featured-game" id="card-colorswitch" style="display: none;">
+        <div class="game-badge" style="background: linear-gradient(135deg, #f6e21b, #ff017b); color: #fff;">НЕОН-ХИТ</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #111319; border-color: #16e0e6;">🌈</div>
+          <div class="game-info">
+            <h3 class="game-title">Цветной переключатель • Color Switch</h3>
+            <p class="game-desc">Культовая ритм-аркада! Тапайте для прыжка, проходите сквозь вращающиеся фигуры только через свой цвет, меняйте цвет в сферах и бейте рекорды чата!</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="colorswitch-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Тап по экрану</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-colorswitch" style="background: linear-gradient(135deg, #16e0e6, #8d12d6);">🌈 Играть в Color Switch</button>
+      </div>
+
+      <!-- Карточка Knife Hit -->
+      <div class="game-card featured-game" id="card-knife_hit" style="display: none;">
+        <div class="game-badge">ХИТ СЕЗОНА</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #fff3e0; border-color: #ffd8a8;">🎯</div>
+          <div class="game-info">
+            <h3 class="game-title">Ножевой тир • Knife Hit</h3>
+            <p class="game-desc">Абсурдный гаражный тир! Втыкайте ножи во вращающуюся деревянную мишень, раскалывайте пни и избегайте рукояток других ножей.</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="knife-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Одиночный тап</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-knife" style="background: #e67e22;">🎯 Играть в Ножевой тир</button>
+      </div>
+
+      <!-- Карточка Timberman -->
+      <div class="game-card featured-game" id="card-timberjack" style="display: none;">
+        <div class="game-badge">ТУРНИР ЧАТА</div>
+        <div class="game-card-header">
+          <div class="game-icon">🪓</div>
+          <div class="game-info">
+            <h3 class="game-title">Timberman • Дровосек</h3>
+            <p class="game-desc">Культовая аркада на реакцию и скорость! Рубите дерево слева и справа, уворачивайтесь от смертоносных веток и следите за таймером.</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="timber-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Тап L / R</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-timber">▶ Играть в Дровосека</button>
+      </div>
+
+      <!-- Карточка Свайп-Баскетбол -->
+      <div class="game-card featured-game" id="card-swipe_basketball" style="display: none;">
+        <div class="game-badge" style="background: linear-gradient(135deg, #ff9800, #e65100); color: #fff;">МЕССЕНДЖЕР ХИТ</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #fff3e0; border-color: #ffb74d;">🏀</div>
+          <div class="game-info">
+            <h3 class="game-title">Свайп-Баскетбол • Basketball</h3>
+            <p class="game-desc">Культовая игра Messenger! Точным свайпом отправляйте мяч в кольцо, делайте чистые броски Swish и активируйте режим On Fire 🔥</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="basketball-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Свайп вверх</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-basketball" style="background: linear-gradient(135deg, #f57c00, #ff9800);">🏀 Играть в Баскетбол</button>
+      </div>
+
+      <!-- Карточка Неоновый Арканоид -->
+      <div class="game-card featured-game" id="card-brick_breaker" style="display: none;">
+        <div class="game-badge" style="background: linear-gradient(135deg, #00f0ff, #bd00ff); color: #fff;">КИБЕР-ХИТ</div>
+        <div class="game-card-header">
+          <div class="game-icon" style="background: #0d1b2a; border-color: #00f0ff;">🧱</div>
+          <div class="game-info">
+            <h3 class="game-title">Неоновый Арканоид • Brick Breaker</h3>
+            <p class="game-desc">Сочный киберпанк-арканоид! Управляйте платформой пальцем, разрушайте неоновые блоки, ловите лазеры и мульти-шары, и набивайте комбо очков!</p>
+          </div>
+        </div>
+        <div class="game-stats-bar">
+          <div class="game-stat">
+            <span class="stat-label">Мой рекорд</span>
+            <span class="stat-value" id="bricks-my-best">0</span>
+          </div>
+          <div class="game-stat">
+            <span class="stat-label">Управление</span>
+            <span class="stat-value">Свайп / Тач</span>
+          </div>
+        </div>
+        <button class="primary-button play-game-btn" id="launch-bricks" style="background: linear-gradient(135deg, #00c6ff, #0072ff);">🧱 Играть в Арканоид</button>
+      </div>
+
+      <div class="section-heading" style="margin-top: 24px;">
+        <div><p class="eyebrow">ТАБЛИЦА РЕКОРДОВ</p><h3 id="leaderboard-game-title">Лидеры Ножевого тира</h3></div>
+        <button class="icon-button" id="refresh-leaderboard" title="Обновить рекорд">↻</button>
+      </div>
+      <div id="game-leaderboard-list" class="leaderboard-list">
+        <div class="loading-state">Загрузка рекордов…</div>
+      </div>
+    </section>
+
+    <section class="view" id="fame-view">
+      <div class="section-heading">
+        <div><p class="eyebrow">ЗАЛ СЛАВЫ • РЕЙТИНГ ЧАТА</p><h2>Топ игроков</h2></div>
+        <span class="count" id="fame-count">0</span>
+      </div>
+      <div id="fame-list" class="fame-list"></div>
+      <p id="fame-empty" class="empty-state" hidden>В Зале славы пока пусто — общайтесь в чате, собирайте предметы и совершайте подвиги, чтобы занять первое место!</p>
+    </section>
+
+    <section class="view" id="archetypes-view">
+      <div class="section-heading"><div><p class="eyebrow">ХАРАКТЕР ПЕРСОНАЖА</p><h2>Архетипы</h2></div><button class="primary-button" id="new-archetype">＋ Предложить архетип</button></div>
+      <div id="archetype-list" class="archetype-list"></div>
+    </section>
+
+    <section class="view" id="prompt-view">
+      <div class="section-heading"><div><p class="eyebrow">ТЕКУЩИЙ ОБРАЗ</p><h2 id="prompt-title">Промпт</h2></div></div>
+      <pre id="prompt-content" class="prompt-content"></pre>
+      <p id="prompt-empty" class="empty-state">Выберите архетип, чтобы увидеть его промпт.</p>
+    </section>
+    <section class="view" id="help-view">
+      <div class="section-heading"><div><p class="eyebrow">КОМАНДЫ БОТА</p><h2>Справка</h2></div></div>
+      <p class="help-intro">Нажмите на пример — Telegram откроет общий чат с друзьями и подставит готовый черновик. Проверьте его и отправьте сами.</p>
+      <div id="command-list" class="command-list"></div>
+    </section>
+    <div id="toast" class="toast" role="status"></div>
+  </main>
+
+  <dialog id="editor">
+    <form method="dialog" id="archetype-form">
+      <div class="dialog-heading"><div><p class="eyebrow">ПРЕДЛОЖИТЬ СВОЙ АРХЕТИП</p><h2>Новый архетип</h2></div><button class="icon-button" value="cancel" aria-label="Закрыть">×</button></div>
+      <label>Название<input id="name-input" maxlength="80" required placeholder="Например, Мастер гаражного тюнинга"></label>
+      <label>Описание характера<textarea id="desc-input" maxlength="4000" rows="5" required placeholder="Опишите характер персонажа, манеру речи, привычки и предысторию..."></textarea></label>
+      <label>Первое действие (*действие*)<input id="action-input" maxlength="500" placeholder="Например, *с грохотом роняет гаечный ключ на 19 в смотровую яму*"></label>
+      <div class="dialog-actions"><button class="secondary-button" value="cancel">Отмена</button><button class="primary-button" id="save-archetype" type="submit">Сохранить</button></div>
+    </form>
+  </dialog>
+  <dialog id="use-item-dialog">
+    <form id="use-item-form">
+      <div class="dialog-heading"><div><p class="eyebrow">ИСПОЛЬЗОВАТЬ ПРЕДМЕТ</p><h2 id="use-item-title">Выберите действие</h2></div><button class="icon-button" type="button" data-close-use aria-label="Закрыть">×</button></div>
+      <p class="help-intro">Выберите пример, подобранный под этот предмет, или напишите своё действие. Команда откроется черновиком в вашем общем чате с друзьями; предмет расходуется только после отправки и успешной обработки ботом.</p>
+      <div class="action-presets" id="use-presets" aria-label="Примеры действий"></div>
+      <label>Действие<textarea id="use-action-input" maxlength="500" rows="3" placeholder="Например: освети тёмный коридор" required></textarea></label>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close-use>Отмена</button><button class="primary-button" type="submit">Подготовить команду</button></div>
+    </form>
+  </dialog>
+  <dialog id="game-modal" class="game-fullscreen-modal">
+    <div class="game-modal-header">
+      <span class="game-modal-title">🪓 Timberman</span>
+      <button class="icon-button" id="close-game-modal" aria-label="Закрыть игру">×</button>
+    </div>
+    <iframe id="game-iframe" src="about:blank" allow="autoplay"></iframe>
+  </dialog>
+  <script src="/app.js"></script>
+</body>
+</html>

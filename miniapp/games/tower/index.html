@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Башня коробок / Стек — Mini App</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    img {
+      width: 100%;
+      display: block;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #f95240 url(assets/main-bg.png) center/cover no-repeat;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    @font-face {
+      font-family: wenxue;
+      src: url(assets/wenxue.woff);
+    }
+    .font-wenxue {
+      font-family: wenxue, -apple-system, sans-serif;
+    }
+
+    #canvas {
+      position: fixed;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      margin: auto;
+      z-index: 1;
+      display: block;
+    }
+
+    /* Верхняя панель управления */
+    .top-bar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .top-btn {
+      pointer-events: auto;
+      background: rgba(20, 24, 30, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      transition: transform 0.1s;
+    }
+    .top-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Экран загрузки */
+    .loading-screen {
+      position: absolute;
+      inset: 0;
+      background: #f05a50;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 40;
+      color: #fff;
+    }
+    .loading-screen img {
+      width: 140px;
+      margin-bottom: 20px;
+    }
+    .loading-bar-wrap {
+      width: 60%;
+      height: 14px;
+      border: 3px solid #fff;
+      border-radius: 10px;
+      padding: 2px;
+      margin-bottom: 12px;
+    }
+    .loading-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: #fff;
+      border-radius: 6px;
+      transition: width 0.2s ease;
+    }
+    .loading-text {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    /* Стартовый экран */
+    .landing-screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 60px 24px 36px;
+      z-index: 30;
+      pointer-events: none;
+    }
+    .landing-title {
+      width: 72%;
+      max-width: 320px;
+      animation: swing 2s ease-in-out alternate infinite;
+      transform-origin: top center;
+    }
+    @keyframes swing {
+      0% { transform: rotate(4deg); }
+      100% { transform: rotate(-4deg); }
+    }
+    .landing-actions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .landing-start-btn {
+      width: 65%;
+      max-width: 260px;
+      cursor: pointer;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+      transition: transform 0.15s;
+    }
+    .landing-start-btn:active {
+      transform: scale(0.94);
+    }
+    .landing-tip {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.25);
+      padding: 6px 16px;
+      border-radius: 16px;
+    }
+
+    /* Модалка Game Over */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-box {
+      width: 86%;
+      max-width: 340px;
+      background: #fff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      text-align: center;
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .modal-overlay.active .modal-box {
+      transform: translateY(0) scale(1);
+    }
+    .modal-header-bg {
+      background: #f05a50 url(assets/main-bg.png) center/cover;
+      padding: 24px 16px 16px;
+      color: #fff;
+    }
+    .modal-over-img {
+      width: 70%;
+      margin: 0 auto 10px;
+    }
+    .modal-score-wrap {
+      margin: 12px 0 6px;
+    }
+    .modal-score-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 700;
+    }
+    .modal-score-val {
+      font-size: 52px;
+      line-height: 1;
+      font-weight: 900;
+      color: #ffeb3b;
+      text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
+    .modal-best-score {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .modal-body {
+      padding: 20px 20px 24px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-again {
+      width: 100%;
+      background: #22c55e;
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+      transition: transform 0.1s;
+    }
+    .btn-again:active {
+      transform: scale(0.97);
+    }
+    .btn-exit {
+      width: 100%;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-exit:active {
+      transform: scale(0.97);
+    }
+
+    .hide {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Верхние элементы управления -->
+  <div class="top-bar">
+    <button class="top-btn" id="btn-back">← Назад в меню</button>
+    <button class="top-btn" id="btn-sound">🔊 Звук: Вкл</button>
+  </div>
+
+  <!-- Холст игры -->
+  <canvas id="canvas" class="hide"></canvas>
+
+  <!-- Экран загрузки -->
+  <div class="loading-screen" id="loading-screen">
+    <img src="assets/main-loading.gif" alt="Загрузка">
+    <div class="loading-bar-wrap">
+      <div class="loading-bar-fill" id="loading-fill"></div>
+    </div>
+    <div class="loading-text" id="loading-text">0%</div>
+  </div>
+
+  <!-- Стартовый экран -->
+  <div class="landing-screen hide" id="landing-screen">
+    <img src="assets/main-index-title.png" class="landing-title" alt="Tower Building">
+    <div class="landing-actions">
+      <div class="landing-tip">Тапай по экрану, чтобы ставить блоки ровно!</div>
+      <img src="assets/main-index-start.png" class="landing-start-btn" id="btn-start" alt="Играть">
+    </div>
+  </div>
+
+  <!-- Окно Game Over -->
+  <div class="modal-overlay" id="game-over-modal">
+    <div class="modal-box">
+      <div class="modal-header-bg">
+        <img src="assets/main-modal-over.png" class="modal-over-img" alt="Игра окончена">
+        <div class="modal-score-wrap">
+          <div class="modal-score-title">Построено этажей</div>
+          <div class="modal-score-val font-wenxue" id="final-score">0</div>
+        </div>
+        <div class="modal-best-score" id="best-score-label">Лучший рекорд: 0</div>
+      </div>
+      <div class="modal-body">
+        <button class="btn-again" id="btn-restart">Построить еще раз 🏗</button>
+        <button class="btn-exit" id="btn-to-leaderboard">Таблица рекордов 🏆</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dist/main.js"></script>
+  <script src="assets/zepto-1.1.6.min.js"></script>
+  <script>
+    (() => {
+      const tg = window.parent?.Telegram?.WebApp || window.Telegram?.WebApp;
+      tg?.ready();
+      tg?.expand();
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const chatId = searchParams.get('chat_id') || tg?.initDataUnsafe?.chat?.id || null;
+      const initData = tg?.initData || '';
+      const userName = tg?.initDataUnsafe?.user?.first_name || 'Строитель';
+
+      let soundOn = true;
+      let game = null;
+      let gameStart = false;
+      let currentScore = 0;
+      let currentSuccessCount = 0;
+      let bestScore = 0;
+
+      try {
+        bestScore = parseInt(localStorage.getItem('tower_stack_best_score') || '0', 10);
+      } catch (_) {}
+
+      // Размеры под экран
+      let gameWidth = window.innerWidth;
+      let gameHeight = window.innerHeight;
+      const ratio = 1.5;
+      if (gameHeight / gameWidth < ratio) {
+        gameWidth = Math.ceil(gameHeight / ratio);
+      }
+
+      function updateLoading(status) {
+        const percent = Math.min(100, Math.floor((status.success / status.total) * 100));
+        $('#loading-fill').css('width', percent + '%');
+        $('#loading-text').text(percent + '%');
+        if (percent >= 100) {
+          setTimeout(() => {
+            $('#loading-screen').addClass('hide');
+            $('#canvas').removeClass('hide');
+            $('#landing-screen').removeClass('hide');
+          }, 300);
+        }
+      }
+
+      async function submitScore(scoreVal) {
+        if (scoreVal <= 0) return;
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (initData) headers['X-Telegram-Init-Data'] = initData;
+
+          await fetch('/api/game/submit_score', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              game: 'tower_stack',
+              score: scoreVal,
+              user_name: userName,
+              chat_id: chatId
+            })
+          });
+        } catch (err) {
+          console.warn('Tower score submission error:', err);
+        }
+      }
+
+      function onGameOver(scoreVal, floorsVal) {
+        // За соревновательный результат берем количество успешно уложенных этажей (floorsVal) или score
+        const record = floorsVal > 0 ? floorsVal : scoreVal;
+        if (record > bestScore) {
+          bestScore = record;
+          try {
+            localStorage.setItem('tower_stack_best_score', String(bestScore));
+          } catch (_) {}
+        }
+
+        $('#final-score').text(record);
+        $('#best-score-label').text('Лучший рекорд: ' + bestScore + ' эт.');
+        $('#game-over-modal').addClass('active');
+
+        // Отправка на бэкенд
+        submitScore(record);
+      }
+
+      const option = {
+        width: gameWidth,
+        height: gameHeight,
+        canvasId: 'canvas',
+        soundOn: soundOn,
+        setGameScore: function (s) {
+          currentScore = s;
+        },
+        setGameSuccess: function (s) {
+          currentSuccessCount = s;
+        },
+        setGameFailed: function (f) {
+          if (f >= 3) {
+            onGameOver(currentScore, currentSuccessCount);
+          }
+        }
+      };
+
+      function initTowerGame() {
+        game = TowerGame(option);
+        game.load(() => {
+          game.init();
+        }, updateLoading);
+      }
+
+      // Кнопка старта игры
+      $('#btn-start').on('click', () => {
+        if (gameStart) return;
+        gameStart = true;
+        $('#landing-screen').addClass('hide');
+        if (soundOn) {
+          try { game.playBgm(); } catch (_) {}
+        }
+        setTimeout(() => {
+          game.start();
+        }, 200);
+      });
+
+      // Перезапуск игры
+      $('#btn-restart').on('click', () => {
+        window.location.reload();
+      });
+
+      // Переход к лидерборду
+      $('#btn-to-leaderboard').on('click', () => {
+        closeToAppGames();
+      });
+
+      // Верхняя кнопка "Назад"
+      $('#btn-back').on('click', () => {
+        closeToAppGames();
+      });
+
+      function closeToAppGames() {
+        if (window.parent && window.parent !== window) {
+          const closeBtn = window.parent.document.querySelector('#close-game-modal');
+          if (closeBtn) {
+            closeBtn.click();
+            return;
+          }
+          const gamesTab = window.parent.document.querySelector('[data-tab="games"]');
+          if (gamesTab) gamesTab.click();
+        } else {
+          window.location.href = '/#games';
+        }
+      }
+
+      // Управление звуком
+      $('#btn-sound').on('click', () => {
+        soundOn = !soundOn;
+        if (soundOn) {
+          $('#btn-sound').text('🔊 Звук: Вкл');
+          try { game?.playBgm(); } catch (_) {}
+        } else {
+          $('#btn-sound').text('🔇 Звук: Выкл');
+          try { game?.pauseAudio('bgm'); } catch (_) {}
+        }
+        if (game) {
+          game.soundOn = soundOn;
+        }
+      });
+
+      // Запуск
+      window.addEventListener('load', initTowerGame, false);
+    })();
+  </script>
+</body>
+</html>

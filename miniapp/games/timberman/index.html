@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Timberman — Дровосек</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #111;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    /* Сенсорные зоны тапа */
+    .touch-overlay {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      z-index: 10;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 24px;
+      pointer-events: auto;
+    }
+    .touch-left {
+      left: 0;
+    }
+    .touch-right {
+      right: 0;
+    }
+    .tap-hint {
+      background: rgba(0, 0, 0, 0.4);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .touch-overlay:active {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    /* Верхняя плашка для закрытия / возврата */
+    .top-controls {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .control-btn {
+      pointer-events: auto;
+      background: rgba(20, 24, 30, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .control-btn:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div class="top-controls">
+      <button class="control-btn" id="btn-back">← Назад в меню</button>
+      <button class="control-btn" id="btn-mute">🔊 Звук: Вкл</button>
+    </div>
+    <canvas id="game-canvas" width="1080" height="1775"></canvas>
+    <div class="touch-overlay touch-left" id="touch-left">
+      <span class="tap-hint" id="hint-left">🪓 Рубить СЛЕВА</span>
+    </div>
+    <div class="touch-overlay touch-right" id="touch-right">
+      <span class="tap-hint" id="hint-right">Рубить СПРАВА 🪓</span>
+    </div>
+  </div>
+  <script src="/games/timberman/game.js"></script>
+</body>
+</html>

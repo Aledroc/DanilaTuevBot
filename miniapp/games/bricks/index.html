@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Неоновый Арканоид — Neon Brick Breaker</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #060810;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 50% 30%, #0d1326 0%, #05070d 85%);
+      touch-action: none;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    /* Верхняя панель управления */
+    .top-controls {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .control-btn {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #00f0ff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(0, 240, 255, 0.2);
+      transition: transform 0.1s, background 0.15s;
+    }
+    .control-btn:active {
+      transform: scale(0.95);
+      background: rgba(30, 41, 59, 0.95);
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div class="top-controls">
+      <button class="control-btn" id="btn-back">← Меню</button>
+      <button class="control-btn" id="btn-mute">🔊 Звук: Вкл</button>
+    </div>
+    <canvas id="game-canvas" width="720" height="1280"></canvas>
+  </div>
+  <script src="/games/bricks/game.js"></script>
+</body>
+</html>
