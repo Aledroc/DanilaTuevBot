@@ -406,6 +406,10 @@ def handle_text(message):
     )
 
     if not addressed:
+        # Если активирован режим тишины (silent_muter), бот полностью игнорирует спонтанные реплики
+        if inventory_store.is_chat_muted(cid):
+            return
+
         # Сообщение адресовано другому человеку — бот не вмешивается
         to_other = bool(
             message.reply_to_message and message.reply_to_message.from_user

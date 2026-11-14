@@ -455,7 +455,14 @@
       const data = await request(`/api/economy/profile${query}`);
       updateBalanceDisplay(data.coins ?? data.balance ?? 0);
       updateStreakDisplay(data.daily_streak ?? data.streak ?? 0);
-      state.activePerks = Array.isArray(data.active_perks) ? data.active_perks : [];
+      let perks = Array.isArray(data.active_perks) ? data.active_perks : [];
+      if (!perks.length && Array.isArray(data.perks)) {
+        perks = data.perks;
+      }
+      if (data.vip && !perks.some(p => (p.perk_id === "vip_badge" || p.id === "vip_badge" || (typeof p === "string" && p.includes("VIP"))))) {
+        perks.unshift({ id: "vip_badge", perk_id: "vip_badge", name: "👑 LORD VIP (на 7 дн.)", icon: "👑" });
+      }
+      state.activePerks = perks;
       renderActivePerks();
     } catch (e) {
       console.warn("Economy profile fetch failed, using fallback", e);
@@ -477,33 +484,63 @@
     }
 
     box.style.display = "block";
+    const nowSec = Math.floor(Date.now() / 1000);
     list.innerHTML = state.activePerks.map((perk) => {
-      const name = typeof perk === "string" ? perk : (perk.title || perk.name || "Активный перк");
-      const icon = perk.icon || "⚡";
-      return `<span class="active-perk-chip">${icon} ${escapeHtml(name)}</span>`;
+      const isVip = (typeof perk === "object" && (perk.id === "vip_badge" || perk.perk_id === "vip_badge"))
+        || (typeof perk === "string" && (perk.includes("LORD") || perk.includes("VIP")));
+
+      let extraTimeLabel = "";
+      if (typeof perk === "object" && perk.expires_at && perk.expires_at > nowSec) {
+        const diffSec = perk.expires_at - nowSec;
+        const days = Math.floor(diffSec / 86400);
+        const hours = Math.floor((diffSec % 86400) / 3600);
+        if (days > 0) {
+          extraTimeLabel = ` (осталось ${days} дн. ${hours} ч.)`;
+        } else {
+          const mins = Math.max(1, Math.floor((diffSec % 3600) / 60));
+          extraTimeLabel = ` (осталось ${hours} ч. ${mins} мин.)`;
+        }
+      }
+
+      let name = typeof perk === "string" ? perk : (perk.title || perk.name || "Активный перк");
+      let icon = (typeof perk === "object" && perk.icon) || "⚡";
+      if (isVip) {
+        icon = "👑";
+        name = `LORD VIP${extraTimeLabel || " (на 7 дн.)"}`;
+        return `<span class="active-perk-chip vip-chip" style="background:linear-gradient(135deg,rgba(251,191,36,0.25),rgba(217,119,6,0.3));border-color:rgba(251,191,36,0.7);color:#fef08a;font-weight:700;">${icon} ${escapeHtml(name)}</span>`;
+      }
+      return `<span class="active-perk-chip">${icon} ${escapeHtml(name)}${escapeHtml(extraTimeLabel)}</span>`;
     }).join("");
   }
 
   const DEFAULT_SHOP_ITEMS = [
     {
       id: "vip_badge",
-      name: "👑 LORD OF THE DUNGEON (VIP)",
+      name: "👑 LORD OF THE DUNGEON (VIP на неделю)",
       icon: "👑",
       price: 5000,
-      description: "Элитный пожизненный статус короля спортзала. Персонаж признает вас своим боссом, уважительно обращается на 'Вы, мой Босс' с поклоном в каждом сообщении, дает доступ к золотой короне в Зале славы и бейджу [LORD VIP].",
+      description: "Элитный статус короля спортзала на 7 дней! Персонаж признает вас своим боссом, уважительно обращается на 'Вы, мой Босс' с поклоном в каждом сообщении, дает доступ к золотой короне в Зале славы и бейджу [LORD VIP].",
       requires_input: false,
       fields: []
     },
     {
-      id: "slap_friend",
-      name: "🐟 Дружеский лещ / Мокрое полотенце",
-      icon: "🐟",
-      price: 120,
-      description: "Бот смачно отвешивает дружеского виртуального леща или бросает мокрое полотенце в лицо указанному другу при его появлении в чате со звонким звуком!",
+      id: "golden_fart",
+      name: "💨 Золотой залп / Гачи-выхлоп",
+      icon: "💨",
+      price: 80,
+      description: "Бот смачно и громогласно выдает фирменный звуковой эффект выхлопа в раздевалке со звонким хлопком!",
+      requires_input: false,
+      fields: []
+    },
+    {
+      id: "compliment_bomb",
+      name: "🌹 Королевский респект / Комплимент",
+      icon: "🌹",
+      price: 90,
+      description: "Бот осыпает указанного бойца роскошными комплиментами о его бицепсах, форме и стальном прессе!",
       requires_input: true,
       fields: [
-        { id: "target_user", label: "Кому отвесить леща", placeholder: "@username или Вася", required: true },
-        { id: "reason", label: "За какую провинность", placeholder: "Например: не пожал сотку от груди", required: false }
+        { id: "target_user", label: "Кому выразить королевский респект", placeholder: "@username или Вася", required: true }
       ]
     },
     {
@@ -519,6 +556,39 @@
       ]
     },
     {
+      id: "slap_friend",
+      name: "🐟 Дружеский лещ / Мокрое полотенце",
+      icon: "🐟",
+      price: 120,
+      description: "Бот смачно отвешивает дружеского виртуального леща или бросает мокрое полотенце в лицо указанному другу при его появлении в чате со звонким звуком!",
+      requires_input: true,
+      fields: [
+        { id: "target_user", label: "Кому отвесить леща", placeholder: "@username или Вася", required: true },
+        { id: "reason", label: "За какую провинность", placeholder: "Например: не пожал сотку от груди", required: false }
+      ]
+    },
+    {
+      id: "fake_ban",
+      name: "🔨 Фейковый бан молотом Билли",
+      icon: "🔨",
+      price: 130,
+      description: "Бот устраивает эпичный шуточный 'бан' указанного друга с отсчетом секунд до изгнания!",
+      requires_input: true,
+      fields: [
+        { id: "target_user", label: "Кого эпично забанить", placeholder: "@username или Слейв", required: true },
+        { id: "reason", label: "Причина изгнания", placeholder: "Например: пропустил день ног", required: false }
+      ]
+    },
+    {
+      id: "silent_muter",
+      name: "🤐 Кляп для слейва / Режим Тишины (15 минут)",
+      icon: "🤐",
+      price: 150,
+      description: "Бот замолкает и отдыхает от спонтанных реплик в качалке следующие 15 минут.",
+      requires_input: false,
+      fields: []
+    },
+    {
       id: "bot_whisper",
       name: "🕵️ Анонимный слух / Сплетня",
       icon: "🕵️",
@@ -528,6 +598,26 @@
       fields: [
         { id: "whisper_text", label: "Текст слуха или инсайда", placeholder: "Например: говорят, в душевой завелся призрак Билли...", required: true }
       ]
+    },
+    {
+      id: "custom_title",
+      name: "Кожаный Титул",
+      icon: "🏷",
+      price: 200,
+      description: "Установи уникальный титул под своим профилем (например, «Performance Artist» или «Three Hundred Bucks»)",
+      requires_input: true,
+      fields: [
+        { id: "title_text", label: "Твой новый титул", placeholder: "Например: Master of the Locker Room", required: true }
+      ]
+    },
+    {
+      id: "dungeon_party",
+      name: "🎉 Дискотека в качалке (30 минут)",
+      icon: "🎉",
+      price: 220,
+      description: "Бот включает безумный рейв с ремиксами и зажигает всю раздевалку на 30 минут!",
+      requires_input: false,
+      fields: []
     },
     {
       id: "paranoia_mode",
@@ -548,15 +638,6 @@
       fields: [
         { id: "shout_text", label: "Текст объявления в мегафон", placeholder: "Срочно всем построиться в шеренгу!", required: true }
       ]
-    },
-    {
-      id: "dungeon_immunity",
-      name: "🛡️ Неприкасаемый Слейв (Иммунитет)",
-      icon: "🛡️",
-      price: 600,
-      description: "Иммунитет на неделю: бот ни при каких обстоятельствах не подкалывает владельца и заступается за него в спорах.",
-      requires_input: false,
-      fields: []
     },
     {
       id: "mood_override",
@@ -580,15 +661,13 @@
       ]
     },
     {
-      id: "custom_title",
-      name: "Кожаный Титул",
-      icon: "🏷",
-      price: 200,
-      description: "Установи уникальный титул под своим профилем (например, «Performance Artist» или «Three Hundred Bucks»)",
-      requires_input: true,
-      fields: [
-        { id: "title_text", label: "Твой новый титул", placeholder: "Например: Master of the Locker Room", required: true }
-      ]
+      id: "dungeon_immunity",
+      name: "🛡️ Неприкасаемый Слейв (Иммунитет)",
+      icon: "🛡️",
+      price: 600,
+      description: "Иммунитет на неделю: бот ни при каких обстоятельствах не подкалывает владельца и заступается за него в спорах.",
+      requires_input: false,
+      fields: []
     }
   ];
 
@@ -735,8 +814,20 @@
       // Если покупка требует отправки действия в чат (например заказной подкол)
       if ((selectedShopItem.id === "custom_roast" || selectedShopItem.id === "roast_friend") && payload.details.target_user) {
         openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
+      } else if (selectedShopItem.id === "compliment_bomb" && payload.details.target_user) {
+        openMessageDraft(`/compliment ${payload.details.target_user}`);
+      } else if (selectedShopItem.id === "fake_ban" && payload.details.target_user) {
+        openMessageDraft(`/fakeban ${payload.details.target_user} | ${payload.details.reason || "пропуск дня ног"}`);
+      } else if (selectedShopItem.id === "slap_friend" && payload.details.target_user) {
+        openMessageDraft(`/slap ${payload.details.target_user} | ${payload.details.reason || "нарушение дисциплины"}`);
       } else if ((selectedShopItem.id === "mood_override" || selectedShopItem.id === "mood_change") && payload.details.vibe) {
         openMessageDraft(`/mood ${payload.details.vibe}`);
+      } else if (selectedShopItem.id === "golden_fart") {
+        openMessageDraft("/fart");
+      } else if (selectedShopItem.id === "silent_muter") {
+        openMessageDraft("/mute 15");
+      } else if (selectedShopItem.id === "dungeon_party") {
+        openMessageDraft("/party");
       }
     } catch (err) {
       // Оптимистичный фоллбэк для демо, если бэкенд эндпоинт вернул ошибку

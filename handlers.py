@@ -950,7 +950,10 @@ def economy_coins_cmd(message):
     coins = inventory_store.get_user_coins(user.id)
     perks = inventory_store.get_user_perks(user.id, chat_id=cid)
     
-    vip_str = " 👑 [VIP]" if perks.get("vip") else ""
+    vip_str = ""
+    if perks.get("vip"):
+        days_left = perks.get("vip_days_left", 7)
+        vip_str = f" 👑 [VIP еще {days_left} дн.]"
     text = (
         f"💰 <b>Кошелек игрока {html.escape(user.first_name)}</b>{vip_str}:\n"
         f"🪙 Баланс: <b>{coins}</b> монет\n"
@@ -973,7 +976,13 @@ def shop_catalog_cmd(message):
     items = inventory_store.get_shop_items()
     user = message.from_user
     coins = inventory_store.get_user_coins(user.id) if user else 0
-    lines = [f"🛒 <b>Магазин чата</b> (Ваш баланс: <b>{coins}</b> 🪙)\n"]
+    perks = inventory_store.get_user_perks(user.id, chat_id=message.chat.id) if user else {}
+    vip_status_line = ""
+    if perks.get("vip"):
+        days_left = perks.get("vip_days_left", 7)
+        vip_status_line = f"👑 Ваш VIP активен еще <b>{days_left}</b> дн.\n"
+
+    lines = [f"🛒 <b>Магазин чата</b> (Ваш баланс: <b>{coins}</b> 🪙)\n{vip_status_line}"]
     for it in items:
         lines.append(
             f"{it['icon']} <b>{html.escape(it['name'])}</b> — <code>{it['price']}</code> 🪙\n"
@@ -982,7 +991,10 @@ def shop_catalog_cmd(message):
         )
     lines.append("💡 Для покупки титула: <code>/buy custom_title Ваш Титул</code>")
     lines.append("💡 Для смены настроения: <code>/buy mood_override Вайб</code>")
-    lines.append("💡 Для подкола: ответьте командой <code>/buy custom_roast</code> на сообщение друга!")
+    lines.append("💡 Для подкола: ответьте <code>/buy custom_roast</code> на сообщение друга (или укажите ник)")
+    lines.append("💡 Для комплимента: ответьте <code>/buy compliment_bomb</code> на сообщение друга")
+    lines.append("💡 Для фейкового бана: ответьте <code>/buy fake_ban Причина</code> на сообщение друга")
+    lines.append("💡 Для гачи-выхлопа: <code>/buy golden_fart</code> | Дискотека: <code>/buy dungeon_party</code> | Тишина: <code>/buy silent_muter</code>")
     bot.reply_to(message, "\n".join(lines), parse_mode='HTML')
 
 
@@ -1006,7 +1018,7 @@ def shop_buy_cmd(message):
         extra_data = {"title": extra_arg}
     elif item_id == "mood_override":
         extra_data = {"mood": extra_arg}
-    elif item_id == "custom_roast":
+    elif item_id in ("custom_roast", "compliment_bomb", "fake_ban"):
         target_id = None
         target_name = ""
         if message.reply_to_message and message.reply_to_message.from_user:
@@ -1014,17 +1026,26 @@ def shop_buy_cmd(message):
             target_id = tu.id
             target_name = tu.first_name
         elif extra_arg:
-            resolved = inventory_store.resolve_member(cid, extra_arg)
+            target_token = extra_arg.split()[0]
+            resolved = inventory_store.resolve_member(cid, target_token)
             if resolved:
                 target_id, target_name = resolved
+                # остаток аргумента после ника может быть причиной/наводкой
+                rem_parts = extra_arg.split(maxsplit=1)
+                extra_arg = rem_parts[1] if len(rem_parts) > 1 else ""
         if not target_id:
             bot.reply_to(
                 message,
-                "⚠️ Чтобы заказать подкол, ответьте командой <code>/buy custom_roast</code> на сообщение друга или укажите его ник!",
+                f"⚠️ Для покупки «{item_id}» ответьте на сообщение друга или укажите его ник/имя!",
                 parse_mode='HTML'
             )
             return
-        extra_data = {"target_user_id": target_id, "target_name": target_name, "hint": "подкол от друга"}
+        if item_id == "custom_roast":
+            extra_data = {"target_user_id": target_id, "target_name": target_name, "hint": extra_arg or "подкол от друга"}
+        elif item_id == "compliment_bomb":
+            extra_data = {"target_user_id": target_id, "target_name": target_name, "compliment": extra_arg}
+        elif item_id == "fake_ban":
+            extra_data = {"target_user_id": target_id, "target_name": target_name, "reason": extra_arg or "слишком мощная форма"}
 
     res = inventory_store.buy_shop_item(user.id, item_id, chat_id=cid, extra_data=extra_data)
     if not res.get("success"):
@@ -1035,6 +1056,19 @@ def shop_buy_cmd(message):
             f"✅ {res.get('message')}\n🪙 Оставшийся баланс: <b>{res.get('balance', 0)}</b> монет.",
             parse_mode='HTML'
         )
+        # Если куплен golden_fart, сразу выдаем смачную реплику
+        if item_id == "golden_fart":
+            import random
+            fart_phrases = [
+                "💨 *БР-Р-Р-БА-А-АХ!* 💥 В раздевалке задрожали шкафчики! Кто-то зарядил протеиновый выхлоп на все 500 лошадей!",
+                "💨 *Ф-Ф-Ф-ПУУУУК!* 🔊 Эхо разнеслось по всему подземелью! «Three hundred bucks за проветривание зала!»",
+                "💨 *БА-БАХ!* ⚡ Стены качалки содрогнулись! Это был легендарный Золотой Залп Boss of the Gym!",
+            ]
+            bot.send_message(cid, random.choice(fart_phrases))
+        elif item_id == "silent_muter":
+            bot.send_message(cid, "🤐 <b>Режим Тишины (15 минут) активирован!</b> Бот замолк и ушел на восстановительный перерыв в качалке (ответит только если позвать лично).", parse_mode='HTML')
+        elif item_id == "dungeon_party":
+            bot.send_message(cid, "🎉 <b>PARTY HARD В КАЧАЛКЕ НА 30 МИНУТ!</b> 🕺 Врубаем бас, достаем ремиксы! Let's celebrate and party!", parse_mode='HTML')
 
 
 @bot.message_handler(commands=['cup', 'tournament'])

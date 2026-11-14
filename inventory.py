@@ -1252,6 +1252,31 @@ def _connect():
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS pending_pranks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                buyer_id INTEGER NOT NULL,
+                target_user_id INTEGER NOT NULL,
+                target_name TEXT NOT NULL,
+                prank_type TEXT NOT NULL,
+                extra_text TEXT NOT NULL DEFAULT '',
+                used INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_mutes (
+                chat_id INTEGER PRIMARY KEY,
+                muted_by INTEGER NOT NULL,
+                until_ts INTEGER NOT NULL,
+                created_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS weekly_tournaments (
                 season_id TEXT PRIMARY KEY,
                 week_number INTEGER NOT NULL,
@@ -2394,11 +2419,11 @@ def get_all_games_leaderboards(chat_id: int | None = None) -> dict[str, list[dic
 SHOP_ITEMS = [
     {
         "item_id": "vip_badge",
-        "name": "👑 LORD OF THE DUNGEON (VIP)",
+        "name": "👑 LORD OF THE DUNGEON (VIP на 7 дней)",
         "price": 5000,
-        "description": "Элитный статус босса качалки! Золотая корона [LORD VIP], бот кланяется и обращается на 'Вы, мой Босс'.",
+        "description": "Элитный королевский статус босса качалки на неделю (7 дней)! Персонаж признает вас своим боссом, обращается на 'Вы, мой Босс' с поклоном в каждом сообщении, дает доступ к золотой короне в Зале славы и бейджу [LORD VIP].",
         "icon": "👑",
-        "type": "passive",
+        "type": "duration",
     },
     {
         "item_id": "slap_friend",
@@ -2414,6 +2439,46 @@ SHOP_ITEMS = [
         "price": 100,
         "description": "Бот жестко и остроумно подколет выбранного слейва на заданную тему.",
         "icon": "🎯",
+        "type": "usable",
+    },
+    {
+        "item_id": "golden_fart",
+        "name": "💨 Золотой залп / Гачи-выхлоп",
+        "price": 80,
+        "description": "Бот смачно и громогласно комментирует появление звука мощного выхлопа в раздевалке с хлопком и смешной фразой.",
+        "icon": "💨",
+        "type": "usable",
+    },
+    {
+        "item_id": "silent_muter",
+        "name": "🤐 Кляп для слейва / Режим Тишины (15 минут)",
+        "price": 150,
+        "description": "Заставляет бота замолчать и не отвечать на спонтанные сообщения в этом чате следующие 15 минут (отдых для качалки).",
+        "icon": "🤐",
+        "type": "duration",
+    },
+    {
+        "item_id": "compliment_bomb",
+        "name": "🌹 Королевский респект / Комплимент",
+        "price": 90,
+        "description": "Бот персонально осыпает выбранного братана роскошными эпитетами о его бицепсах, форме и непревзойденной мощи.",
+        "icon": "🌹",
+        "type": "usable",
+    },
+    {
+        "item_id": "dungeon_party",
+        "name": "🎉 Дискотека в качалке / Party Hard (30 мин)",
+        "price": 220,
+        "description": "Бот врубает режим безумной вечеринки, цитирует ремиксы, кричит 'Let's celebrate and suck some...', танцует и спамит энергией.",
+        "icon": "🎉",
+        "type": "duration",
+    },
+    {
+        "item_id": "fake_ban",
+        "name": "🔨 Фейковый бан молотом Тора",
+        "price": 130,
+        "description": "Бот торжественно и драматично 'банит' указанного друга в шуточной манере с отсчетом секунд до 'изгнания из качалки'.",
+        "icon": "🔨",
         "type": "usable",
     },
     {
@@ -2678,7 +2743,7 @@ def record_chat_message_activity(chat_id: int, user_id: int) -> dict:
 def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
     """Возвращает информацию об активных перках пользователя."""
     if not user_id:
-        return {"vip": False, "has_roast": False, "titles": [], "perks": []}
+        return {"vip": False, "vip_expires_at": 0, "vip_days_left": 0, "has_roast": False, "titles": [], "perks": []}
     now = int(time.time())
     try:
         with _connect() as conn:
@@ -2698,6 +2763,7 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
 
             perks_list = []
             is_vip = False
+            vip_expires_at = 0
             has_roast = False
             titles = []
 
@@ -2708,6 +2774,8 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
                 exp = r[4]
                 if p_id == "vip_badge":
                     is_vip = True
+                    if exp > vip_expires_at:
+                        vip_expires_at = exp
                 elif p_id == "custom_roast":
                     has_roast = True
                 elif p_id == "custom_title":
@@ -2732,14 +2800,23 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
                 if title_row and title_row[0] and title_row[0] not in titles:
                     titles.append(title_row[0])
 
+            vip_days_left = 0
+            if is_vip and vip_expires_at > now:
+                import math
+                vip_days_left = max(1, math.ceil((vip_expires_at - now) / 86400))
+            elif is_vip and vip_expires_at == 0:
+                vip_days_left = 7  # дефолт на случай бесконечного
+
             return {
                 "vip": is_vip,
+                "vip_expires_at": vip_expires_at,
+                "vip_days_left": vip_days_left,
                 "has_roast": has_roast,
                 "titles": titles,
                 "perks": perks_list,
             }
     except Exception:
-        return {"vip": False, "has_roast": False, "titles": [], "perks": []}
+        return {"vip": False, "vip_expires_at": 0, "vip_days_left": 0, "has_roast": False, "titles": [], "perks": []}
 
 
 def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_data: dict | None = None) -> dict:
@@ -2762,10 +2839,13 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
     expires_at = 0
 
     if item_id == "vip_badge":
-        # Проверяем, есть ли уже VIP
+        # Вычисляем срок VIP: 7 дней (604800 секунд)
         perks = get_user_perks(user_id)
-        if perks["vip"]:
-            return {"success": False, "message": "У вас уже активирован статус VIP!"}
+        current_exp = perks.get("vip_expires_at") or 0
+        if current_exp > now:
+            expires_at = current_exp + 7 * 86400
+        else:
+            expires_at = now + 7 * 86400
 
     elif item_id == "custom_title":
         title_text = ""
@@ -2788,6 +2868,51 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
         if chat_id:
             set_chat_mood_override(chat_id, user_id, mood_text, duration_seconds=1800)
 
+    elif item_id == "dungeon_party":
+        party_mood = "Дискотека в качалке / Party Hard! Врубай безумный драйв, танцуй, цитируй ремиксы, кричи 'Let's celebrate and suck some...', заряжай всех бешеной гачи-энергией!"
+        extra_str = party_mood
+        expires_at = now + 1800  # 30 минут
+        if chat_id:
+            set_chat_mood_override(chat_id, user_id, party_mood, duration_seconds=1800)
+
+    elif item_id == "silent_muter":
+        mute_seconds = 15 * 60  # 15 минут
+        expires_at = now + mute_seconds
+        if chat_id:
+            mute_chat(chat_id, user_id, duration_seconds=mute_seconds)
+
+    elif item_id == "golden_fart":
+        # Смачный гачи-выхлоп в чате
+        extra_str = "golden_fart"
+
+    elif item_id == "compliment_bomb":
+        target_id = 0
+        target_name = ""
+        compliment_text = ""
+        if extra_data and isinstance(extra_data, dict):
+            target_id = int(extra_data.get("target_user_id") or 0)
+            target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
+            compliment_text = str(extra_data.get("compliment") or extra_data.get("extra_text") or "").strip()
+        if not target_id:
+            return {"success": False, "message": "Укажите братана для королевского комплимента (ответьте на его сообщение)!"}
+        extra_str = f"target:{target_id}:{target_name}"
+        if chat_id:
+            order_pending_prank(chat_id, user_id, target_id, target_name or f"Братан {target_id}", "compliment_bomb", compliment_text)
+
+    elif item_id == "fake_ban":
+        target_id = 0
+        target_name = ""
+        ban_reason = ""
+        if extra_data and isinstance(extra_data, dict):
+            target_id = int(extra_data.get("target_user_id") or 0)
+            target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
+            ban_reason = str(extra_data.get("reason") or extra_data.get("ban_reason") or "").strip()
+        if not target_id:
+            return {"success": False, "message": "Укажите цель для шуточного бана (ответьте на сообщение друга)!"}
+        extra_str = f"target:{target_id}:{target_name}"
+        if chat_id:
+            order_pending_prank(chat_id, user_id, target_id, target_name or f"Игрок {target_id}", "fake_ban", ban_reason)
+
     elif item_id == "custom_roast":
         target_id = 0
         target_name = ""
@@ -2796,6 +2921,8 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
             target_id = int(extra_data.get("target_user_id") or 0)
             target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
             hint = str(extra_data.get("roast_topic") or extra_data.get("hint") or "").strip()
+        if not target_id:
+            return {"success": False, "message": "Укажите цель для спанкинга (ответьте на сообщение участника)!"}
         if chat_id and target_id:
             order_custom_roast(user_id, chat_id, target_id, target_name or f"Игрок {target_id}", hint)
 
@@ -2947,6 +3074,137 @@ def consume_pending_roast(roast_id: int) -> bool:
     try:
         with _connect() as conn:
             conn.execute("UPDATE pending_roasts SET used = 1 WHERE id = ?", (int(roast_id),))
+            return True
+    except Exception:
+        return False
+
+
+# ==========================================
+# РОЗЫГРЫШИ И РЕЖИМ ТИШИНЫ (PRANKS & MUTE)
+# ==========================================
+
+def mute_chat(chat_id: int, user_id: int, duration_seconds: int = 900) -> dict:
+    """Устанавливает режим тишины для чата (по умолчанию 15 минут)."""
+    now = int(time.time())
+    until_ts = now + max(60, int(duration_seconds))
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO chat_mutes (chat_id, muted_by, until_ts, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET
+                    muted_by = excluded.muted_by,
+                    until_ts = excluded.until_ts,
+                    created_at = excluded.created_at
+                """,
+                (int(chat_id), int(user_id), until_ts, now),
+            )
+            return {"chat_id": chat_id, "until_ts": until_ts, "seconds": until_ts - now}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def is_chat_muted(chat_id: int) -> bool:
+    """Проверяет, находится ли чат в режиме тишины (silent_muter)."""
+    if not chat_id:
+        return False
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute("DELETE FROM chat_mutes WHERE until_ts < ?", (now,))
+            row = conn.execute("SELECT 1 FROM chat_mutes WHERE chat_id = ? AND until_ts > ?", (int(chat_id), now)).fetchone()
+            return row is not None
+    except Exception:
+        return False
+
+
+def get_chat_mute_info(chat_id: int) -> dict | None:
+    """Возвращает информацию об активности режима тишины в чате."""
+    if not chat_id:
+        return None
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute("DELETE FROM chat_mutes WHERE until_ts < ?", (now,))
+            row = conn.execute("SELECT muted_by, until_ts FROM chat_mutes WHERE chat_id = ? AND until_ts > ?", (int(chat_id), now)).fetchone()
+            if row:
+                return {
+                    "muted_by": row[0],
+                    "until_ts": row[1],
+                    "seconds_left": max(0, row[1] - now),
+                }
+            return None
+    except Exception:
+        return None
+
+
+def order_pending_prank(chat_id: int, buyer_id: int, target_user_id: int, target_name: str, prank_type: str, extra_text: str = "") -> dict:
+    """Заказывает розыгрыш (compliment_bomb, fake_ban) на участника чата."""
+    now = int(time.time())
+    t_name = str(target_name or "").strip()[:64] or f"Участник {target_user_id}"
+    p_type = str(prank_type).strip()[:32]
+    e_text = str(extra_text or "").strip()[:250]
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pending_pranks (chat_id, buyer_id, target_user_id, target_name, prank_type, extra_text, used, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                """,
+                (int(chat_id), int(buyer_id), int(target_user_id), t_name, p_type, e_text, now),
+            )
+            return {"ordered": True, "target_name": t_name, "prank_type": p_type}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_pending_prank(chat_id: int, target_user_id: int | None = None) -> dict | None:
+    """Возвращает ожидающий выполнения розыгрыш для чата/участника."""
+    if not chat_id:
+        return None
+    try:
+        with _connect() as conn:
+            if target_user_id:
+                row = conn.execute(
+                    """
+                    SELECT id, buyer_id, target_user_id, target_name, prank_type, extra_text
+                    FROM pending_pranks
+                    WHERE chat_id = ? AND target_user_id = ? AND used = 0
+                    ORDER BY created_at ASC LIMIT 1
+                    """,
+                    (int(chat_id), int(target_user_id)),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """
+                    SELECT id, buyer_id, target_user_id, target_name, prank_type, extra_text
+                    FROM pending_pranks
+                    WHERE chat_id = ? AND used = 0
+                    ORDER BY created_at ASC LIMIT 1
+                    """,
+                    (int(chat_id),),
+                ).fetchone()
+
+            if row:
+                return {
+                    "prank_id": row[0],
+                    "buyer_id": row[1],
+                    "target_user_id": row[2],
+                    "target_name": row[3],
+                    "prank_type": row[4],
+                    "extra_text": row[5],
+                }
+            return None
+    except Exception:
+        return None
+
+
+def consume_pending_prank(prank_id: int) -> bool:
+    """Помечает заказанный розыгрыш как выполненный."""
+    try:
+        with _connect() as conn:
+            conn.execute("UPDATE pending_pranks SET used = 1 WHERE id = ?", (int(prank_id),))
             return True
     except Exception:
         return False

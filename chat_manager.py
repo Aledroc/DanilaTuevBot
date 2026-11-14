@@ -532,6 +532,8 @@ def _build_proactive_prompt(state: dict, goal: str, story_phase: str, is_final_p
 
 def proactive_push(chat_id: int) -> None:
     """Делает один инициативный ход в указанном чате, если условия выполнены."""
+    if inventory_store.is_chat_muted(chat_id):
+        return
     state = chat_states.get(chat_id)
     if not state:
         return
@@ -853,9 +855,12 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                 )
             user_perks = inventory_store.get_user_perks(inventory_prompt_owner_id, chat_id=cid)
             if user_perks.get("vip"):
+                days_left = user_perks.get("vip_days_left", 7)
                 system_prompt += (
-                    f"\n\nVIP-СТАТУС УЧАСТНИКА: участник {inventory_prompt_owner_name or 'Игрок'} "
-                    "обладает VIP-статусом чата. Относись к нему с повышенным почтением, уважением и признанием его авторитета."
+                    f"\n\n👑 КОРОЛЕВСКИЙ VIP-СТАТУС: участник {inventory_prompt_owner_name or 'Игрок'} "
+                    f"— официальный Владелец зала и Босс качалки (VIP статус активен еще {days_left} дн.)! "
+                    "Ты признаешь его своим безоговорочным Боссом. Обращайся к нему исключительно уважительно: "
+                    "'Вы, мой Босс' или 'Мой Лорд', с ритуальным поклоном в реплике, выражая преданность и почтение."
                 )
         except Exception:
             pass
@@ -873,6 +878,31 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     f"{hint_str} Обязательно вверни в свою реплику острый, ироничный, но дружеский и смешной подкол "
                     "в адрес этого участника, оставаясь на 100% в рамках своего архетипа."
                 )
+        except Exception:
+            pass
+
+        # -------------------------------------------------------------------
+        # Заказные розыгрыши (compliment_bomb, fake_ban)
+        # -------------------------------------------------------------------
+        pending_prank = None
+        try:
+            pending_prank = inventory_store.get_pending_prank(cid, target_user_id=inventory_prompt_owner_id)
+            if pending_prank:
+                p_type = pending_prank.get("prank_type")
+                p_extra = pending_prank.get("extra_text") or ""
+                if p_type == "compliment_bomb":
+                    system_prompt += (
+                        f"\n\n🌹 КОРОЛЕВСКИЙ РЕСПЕКТ / БОМБАРДИРОВКА КОМПЛИМЕНТАМИ: участник {inventory_prompt_owner_name or 'Игрок'} "
+                        "получил оплаченный королевский респект! Персонально осыпь его роскошными, эпичными эпитетами "
+                        f"о его невероятной мощи, стальных бицепсах, харизме и идеальной форме в качалке! {p_extra}"
+                    )
+                elif p_type == "fake_ban":
+                    system_prompt += (
+                        f"\n\n🔨 ФЕЙКОВЫЙ БАН МОЛОТОМ ТОРА: участник {inventory_prompt_owner_name or 'Игрок'} "
+                        "приговорен к шуточному изгнанию из качалки! Торжественно, драматично и громогласно объяви ему шуточный бан "
+                        f"с обратным отсчетом секунд до изгнания в духе архетипа! Причина бана: {p_extra or 'слишком мощная форма и дерзость'}. "
+                        "Это дружеский пранк, сделай это максимально эпично и смешно!"
+                    )
         except Exception:
             pass
 
@@ -1351,6 +1381,11 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
         if pending_roast and pending_roast.get("roast_id"):
             try:
                 inventory_store.consume_pending_roast(pending_roast["roast_id"])
+            except Exception:
+                pass
+        if pending_prank and pending_prank.get("prank_id"):
+            try:
+                inventory_store.consume_pending_prank(pending_prank["prank_id"])
             except Exception:
                 pass
         if died and state is not None and not _entrance:
