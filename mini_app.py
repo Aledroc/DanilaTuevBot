@@ -343,6 +343,22 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"Mini App tournament current error: {type(error).__name__}: {error}", flush=True)
                 self._send(500, {"error": "Ошибка получения турнирной информации"})
             return
+        if parsed.path == "/api/achievements":
+            try:
+                user = self._user()
+                # Авто-проверяем перед отдачей, чтобы обновить свежие ачивки
+                try:
+                    inventory.check_user_achievements(user["id"])
+                except Exception:
+                    pass
+                achievements = inventory.get_user_achievements(user["id"])
+                self._send(200, {"achievements": achievements})
+            except (ValueError, TypeError, json.JSONDecodeError) as error:
+                self._send(401, {"error": str(error)})
+            except Exception as error:
+                print(f"Mini App achievements error: {type(error).__name__}: {error}", flush=True)
+                self._send(500, {"error": "Ошибка получения достижений"})
+            return
         relative = "index.html" if parsed.path in {"/", "/index.html"} else parsed.path.lstrip("/")
         target = (WEB_ROOT / relative).resolve()
         if WEB_ROOT.resolve() not in target.parents or not target.is_file():
@@ -441,6 +457,14 @@ class Handler(BaseHTTPRequestHandler):
                     desc=desc,
                     action=action,
                 )
+            elif route == "/api/achievements/claim":
+                ach_id = str(data.get("achievement_id") or data.get("id") or "").strip()
+                if not ach_id:
+                    raise ValueError("Не указан идентификатор достижения (achievement_id)")
+                result = inventory.claim_achievement_reward(user_id=user["id"], achievement_id=ach_id)
+                if not result.get("success"):
+                    self._send(400, {"error": result.get("message", "Ошибка получения награды")})
+                    return
             elif route == "/api/archetypes/custom/delete":
                 key = str(data.get("key") or data.get("archetype_key") or "").strip()
                 if not key:

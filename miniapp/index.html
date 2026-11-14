@@ -37,6 +37,7 @@
       <button class="tab" data-tab="inventory">🎒 Снаряга Слейва</button>
       <button class="tab" data-tab="shop">🏪 Leather Shop ($300 Store)</button>
       <button class="tab" data-tab="tournament">🏆 Турнир Качалки (Boss Cup)</button>
+      <button class="tab" data-tab="achievements">🏅 Достижения</button>
       <button class="tab" data-tab="fame">👑 Зал Качков (Masters)</button>
       <button class="tab" data-tab="archetypes">🎭 Каста Подземелья</button>
       <button class="tab" data-tab="prompt">Промпт</button>
@@ -335,6 +336,26 @@
         <div id="game-leaderboard-list" class="leaderboard-list">
           <div class="loading-state">Загрузка рекордов качалки…</div>
         </div>
+      </div>
+    </section>
+
+    <section class="view" id="achievements-view">
+      <div class="section-heading">
+        <div><p class="eyebrow">DUNGEON BADGES • РЕМНИ И ЗАСЛУГИ</p><h2>🏅 Зал Достижений</h2></div>
+        <span class="count" id="achievements-count">0 / 0</span>
+      </div>
+
+      <!-- Фильтры по категориям -->
+      <div class="achievements-filter-bar">
+        <button class="ach-filter-btn active" data-filter="all">Все</button>
+        <button class="ach-filter-btn" data-filter="minigames">🎮 Мини-игры</button>
+        <button class="ach-filter-btn" data-filter="chat">💬 Чат</button>
+        <button class="ach-filter-btn" data-filter="economy">💰 Экономика</button>
+        <button class="ach-filter-btn" data-filter="inventory">🎒 Инвентарь</button>
+      </div>
+
+      <div id="achievements-grid" class="achievements-grid">
+        <div class="loading-state">Загружаем заслуги слейва…</div>
       </div>
     </section>
 

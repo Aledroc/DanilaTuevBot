@@ -964,3 +964,290 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   color: #f0f6fc;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+/* ==========================================================================
+   Анимация монеток coin-pulse
+   ========================================================================== */
+
+@keyframes coinPulseAnim {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(234, 179, 8, 0)); }
+  50% { transform: scale(1.28); filter: drop-shadow(0 0 14px rgba(234, 179, 8, 0.85)); color: #fde047; }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(234, 179, 8, 0)); }
+}
+
+.coin-pulse {
+  display: inline-block;
+  animation: coinPulseAnim 0.65s ease-out;
+}
+
+/* ==========================================================================
+   СИСТЕМА ДОСТИЖЕНИЙ (ACHIEVEMENTS / BADGES)
+   ========================================================================== */
+
+.achievements-filter-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 16px 0;
+  scrollbar-width: none;
+}
+
+.achievements-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.ach-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+
+.ach-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.ach-filter-btn.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(202, 138, 4, 0.15));
+  border-color: #eab308;
+  color: #fde047;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.3);
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.achievement-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s, border-color 0.25s;
+  overflow: hidden;
+}
+
+.achievement-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Разблокированная, готовая к клейму */
+.achievement-card.unlocked.unclaimed {
+  border-color: #eab308;
+  background: linear-gradient(145deg, rgba(45, 36, 12, 0.8), rgba(20, 20, 30, 0.9));
+  box-shadow: 0 0 24px rgba(234, 179, 8, 0.3), inset 0 0 16px rgba(234, 179, 8, 0.12);
+}
+
+/* Завершенная и награда забрана */
+.achievement-card.claimed {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(145deg, rgba(16, 45, 30, 0.65), rgba(15, 23, 42, 0.8));
+}
+
+/* Заблокированная */
+.achievement-card.locked {
+  opacity: 0.65;
+  filter: grayscale(40%);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.achievement-card.locked:hover {
+  opacity: 0.85;
+  filter: grayscale(10%);
+}
+
+.ach-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.ach-icon-box {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.achievement-card.unlocked .ach-icon-box {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.1));
+  border-color: rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.35);
+}
+
+.achievement-card.claimed .ach-icon-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.ach-lock-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 14px;
+  background: #0f172a;
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.ach-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ach-title {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.25;
+}
+
+.ach-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Прогресс-бар */
+.ach-progress-section {
+  margin: 6px 0 12px 0;
+}
+
+.ach-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.ach-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ach-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+
+.achievement-card.unlocked .ach-progress-fill {
+  background: linear-gradient(90deg, #eab308, #facc15);
+}
+
+.achievement-card.claimed .ach-progress-fill {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+/* Футер карточки */
+.ach-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ach-reward-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+
+.ach-action-area {
+  display: flex;
+  align-items: center;
+}
+
+.ach-claim-btn {
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #0f172a;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.45);
+  transition: transform 0.15s, filter 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.ach-claim-btn:hover {
+  filter: brightness(1.1);
+}
+
+.ach-claim-btn:active {
+  transform: scale(0.95);
+}
+
+.ach-claimed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
+.ach-locked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+

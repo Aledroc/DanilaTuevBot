@@ -35,6 +35,8 @@
     activePerks: [],
     shopItems: [],
     tournament: null,
+    achievements: [],
+    achFilter: "all",
   };
   const $ = (selector) => document.querySelector(selector);
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[char]));
@@ -266,6 +268,7 @@
     renderInventory(); renderArchetypes(); renderHelp();
     await loadEconomyProfile();
     await loadShopItems();
+    await loadAchievements();
     await loadTournament();
     await loadHallOfFame();
     await loadGameLeaderboard();
@@ -865,6 +868,132 @@
     }
   }
 
+  // --- Система Достижений (Achievements) ---
+
+  async function loadAchievements() {
+    const grid = $("#achievements-grid");
+    if (!grid) return;
+
+    try {
+      const data = await request("/api/achievements");
+      state.achievements = Array.isArray(data.achievements) ? data.achievements : [];
+    } catch (e) {
+      console.warn("Achievements fetch failed, using defaults", e);
+      if (!state.achievements || !state.achievements.length) {
+        state.achievements = [];
+      }
+    }
+    renderAchievements();
+  }
+
+  function renderAchievements() {
+    const grid = $("#achievements-grid");
+    const countEl = $("#achievements-count");
+    if (!grid) return;
+
+    const achs = state.achievements || [];
+    const unlockedCount = achs.filter(a => a.unlocked).length;
+    if (countEl) {
+      countEl.textContent = `${unlockedCount} / ${achs.length}`;
+    }
+
+    const filter = state.achFilter || "all";
+    const filtered = achs.filter(a => filter === "all" || a.category === filter);
+
+    if (!filtered.length) {
+      grid.innerHTML = '<p class="empty-state">Нет достижений в этой категории.</p>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(ach => {
+      const isUnlocked = !!ach.unlocked;
+      const isClaimed = !!ach.claimed;
+      const cardClass = isClaimed
+        ? "achievement-card claimed"
+        : (isUnlocked ? "achievement-card unlocked unclaimed" : "achievement-card locked");
+
+      const req = ach.req_progress || 1;
+      const curr = isUnlocked ? req : Math.min(ach.current_progress || 0, req);
+      const pct = Math.min(100, Math.round((curr / req) * 100));
+
+      let actionHtml = "";
+      if (isClaimed) {
+        actionHtml = '<span class="ach-claimed-badge">✅ Получено</span>';
+      } else if (isUnlocked) {
+        actionHtml = `<button class="ach-claim-btn" data-claim-ach="${escapeHtml(ach.id)}">Забрать 🪙 ${ach.reward}</button>`;
+      } else {
+        actionHtml = '<span class="ach-locked-badge">🔒 Заблокировано</span>';
+      }
+
+      return `
+        <article class="${cardClass}" data-ach-id="${escapeHtml(ach.id)}">
+          <div class="ach-card-header">
+            <div class="ach-icon-box">
+              <span>${ach.icon || "🏅"}</span>
+              ${!isUnlocked ? '<span class="ach-lock-badge">🔒</span>' : ''}
+            </div>
+            <div class="ach-info">
+              <h3 class="ach-title">${escapeHtml(ach.name)}</h3>
+              <p class="ach-desc">${escapeHtml(ach.desc)}</p>
+            </div>
+          </div>
+
+          <div class="ach-progress-section">
+            <div class="ach-progress-labels">
+              <span>Прогресс</span>
+              <span>${curr} / ${req} (${pct}%)</span>
+            </div>
+            <div class="ach-progress-track">
+              <div class="ach-progress-fill" style="width: ${pct}%"></div>
+            </div>
+          </div>
+
+          <div class="ach-footer">
+            <div class="ach-reward-badge">
+              <span>🪙</span>
+              <span>+${ach.reward}</span>
+            </div>
+            <div class="ach-action-area">
+              ${actionHtml}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  async function handleClaimAchievement(achId) {
+    if (!achId) return;
+    const btn = $(`[data-claim-ach="${achId}"]`);
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await request("/api/achievements/claim", {
+        method: "POST",
+        body: JSON.stringify({ achievement_id: achId }),
+      });
+      const data = res.result || res;
+      if (data.balance != null) {
+        updateBalanceDisplay(data.balance);
+      } else if (data.reward) {
+        updateBalanceDisplay(state.coins + data.reward);
+      }
+
+      toast(data.message || "🎉 Награда успешно получена!");
+
+      // Обновляем статус ачивки локально
+      const target = (state.achievements || []).find(a => a.id === achId);
+      if (target) {
+        target.claimed = true;
+      }
+      renderAchievements();
+    } catch (err) {
+      console.warn("Claim error:", err);
+      toast(err.message || "Ошибка получения награды");
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function setupGameModal() {
     const modal = $("#game-modal");
     const iframe = $("#game-iframe");
@@ -1111,6 +1240,25 @@
 
   $("#refresh-tournament")?.addEventListener("click", () => {
     loadTournament().catch((err) => toast(err.message));
+  });
+
+  // Обработчики клика по фильтрам и кнопкам клейма достижений
+  document.addEventListener("click", (event) => {
+    const filterBtn = event.target.closest(".ach-filter-btn");
+    if (filterBtn) {
+      document.querySelectorAll(".ach-filter-btn").forEach(b => b.classList.toggle("active", b === filterBtn));
+      state.achFilter = filterBtn.dataset.filter || "all";
+      renderAchievements();
+      return;
+    }
+
+    const claimBtn = event.target.closest("[data-claim-ach]");
+    if (claimBtn) {
+      const achId = claimBtn.dataset.claimAch;
+      if (achId) {
+        handleClaimAchievement(achId);
+      }
+    }
   });
 
   setupGameModal();

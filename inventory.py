@@ -1263,6 +1263,26 @@ def _connect():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_achievements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                achievement_id TEXT NOT NULL,
+                unlocked_at INTEGER NOT NULL,
+                claimed INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(user_id, achievement_id)
+            )
+            """
+        )
+        for col_stmt in (
+            "ALTER TABLE user_economy ADD COLUMN total_spent INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE user_economy ADD COLUMN total_messages INTEGER NOT NULL DEFAULT 0",
+        ):
+            try:
+                conn.execute(col_stmt)
+            except Exception:
+                pass
         yield conn
         conn.commit()
     except Exception:
@@ -1722,7 +1742,11 @@ def add_item(chat_id: int, user_id: int, name: str) -> str | None:
             "INSERT INTO inventory (chat_id, user_id, item_name, quantity) VALUES (?, ?, ?, 1)",
             (int(chat_id), int(user_id), name),
         )
-        return name
+    try:
+        check_user_achievements(int(user_id))
+    except Exception:
+        pass
+    return name
 
 
 def remove_one(chat_id: int, user_id: int, name: str) -> str | None:
@@ -1989,6 +2013,11 @@ def record_game_score(game_id: str, user_id: int, user_name: str, score: int, ch
         ).fetchone()
         personal_best = best_row[0] if best_row and best_row[0] is not None else score
         
+    try:
+        check_user_achievements(int(user_id))
+    except Exception:
+        pass
+
     return {
         "game_id": game_id,
         "score": score,
@@ -2220,6 +2249,12 @@ def record_game_score(game_name: str, user_id: int, user_name: str, chat_id: int
         except Exception:
             pass
 
+    if user_id:
+        try:
+            check_user_achievements(int(user_id))
+        except Exception:
+            pass
+
     return {
         "game_id": game_key,
         "game_name": game_key,
@@ -2420,8 +2455,14 @@ def spend_coins(user_id: int, amount: int, reason: str = "") -> bool:
             if current < amt:
                 return False
             conn.execute(
-                "UPDATE user_economy SET coins = coins - ?, updated_at = ? WHERE user_id = ?",
-                (amt, now, int(user_id)),
+                """
+                UPDATE user_economy
+                SET coins = coins - ?,
+                    total_spent = COALESCE(total_spent, 0) + ?,
+                    updated_at = ?
+                WHERE user_id = ?
+                """,
+                (amt, amt, now, int(user_id)),
             )
             return True
     except Exception:
@@ -2488,13 +2529,18 @@ def claim_daily_streak(user_id: int) -> dict:
                 (reward, streak, today, now, int(user_id)),
             )
             new_coins = current_coins + reward
-            return {
+            ret_data = {
                 "streak": streak,
                 "reward": reward,
                 "claimed": True,
                 "coins": new_coins,
                 "message": f"Ежедневная награда! +{reward} монет! Стрик: {streak} дн.",
             }
+        try:
+            check_user_achievements(int(user_id))
+        except Exception:
+            pass
+        return ret_data
     except Exception as e:
         return {"streak": 0, "reward": 0, "claimed": False, "message": f"Ошибка: {e}"}
 
@@ -2516,28 +2562,43 @@ def record_chat_message_activity(chat_id: int, user_id: int) -> dict:
             if not row:
                 conn.execute(
                     """
-                    INSERT INTO user_economy (user_id, coins, last_message_award, updated_at)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO user_economy (user_id, coins, last_message_award, total_messages, updated_at)
+                    VALUES (?, ?, ?, 1, ?)
                     """,
                     (int(user_id), 2, now, now),
                 )
-                return {"awarded": True, "coins_added": 2, "balance": 2}
+                result_dict = {"awarded": True, "coins_added": 2, "balance": 2}
+            else:
+                coins, last_award = row
+                # Увеличиваем счетчик сообщений в user_economy
+                try:
+                    conn.execute(
+                        "UPDATE user_economy SET total_messages = COALESCE(total_messages, 0) + 1 WHERE user_id = ?",
+                        (int(user_id),),
+                    )
+                except Exception:
+                    pass
 
-            coins, last_award = row
-            if (now - last_award) < cooldown:
-                return {"awarded": False, "coins_added": 0, "balance": coins}
-
-            # Начисляем 2 монеты за активность
-            coins_added = 2
-            conn.execute(
-                """
-                UPDATE user_economy
-                SET coins = coins + ?, last_message_award = ?, updated_at = ?
-                WHERE user_id = ?
-                """,
-                (coins_added, now, now, int(user_id)),
-            )
-            return {"awarded": True, "coins_added": coins_added, "balance": coins + coins_added}
+                if (now - last_award) < cooldown:
+                    result_dict = {"awarded": False, "coins_added": 0, "balance": coins}
+                else:
+                    # Начисляем 2 монеты за активность
+                    coins_added = 2
+                    conn.execute(
+                        """
+                        UPDATE user_economy
+                        SET coins = coins + ?, last_message_award = ?, updated_at = ?
+                        WHERE user_id = ?
+                        """,
+                        (coins_added, now, now, int(user_id)),
+                    )
+                    result_dict = {"awarded": True, "coins_added": coins_added, "balance": coins + coins_added}
+        # Проверяем достижения ПОСЛЕ закрытия соединения conn
+        try:
+            check_user_achievements(int(user_id))
+        except Exception:
+            pass
+        return result_dict
     except Exception:
         return {"awarded": False, "coins_added": 0, "balance": 0}
 
@@ -2688,6 +2749,10 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
         pass
 
     new_balance = get_user_coins(user_id)
+    try:
+        check_user_achievements(int(user_id))
+    except Exception:
+        pass
     return {
         "success": True,
         "item_id": item_id,
@@ -2985,4 +3050,450 @@ def award_weekly_tournament_winners(season_id: str | None = None) -> list[dict]:
             "title": award["title"],
         })
     return results
+
+
+# ==========================================
+# ДОСТИЖЕНИЯ И БЕЙДЖИ (ACHIEVEMENTS)
+# ==========================================
+
+ACHIEVEMENTS_LIST = [
+    # --- Мини-игры ---
+    {
+        "id": "tower_master",
+        "name": "Небоскреб качалки",
+        "desc": "Построить башню от 20 этажей в Tower Stack",
+        "icon": "🏗️",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 20,
+    },
+    {
+        "id": "timber_beast",
+        "name": "Лесоруб Билли",
+        "desc": "Набрать 50+ очков в Timberman",
+        "icon": "🪓",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 50,
+    },
+    {
+        "id": "knife_sniper",
+        "name": "Мастер спанкинга",
+        "desc": "Набрать 30+ очков в Knife Hit",
+        "icon": "🗡️",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 30,
+    },
+    {
+        "id": "hoop_legend",
+        "name": "Dungeon Slammer",
+        "desc": "Забить 15+ мячей в Баскетболе",
+        "icon": "🏀",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 15,
+    },
+    {
+        "id": "brick_breaker",
+        "name": "Дробитель кирпичей",
+        "desc": "Набрать 500+ очков в Арканоиде",
+        "icon": "🧱",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 500,
+    },
+    {
+        "id": "color_god",
+        "name": "Радужный флекс",
+        "desc": "Набрать 25+ очков в Color Switch",
+        "icon": "🌈",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 25,
+    },
+    {
+        "id": "hockey_pro",
+        "name": "Гроза шайбы",
+        "desc": "Набрать 7+ очков в Аэрохоккее",
+        "icon": "🏒",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 7,
+    },
+    {
+        "id": "mole_hunter",
+        "name": "Каратель Джаброни",
+        "desc": "Набрать 40+ очков в Whack-a-Mole",
+        "icon": "🔨",
+        "reward": 150,
+        "category": "minigames",
+        "req_progress": 40,
+    },
+    {
+        "id": "math_genius",
+        "name": "Сила 2048",
+        "desc": "Собрать плитку 2048 в игре",
+        "icon": "🔢",
+        "reward": 300,
+        "category": "minigames",
+        "req_progress": 2048,
+    },
+    {
+        "id": "all_rounder",
+        "name": "Универсальный атлет",
+        "desc": "Сыграть во все 9 мини-игр клуба",
+        "icon": "🏅",
+        "reward": 400,
+        "category": "minigames",
+        "req_progress": 9,
+    },
+    {
+        "id": "game_champion",
+        "name": "Покоритель аркад",
+        "desc": "Сыграть суммарно 50 раз в мини-игры",
+        "icon": "🕹️",
+        "reward": 250,
+        "category": "minigames",
+        "req_progress": 50,
+    },
+    # --- Активность и Чат ---
+    {
+        "id": "first_words",
+        "name": "Добро пожаловать в клуб",
+        "desc": "Отправить первое сообщение боту",
+        "icon": "💬",
+        "reward": 50,
+        "category": "chat",
+        "req_progress": 1,
+    },
+    {
+        "id": "chat_warrior",
+        "name": "Разговорчивый слейв",
+        "desc": "Написать 100+ сообщений в чатах",
+        "icon": "🗣️",
+        "reward": 200,
+        "category": "chat",
+        "req_progress": 100,
+    },
+    {
+        "id": "night_owl",
+        "name": "Ночной качок",
+        "desc": "Общаться с ботом после 02:00 ночи (02:00 - 05:00)",
+        "icon": "🦉",
+        "reward": 100,
+        "category": "chat",
+        "req_progress": 1,
+    },
+    {
+        "id": "chat_veteran",
+        "name": "Ветеран качалки",
+        "desc": "Написать 500+ сообщений в чатах",
+        "icon": "🎖️",
+        "reward": 500,
+        "category": "chat",
+        "req_progress": 500,
+    },
+    # --- Экономика и Магазин ---
+    {
+        "id": "streak_week",
+        "name": "Железная дисциплина",
+        "desc": "Стрик ежедневного входа 7 дней подряд",
+        "icon": "🔥",
+        "reward": 300,
+        "category": "economy",
+        "req_progress": 7,
+    },
+    {
+        "id": "first_purchase",
+        "name": "Первая примерка кожи",
+        "desc": "Купить любой товар в магазине",
+        "icon": "🛍️",
+        "reward": 100,
+        "category": "economy",
+        "req_progress": 1,
+    },
+    {
+        "id": "big_spender",
+        "name": "Three Hundred Bucks",
+        "desc": "Потратить суммарно 300+ монет в магазине",
+        "icon": "💵",
+        "reward": 200,
+        "category": "economy",
+        "req_progress": 300,
+    },
+    {
+        "id": "gold_hoard",
+        "name": "Золотой слиток",
+        "desc": "Накопить баланс от 1000 монет",
+        "icon": "💰",
+        "reward": 250,
+        "category": "economy",
+        "req_progress": 1000,
+    },
+    {
+        "id": "lord_of_gym",
+        "name": "Boss of this Gym",
+        "desc": "Накопить 5000 монет или купить VIP-статус",
+        "icon": "👑",
+        "reward": 1000,
+        "category": "economy",
+        "req_progress": 1,
+    },
+    # --- Инвентарь ---
+    {
+        "id": "first_gear",
+        "name": "Первый лут",
+        "desc": "Получить свой первый предмет в инвентарь",
+        "icon": "📦",
+        "reward": 50,
+        "category": "inventory",
+        "req_progress": 1,
+    },
+    {
+        "id": "hoarder",
+        "name": "Плюшкин подземелья",
+        "desc": "Собрать 10 уникальных предметов в инвентаре",
+        "icon": "🎒",
+        "reward": 200,
+        "category": "inventory",
+        "req_progress": 10,
+    },
+]
+
+ACHIEVEMENT_MAP = {ach["id"]: ach for ach in ACHIEVEMENTS_LIST}
+
+
+def check_and_unlock_achievement(user_id: int, achievement_id: str) -> bool:
+    """Проверяет и открывает достижение для пользователя, если оно еще не открыто."""
+    if not user_id or achievement_id not in ACHIEVEMENT_MAP:
+        return False
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            # Проверяем, существует ли уже разблокировка
+            row = conn.execute(
+                "SELECT id FROM user_achievements WHERE user_id = ? AND achievement_id = ?",
+                (int(user_id), str(achievement_id)),
+            ).fetchone()
+            if row:
+                return False  # Уже открыто
+
+            conn.execute(
+                """
+                INSERT INTO user_achievements (user_id, achievement_id, unlocked_at, claimed)
+                VALUES (?, ?, ?, 0)
+                """,
+                (int(user_id), str(achievement_id), now),
+            )
+            return True
+    except Exception:
+        return False
+
+
+def get_user_achievements(user_id: int) -> list[dict]:
+    """Возвращает полный список достижений с текущим статусом и прогрессом для пользователя."""
+    if not user_id:
+        return []
+
+    unlocked_map = {}
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT achievement_id, unlocked_at, claimed FROM user_achievements WHERE user_id = ?",
+                (int(user_id),),
+            ).fetchall()
+            for r in rows:
+                unlocked_map[r[0]] = {
+                    "unlocked_at": r[1],
+                    "claimed": bool(r[2]),
+                }
+    except Exception:
+        pass
+
+    # Вычисляем прогресс по категориям
+    progress_map = _calculate_user_achievement_progress(int(user_id))
+
+    result = []
+    for ach in ACHIEVEMENTS_LIST:
+        ach_id = ach["id"]
+        is_unlocked = ach_id in unlocked_map
+        is_claimed = unlocked_map[ach_id]["claimed"] if is_unlocked else False
+        unlocked_at = unlocked_map[ach_id]["unlocked_at"] if is_unlocked else 0
+        curr_progress = progress_map.get(ach_id, 0)
+        req_progress = ach.get("req_progress", 1)
+
+        result.append({
+            "id": ach_id,
+            "name": ach["name"],
+            "desc": ach["desc"],
+            "icon": ach["icon"],
+            "reward": ach["reward"],
+            "category": ach["category"],
+            "req_progress": req_progress,
+            "current_progress": min(curr_progress, req_progress) if not is_unlocked else req_progress,
+            "unlocked": is_unlocked,
+            "claimed": is_claimed,
+            "unlocked_at": unlocked_at,
+        })
+    return result
+
+
+def _calculate_user_achievement_progress(user_id: int) -> dict:
+    """Вспомогательная функция для подсчета текущего прогресса пользователя по всем ачивкам."""
+    progress = {}
+    try:
+        with _connect() as conn:
+            # 1. Лучшие рекорды по мини-играм
+            scores = conn.execute(
+                """
+                SELECT COALESCE(game_id, game_name) as g_key, MAX(score)
+                FROM game_scores
+                WHERE user_id = ?
+                GROUP BY g_key
+                """,
+                (user_id,),
+            ).fetchall()
+            game_bests = {r[0]: (r[1] or 0) for r in scores}
+            total_games_played = conn.execute(
+                "SELECT COUNT(*) FROM game_scores WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+
+            progress["tower_master"] = game_bests.get("tower_stack", 0)
+            progress["timber_beast"] = game_bests.get("timberjack", 0)
+            progress["knife_sniper"] = game_bests.get("knife_hit", 0)
+            progress["hoop_legend"] = game_bests.get("swipe_basketball", 0)
+            progress["brick_breaker"] = game_bests.get("brick_breaker", 0)
+            progress["color_god"] = game_bests.get("colorswitch", 0)
+            progress["hockey_pro"] = game_bests.get("air_hockey", 0)
+            progress["mole_hunter"] = game_bests.get("whack_mole", 0)
+            progress["math_genius"] = game_bests.get("game_2048", 0)
+
+            # Универсальный атлет: количество уникальных сыгранных игр из 9
+            unique_played = len([k for k in [
+                "tower_stack", "timberjack", "knife_hit", "swipe_basketball",
+                "brick_breaker", "colorswitch", "air_hockey", "whack_mole", "game_2048"
+            ] if k in game_bests])
+            progress["all_rounder"] = unique_played
+            progress["game_champion"] = total_games_played
+
+            # 2. Активность и чат
+            msg_sum = conn.execute(
+                "SELECT COALESCE(SUM(messages_count), 0) FROM chat_stats WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+            econ = conn.execute(
+                "SELECT coins, daily_streak, total_spent, total_messages FROM user_economy WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+            total_msgs = max(msg_sum, econ[3] if econ and len(econ) > 3 and econ[3] else 0)
+
+            progress["first_words"] = 1 if total_msgs >= 1 else 0
+            progress["chat_warrior"] = total_msgs
+            progress["chat_veteran"] = total_msgs
+
+            # 3. Экономика
+            coins = econ[0] if econ and econ[0] else 0
+            streak = econ[1] if econ and econ[1] else 0
+            total_spent = econ[2] if econ and len(econ) > 2 and econ[2] else 0
+            purchases_count = conn.execute(
+                "SELECT COUNT(*) FROM user_perks WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+            has_vip = conn.execute(
+                "SELECT 1 FROM user_perks WHERE user_id = ? AND perk_id = 'vip_badge' AND active = 1",
+                (user_id,),
+            ).fetchone() is not None
+
+            progress["streak_week"] = streak
+            progress["first_purchase"] = 1 if purchases_count >= 1 else 0
+            progress["big_spender"] = total_spent
+            progress["gold_hoard"] = coins
+            progress["lord_of_gym"] = 1 if (coins >= 5000 or has_vip) else 0
+
+            # 4. Инвентарь
+            inv_count = conn.execute(
+                "SELECT COUNT(DISTINCT item_name) FROM inventory WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+            progress["first_gear"] = min(1, inv_count)
+            progress["hoarder"] = inv_count
+
+    except Exception:
+        pass
+    return progress
+
+
+def check_user_achievements(user_id: int) -> list[str]:
+    """Проверяет все условия достижений пользователя и автоматически разблокирует выполненные.
+    Возвращает список ID вновь разблокированных ачивок.
+    """
+    if not user_id:
+        return []
+    progress_map = _calculate_user_achievement_progress(int(user_id))
+    unlocked_now = []
+
+    # Специальная проверка ночного времени (02:00 - 05:00)
+    import datetime
+    now_hour = datetime.datetime.now().hour
+    if 2 <= now_hour < 5:
+        progress_map["night_owl"] = 1
+
+    for ach in ACHIEVEMENTS_LIST:
+        ach_id = ach["id"]
+        req = ach.get("req_progress", 1)
+        curr = progress_map.get(ach_id, 0)
+        if curr >= req:
+            if check_and_unlock_achievement(user_id, ach_id):
+                unlocked_now.append(ach_id)
+
+    return unlocked_now
+
+
+def claim_achievement_reward(user_id: int, achievement_id: str) -> dict:
+    """Начисляет награду в монетах за выполненное достижение."""
+    if not user_id:
+        return {"success": False, "message": "Не указан пользователь"}
+    ach = ACHIEVEMENT_MAP.get(achievement_id)
+    if not ach:
+        return {"success": False, "message": "Достижение не найдено"}
+
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT claimed FROM user_achievements WHERE user_id = ? AND achievement_id = ?",
+                (int(user_id), str(achievement_id)),
+            ).fetchone()
+
+            if not row:
+                # Попробуем проверить, может оно выполнено прямо сейчас
+                check_user_achievements(int(user_id))
+                row = conn.execute(
+                    "SELECT claimed FROM user_achievements WHERE user_id = ? AND achievement_id = ?",
+                    (int(user_id), str(achievement_id)),
+                ).fetchone()
+                if not row:
+                    return {"success": False, "message": "Достижение еще не выполнено!"}
+
+            if row[0]:
+                return {"success": False, "message": "Награда за это достижение уже получена!"}
+
+            conn.execute(
+                "UPDATE user_achievements SET claimed = 1 WHERE user_id = ? AND achievement_id = ?",
+                (int(user_id), str(achievement_id)),
+            )
+
+        reward = ach["reward"]
+        new_balance = add_coins(user_id, reward, reason=f"achievement:{achievement_id}")
+        return {
+            "success": True,
+            "achievement_id": achievement_id,
+            "reward": reward,
+            "balance": new_balance,
+            "message": f"🎉 Получена награда +{reward} 🪙 за «{ach['name']}»!",
+        }
+    except Exception as e:
+        return {"success": False, "message": f"Ошибка клейма: {e}"}
+
 
