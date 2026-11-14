@@ -31,9 +31,8 @@
     }
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      touch-action: none;
+      box-shadow: 0 0 30px rgba(0,0,0,0.6);
     }
     /* Сенсорные зоны тапа */
     .touch-overlay {
@@ -71,7 +70,7 @@
     /* Верхняя плашка для закрытия / возврата */
     .top-controls {
       position: absolute;
-      top: 12px;
+      top: calc(12px + env(safe-area-inset-top, 0px));
       left: 12px;
       right: 12px;
       display: flex;
@@ -165,5 +164,38 @@
     </div>
   </div>
   <script src="/games/timberman/game.js"></script>
+
+  <script>
+    // Responsive Canvas Viewport Adapter for Timberman (1080x1775)
+    (function() {
+      const BASE_W = 1080;
+      const BASE_H = 1775;
+      const canvas = document.getElementById('game-canvas');
+      const container = document.getElementById('game-container');
+      if (!canvas || !container) return;
+
+      function resizeViewport() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const scale = Math.min(vw / BASE_W, vh / BASE_H);
+        const renderW = Math.round(BASE_W * scale);
+        const renderH = Math.round(BASE_H * scale);
+        
+        canvas.style.width = renderW + 'px';
+        canvas.style.height = renderH + 'px';
+        canvas.style.maxWidth = 'none';
+        canvas.style.maxHeight = 'none';
+        canvas.style.flexShrink = '0';
+      }
+
+      window.addEventListener('resize', resizeViewport);
+      window.addEventListener('orientationchange', () => setTimeout(resizeViewport, 150));
+      document.addEventListener('DOMContentLoaded', resizeViewport);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        resizeViewport();
+      }
+    })();
+  </script>
+
 </body>
 </html>

@@ -710,3 +710,35 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   *, *::before, *::after { scroll-behavior: auto !important; }
 }
 .ideas-loading { color: var(--muted); font-size: 12px; line-height: 1.4; padding: 7px 2px; }
+
+
+/* Game Fullscreen Modal Override for Gachi Theme */
+.game-fullscreen-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: #000 !important;
+  overflow: hidden !important;
+  z-index: 99999 !important;
+}
+
+.game-fullscreen-modal .game-modal-header {
+  display: none !important;
+}
+
+.game-fullscreen-modal #game-iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: #000 !important;
+}

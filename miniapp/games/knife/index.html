@@ -32,14 +32,13 @@
     }
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      touch-action: none;
+      box-shadow: 0 0 30px rgba(0,0,0,0.6);
     }
     /* Верхняя панель управления */
     .top-controls {
       position: absolute;
-      top: 14px;
+      top: calc(12px + env(safe-area-inset-top, 0px));
       left: 14px;
       right: 14px;
       display: flex;
@@ -81,5 +80,41 @@
     <canvas id="game-canvas" width="720" height="1280"></canvas>
   </div>
   <script src="/games/knife/game.js"></script>
+
+  <script>
+    // Responsive Canvas Viewport Adapter
+    (function() {
+      const BASE_W = 720;
+      const BASE_H = 1280;
+      const canvas = document.getElementById('game-canvas');
+      const container = document.getElementById('game-container');
+      if (!canvas || !container) return;
+
+      function resizeViewport() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // На смартфонах вычисляем масштаб, чтобы игра заполняла экран максимально
+        // Масштабируем по меньшей стороне с сохранением aspect ratio,
+        // но с центрированием и touch-action: none.
+        const scale = Math.min(vw / BASE_W, vh / BASE_H);
+        const renderW = Math.round(BASE_W * scale);
+        const renderH = Math.round(BASE_H * scale);
+        
+        canvas.style.width = renderW + 'px';
+        canvas.style.height = renderH + 'px';
+        canvas.style.maxWidth = 'none';
+        canvas.style.maxHeight = 'none';
+        canvas.style.flexShrink = '0';
+      }
+
+      window.addEventListener('resize', resizeViewport);
+      window.addEventListener('orientationchange', () => setTimeout(resizeViewport, 150));
+      document.addEventListener('DOMContentLoaded', resizeViewport);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        resizeViewport();
+      }
+    })();
+  </script>
+
 </body>
 </html>
