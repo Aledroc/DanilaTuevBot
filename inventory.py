@@ -2702,7 +2702,7 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
     elif item_id == "custom_title":
         title_text = ""
         if extra_data and isinstance(extra_data, dict):
-            title_text = extra_data.get("title") or extra_data.get("text") or ""
+            title_text = extra_data.get("title") or extra_data.get("title_text") or extra_data.get("text") or ""
         title_text = " ".join(str(title_text).split())[:40].strip()
         if not title_text:
             return {"success": False, "message": "Укажите текст кастомного титула (до 40 символов)"}
@@ -2713,7 +2713,7 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
     elif item_id == "mood_override":
         mood_text = ""
         if extra_data and isinstance(extra_data, dict):
-            mood_text = extra_data.get("mood") or extra_data.get("text") or ""
+            mood_text = extra_data.get("mood") or extra_data.get("vibe") or extra_data.get("text") or ""
         mood_text = " ".join(str(mood_text).split())[:120].strip() or "Безудержное веселье и сарказм"
         extra_str = mood_text
         expires_at = now + 1800  # 30 минут
@@ -2726,8 +2726,8 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
         hint = ""
         if extra_data and isinstance(extra_data, dict):
             target_id = int(extra_data.get("target_user_id") or 0)
-            target_name = str(extra_data.get("target_name") or "").strip()
-            hint = str(extra_data.get("hint") or "").strip()
+            target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
+            hint = str(extra_data.get("roast_topic") or extra_data.get("hint") or "").strip()
         if chat_id and target_id:
             order_custom_roast(user_id, chat_id, target_id, target_name or f"Игрок {target_id}", hint)
 

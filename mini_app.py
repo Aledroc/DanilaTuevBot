@@ -425,6 +425,12 @@ class Handler(BaseHTTPRequestHandler):
                 item_id = str(data.get("item_id") or "").strip()
                 if not item_id:
                     raise ValueError("Не указан идентификатор товара (item_id)")
+                # Маппинг устаревших или альтернативных id из фронтенда
+                if item_id == "roast_friend":
+                    item_id = "custom_roast"
+                elif item_id == "mood_change":
+                    item_id = "mood_override"
+
                 chat_id = data.get("chat_id")
                 if not chat_id:
                     last_group = inventory.get_last_group_chat(user["id"])
@@ -434,7 +440,7 @@ class Handler(BaseHTTPRequestHandler):
                     chat_id = int(chat_id) if chat_id else None
                 except (ValueError, TypeError):
                     chat_id = None
-                extra_data = data.get("extra_data") or {}
+                extra_data = data.get("extra_data") or data.get("details") or {}
                 result = inventory.buy_shop_item(
                     user_id=user["id"],
                     item_id=item_id,

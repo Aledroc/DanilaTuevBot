@@ -396,19 +396,9 @@ def handle_text(message):
         or container_loss_target
     )
 
-    if not addressed:
-        # Сообщение адресовано другому человеку — бот не вмешивается
-        to_other = bool(
-            message.reply_to_message and message.reply_to_message.from_user
-            and message.reply_to_message.from_user.id != BOT_ID
-        ) or bool(re.search(r'@\w+', text))
-        if to_other:
-            return
-        # Проходная реплика: считаем, но встреваем редко и только на содержательное
-        state['message_count'] += 1
-        substantial = len(text.strip()) >= 25 or '?' in text
-        if not (substantial and state['message_count'] >= state['target_count']):
-            return
+    # В группах бот отвечает только если обратились к нему, либо в личке
+    if not is_private and not addressed:
+        return
 
     spontaneous = not addressed
     state['message_count'] = 0
@@ -485,7 +475,7 @@ if __name__ == '__main__':
     mini_app.BOT_USERNAME = BOT_USERNAME
     mini_app.start_background()
     start_midnight_reset_thread()
-    start_proactive_loop_thread()
+    # start_proactive_loop_thread()  # Отключено: бот больше не спамит авто-сообщениями в тишине чата
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.CRITICAL)

@@ -507,7 +507,7 @@
       ]
     },
     {
-      id: "roast_friend",
+      id: "custom_roast",
       name: "🎯 Спанкинг / Заказной подкол",
       icon: "🎯",
       price: 100,
@@ -559,7 +559,7 @@
       fields: []
     },
     {
-      id: "mood_change",
+      id: "mood_override",
       name: "Атмосфера Подземелья (Вайб)",
       icon: "🎭",
       price: 150,
@@ -693,17 +693,19 @@
       return;
     }
 
-    const payload = {
-      item_id: selectedShopItem.id,
-      chat_id: state.chatId || state.chatTarget?.chat_id || null,
-      details: {}
-    };
-
+    const details = {};
     const fields = selectedShopItem.fields || [];
     fields.forEach((field) => {
       const el = $(`#shop-input-${field.id}`);
-      if (el) payload.details[field.id] = el.value.trim();
+      if (el) details[field.id] = el.value.trim();
     });
+
+    const payload = {
+      item_id: selectedShopItem.id,
+      chat_id: state.chatId || state.chatTarget?.chat_id || null,
+      details: details,
+      extra_data: details
+    };
 
     const buyBtn = $("#confirm-buy-btn");
     buyBtn.disabled = true;
@@ -731,9 +733,9 @@
       toast(`🎉 Успешно куплено: «${selectedShopItem.name}»!`);
 
       // Если покупка требует отправки действия в чат (например заказной подкол)
-      if (selectedShopItem.id === "roast_friend" && payload.details.target_user) {
+      if ((selectedShopItem.id === "custom_roast" || selectedShopItem.id === "roast_friend") && payload.details.target_user) {
         openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
-      } else if (selectedShopItem.id === "mood_change" && payload.details.vibe) {
+      } else if ((selectedShopItem.id === "mood_override" || selectedShopItem.id === "mood_change") && payload.details.vibe) {
         openMessageDraft(`/mood ${payload.details.vibe}`);
       }
     } catch (err) {
