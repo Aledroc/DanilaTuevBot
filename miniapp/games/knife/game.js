@@ -262,6 +262,9 @@
     }
 
     submitScore(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'knife_hit', score: score }, '*');
+    }
   }
 
   // Отправка счёта на сервер

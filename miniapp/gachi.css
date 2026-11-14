@@ -742,3 +742,225 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   border: none !important;
   background: #000 !important;
 }
+
+
+/* Выпадающий лидерборд прямо внутри карточки игры (.game-card-leaderboard) */
+.game-card-leaderboard {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(145deg, #0a1122, #060a14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 12px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.7), 0 4px 15px rgba(0, 210, 255, 0.15);
+  animation: slideDownLeaderboard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownLeaderboard {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-lb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.card-lb-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.card-lb-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.card-lb-close:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-color: #ef4444;
+}
+
+.card-lb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.card-lb-body .leader-row {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.card-lb-body .leader-rank {
+  font-size: 13px;
+  min-width: 22px;
+}
+
+/* Окно Game Over Leaderboard Overlay поверх игры */
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 17, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.game-over-card {
+  width: 100%;
+  max-width: 360px;
+  background: linear-gradient(155deg, #101a33, #080d1a);
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  border-radius: 20px;
+  box-shadow: 0 0 35px rgba(0, 210, 255, 0.3), 0 20px 40px rgba(0, 0, 0, 0.8);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.game-over-badge {
+  font-family: Impact, "Arial Narrow", sans-serif;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  color: #ff4757;
+  text-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+  margin-bottom: 8px;
+}
+
+.game-over-score-wrap {
+  margin-bottom: 14px;
+}
+
+.game-over-score-lbl {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.game-over-score-val {
+  font-size: 44px;
+  font-weight: 900;
+  color: #fde047;
+  line-height: 1.1;
+  text-shadow: 0 0 16px rgba(253, 224, 71, 0.6);
+}
+
+.game-over-leaderboard-box {
+  width: 100%;
+  background: rgba(6, 10, 20, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.game-over-lb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  color: #38bdf8;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.game-over-game-name {
+  color: #94a3b8;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-over-lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+.game-over-lb-list .leader-row {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.game-over-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.game-over-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.game-over-btn:active {
+  transform: scale(0.96);
+}
+
+.game-over-btn.btn-retry {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.game-over-btn.btn-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f6fc;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

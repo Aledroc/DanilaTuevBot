@@ -318,6 +318,9 @@
     }
 
     submitScore(finalPoints);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'air_hockey', score: finalPoints }, '*');
+    }
   }
 
   // --- Swept / Continuous Collision Resolution ---

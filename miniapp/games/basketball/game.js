@@ -130,6 +130,9 @@
       } catch (_) {}
     }
     submitScore(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'swipe_basketball', score: score }, '*');
+    }
   }
 
   async function submitScore(finalScore) {

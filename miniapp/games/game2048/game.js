@@ -382,6 +382,9 @@
     btnKeep.style.display = 'none';
     gameMsgNode.classList.add('active');
     submitScoreToServer(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'game_2048', score: score }, '*');
+    }
   }
 
   // Обработка свайпов (Touch Events)

@@ -14,7 +14,7 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">DEEP DARK GYM • LEATHER CLUB</p>
-        <h1 id="greeting">Инвентарь</h1>
+        <h1 id="greeting">🎮 Dungeon Games</h1>
         <div class="user-economy-bar" id="user-economy-bar">
           <div class="economy-badge coins-badge" title="Монеты">
             <span class="economy-icon">🪙</span>
@@ -33,28 +33,28 @@
     <p id="app-status" class="status-message" role="status" aria-live="polite">Загрузка профиля…</p>
 
     <nav class="tabs" aria-label="Разделы">
-      <button class="tab active" data-tab="inventory">Инвентарь</button>
-      <button class="tab" data-tab="shop">🏪 Магазин</button>
-      <button class="tab" data-tab="tournament">🏆 Кубок</button>
-      <button class="tab" data-tab="games">🎮 Игры</button>
-      <button class="tab" data-tab="fame">Топ игроков</button>
-      <button class="tab" data-tab="archetypes">Архетипы</button>
+      <button class="tab active" data-tab="games">🎮 Dungeon Games</button>
+      <button class="tab" data-tab="inventory">🎒 Снаряга Слейва</button>
+      <button class="tab" data-tab="shop">🏪 Leather Shop ($300 Store)</button>
+      <button class="tab" data-tab="tournament">🏆 Турнир Качалки (Boss Cup)</button>
+      <button class="tab" data-tab="fame">👑 Зал Качков (Masters)</button>
+      <button class="tab" data-tab="archetypes">🎭 Каста Подземелья</button>
       <button class="tab" data-tab="prompt">Промпт</button>
-      <button class="tab" data-tab="help">Справка</button>
+      <button class="tab" data-tab="help">📜 Кодекс Раздевалки</button>
     </nav>
 
-    <section class="view active" id="inventory-view">
-      <div class="section-heading"><div><p class="eyebrow">DUNGEON GEAR • СНАРЯЖЕНИЕ</p><h2>Мои вещи</h2></div><span class="count" id="item-count">0</span></div>
+    <section class="view" id="inventory-view">
+      <div class="section-heading"><div><p class="eyebrow">DUNGEON GEAR • СНАРЯЖЕНИЕ СЛЕЙВА</p><h2>Снаряга Слейва</h2></div><span class="count" id="item-count">0</span></div>
       <div id="inventory-list" class="inventory-list"></div>
-      <p id="inventory-empty" class="empty-state" hidden>Инвентарь пока пуст.</p>
+      <p id="inventory-empty" class="empty-state" hidden>В раздевалке пусто. Ни одного кожаного ремня или плети!</p>
     </section>
 
     <!-- Вкладка Магазин (Shop) -->
     <section class="view" id="shop-view">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">DUNGEON SHOP • БУСТЫ И СТАТУС</p>
-          <h2>🏪 Магазин перков</h2>
+          <p class="eyebrow">DUNGEON SHOP • THREE HUNDRED BUCKS</p>
+          <h2>🏪 Leather Shop ($300 Store)</h2>
         </div>
         <div class="shop-balance-pill" id="shop-balance-pill">
           🪙 <span id="shop-user-coins">0</span>
@@ -64,14 +64,14 @@
       <!-- Активные перки -->
       <div class="active-perks-box" id="active-perks-box" style="display:none;">
         <div class="active-perks-header">
-          <span class="active-perks-title">⚡ Твои активные перки:</span>
+          <span class="active-perks-title">⚡ Твои кожаные перки и ауры:</span>
         </div>
         <div class="active-perks-list" id="active-perks-list"></div>
       </div>
 
       <!-- Каталог товаров -->
       <div class="shop-catalog" id="shop-catalog">
-        <div class="loading-state">Загрузка витрины товаров…</div>
+        <div class="loading-state">Подвозим кожаное снаряжение за $300…</div>
       </div>
     </section>
 
@@ -80,44 +80,44 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">BOSS OF THIS GYM • АРЕНА ЧЕМПИОНОВ</p>
-          <h2>🏆 Еженедельный кубок</h2>
+          <h2>🏆 Турнир Качалки (Boss Cup)</h2>
         </div>
         <button class="icon-button" id="refresh-tournament" title="Обновить кубок" aria-label="Обновить">↻</button>
       </div>
 
       <!-- Баннер кубка с таймером -->
       <div class="cup-banner">
-        <div class="cup-badge">СЕЗОН АКТИВЕН</div>
+        <div class="cup-badge">СЕЗОН ФЛЕКСА АКТИВЕН</div>
         <div class="cup-header-content">
           <div class="cup-trophy-icon">🏆</div>
           <div class="cup-details">
-            <h3 class="cup-title" id="cup-title">Еженедельный гран-при</h3>
-            <p class="cup-desc">Сумма всех лучших очков из 9 мини-игр! Стань Boss of this Gym, забери золотой кубок и солидный банк монет!</p>
+            <h3 class="cup-title" id="cup-title">Гран-при Подземелья • $300 Trophy</h3>
+            <p class="cup-desc">Сумма всех лучших очков из 9 Dungeon Games! Докажи, кто здесь Boss of this Gym, забери кубок и солидный банк баксов!</p>
           </div>
         </div>
         <div class="cup-timer-bar">
-          <span class="timer-label">⏳ До конца недели:</span>
+          <span class="timer-label">⏳ До коронации Boss of this Gym:</span>
           <span class="timer-value" id="cup-countdown">Загрузка…</span>
         </div>
       </div>
 
       <!-- Награды турнира -->
       <div class="tournament-rewards-card">
-        <h4 class="rewards-heading">🎁 Призовой фонд кубка:</h4>
+        <h4 class="rewards-heading">🎁 Призовой фонд качалки:</h4>
         <div class="rewards-grid">
           <div class="reward-tier tier-gold">
             <div class="tier-medal">🥇 1 Место</div>
-            <div class="tier-prize">🪙 +500 монет</div>
+            <div class="tier-prize">🪙 +500 баксов</div>
             <div class="tier-title">👑 Титул «Boss of this Gym»</div>
           </div>
           <div class="reward-tier tier-silver">
             <div class="tier-medal">🥈 2 Место</div>
-            <div class="tier-prize">🪙 +250 монет</div>
+            <div class="tier-prize">🪙 +250 баксов</div>
             <div class="tier-title">⚡ Титул «Dungeon Master»</div>
           </div>
           <div class="reward-tier tier-bronze">
             <div class="tier-medal">🥉 3 Место</div>
-            <div class="tier-prize">🪙 +100 монет</div>
+            <div class="tier-prize">🪙 +100 баксов</div>
             <div class="tier-title">🔥 Титул «Leather Master»</div>
           </div>
         </div>
@@ -125,18 +125,18 @@
 
       <!-- Турнирная таблица -->
       <div class="section-heading" style="margin-top: 20px;">
-        <div><p class="eyebrow">LEADERBOARD • РЕЙТИНГ</p><h3>Лидеры недели по сумме очков</h3></div>
+        <div><p class="eyebrow">LEADERBOARD • РЕЙТИНГ</p><h3>Лидеры качалки по сумме очков</h3></div>
       </div>
       <div id="tournament-leaderboard-list" class="leaderboard-list">
-        <div class="loading-state">Загрузка турнирной таблицы…</div>
+        <div class="loading-state">Проверяем форму качков недели…</div>
       </div>
     </section>
 
-    <section class="view" id="games-view">
+    <section class="view active" id="games-view">
       <div class="section-heading games-hub-header">
         <div>
-          <p class="eyebrow">IRON ARENA • ИГРОВАЯ ВИТРИНА</p>
-          <h2>🎮 Мини-игры (9 хитов)</h2>
+          <p class="eyebrow">IRON ARENA • DUNGEON GAMES</p>
+          <h2>🎮 Dungeon Games (9 испытаний)</h2>
         </div>
       </div>
 
@@ -148,8 +148,8 @@
             <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffd8a8;">🏗</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#e53935,#f39c12);color:#fff;">🏗 СТЕК И ТАЙМИНГ</span>
-              <h3 class="game-hub-title">Башня коробок</h3>
-              <p class="game-hub-desc">Стройте небоскреб из раскачивающихся блоков крана с комбо и Perfect-таймингом!</p>
+              <h3 class="game-hub-title">🏗 Стек Штанги • Dungeon Bench</h3>
+              <p class="game-hub-desc">Ставь блины на гриф, строй пирамиду весов в раздевалке с Perfect-таймингом!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -168,8 +168,8 @@
             <div class="game-hub-icon-wrap" style="background:#2b2219;border-color:#8d4925;">🪓</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#d35400,#e67e22);color:#fff;">🪓 РЕАКЦИЯ И СКОРОСТЬ</span>
-              <h3 class="game-hub-title">Timberman • Дровосек</h3>
-              <p class="game-hub-desc">Рубите ствол слева и справа, уворачивайтесь от сучьев и разгоняйте комбо!</p>
+              <h3 class="game-hub-title">🪓 Leather Lumberjack • Лесоруб Билли</h3>
+              <p class="game-hub-desc">Руби стволы слева и справа, уворачивайся от плетей и разгоняй гачи-комбо!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -188,8 +188,8 @@
             <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffb74d;">🎯</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;">🎯 ТОЧНОСТЬ</span>
-              <h3 class="game-hub-title">Ножевой тир • Knife Hit</h3>
-              <p class="game-hub-desc">Втыкайте ножи во вращающуюся деревянную мишень и не задевайте лезвия!</p>
+              <h3 class="game-hub-title">🎯 Метание дилдо / Спанкинг • Spank Hit</h3>
+              <p class="game-hub-desc">Вонзай снаряды в деревянный бочонок качалки, не задевай рукояти и спанкуй точно в цель!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -208,8 +208,8 @@
             <div class="game-hub-icon-wrap" style="background:#fff3e0;border-color:#ffb74d;">🏀</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#ff9800,#e65100);color:#fff;">🏀 СПОРТ И ФИЗИКА</span>
-              <h3 class="game-hub-title">Свайп-Баскетбол</h3>
-              <p class="game-hub-desc">Точным свайпом забрасывайте мяч в корзину, выбивайте Swish и зажигайте режим On Fire!</p>
+              <h3 class="game-hub-title">🏀 Dungeon Slam • Бросок в кольцо качалки</h3>
+              <p class="game-hub-desc">Забрось шар в корзину раздевалки свайпом, делай чистое попадание и зажигай On Fire!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -228,8 +228,8 @@
             <div class="game-hub-icon-wrap" style="background:#0d1b2a;border-color:#00f0ff;">🧱</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#00f0ff,#bd00ff);color:#fff;">🧱 КИБЕР-АРКАДА</span>
-              <h3 class="game-hub-title">Неоновый Арканоид</h3>
-              <p class="game-hub-desc">Управляйте платформой пальцем, разрушайте неоновые блоки, ловите лазеры и шары!</p>
+              <h3 class="game-hub-title">🧱 Smash the Jabroni • Кибер-Дробилка</h3>
+              <p class="game-hub-desc">Разбивай блоки и препятствия хромированной платформой, лови лазеры и сокрушай джаброни!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -248,8 +248,8 @@
             <div class="game-hub-icon-wrap" style="background:#111319;border-color:#16e0e6;">🌈</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#f6e21b,#ff017b);color:#fff;">🌈 НЕОН-РИТМ</span>
-              <h3 class="game-hub-title">Color Switch</h3>
-              <p class="game-hub-desc">Тапайте для прыжка, проходите препятствия только через свой цвет и меняйте палитру!</p>
+              <h3 class="game-hub-title">🌈 Rainbow Dungeon • Цветной флекс</h3>
+              <p class="game-hub-desc">Пробивайся сквозь кольца нужного цвета в подземелье, тапай ритмично и меняй окрас!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -268,8 +268,8 @@
             <div class="game-hub-icon-wrap" style="background:#0a0e27;border-color:#38bdf8;">🏒</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;">🏒 ДУЭЛЬ И ДРАЙВ</span>
-              <h3 class="game-hub-title">Неоновый Аэрохоккей</h3>
-              <p class="game-hub-desc">Сочная дуэль против умного AI! Забивайте шайбы с рикошетом и бейте серию побед!</p>
+              <h3 class="game-hub-title">🏒 Ice Gym Clash • Аэрохоккей Слейвов</h3>
+              <p class="game-hub-desc">Дуэль на ледовом столе против Dungeon AI! Забивай шайбы с рикошетом и забирай победу!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -288,8 +288,8 @@
             <div class="game-hub-icon-wrap" style="background:#1e2c18;border-color:#9ef01a;">🔨</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#70e000,#38b000);color:#fff;">🔨 ХАРДКОР РЕАКЦИЯ</span>
-              <h3 class="game-hub-title">Ударь крота • Whack</h3>
-              <p class="game-hub-desc">Молниеносный тап молотком по выскакивающим кротам! Ловите золотых x2 и избегайте бомб!</p>
+              <h3 class="game-hub-title">🔨 Whack the Jabroni • Накажи Слейва</h3>
+              <p class="game-hub-desc">Лупи молотом по выскакивающим джаброни! Лови золотых x2 и держи удар!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -308,8 +308,8 @@
             <div class="game-hub-icon-wrap" style="background:#2a2415;border-color:#f59e0b;color:#fde047;font-weight:900;font-size:16px;">2048</div>
             <div class="game-hub-info">
               <span class="game-genre-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">🔢 ЛОГИКА</span>
-              <h3 class="game-hub-title">2048 Классика</h3>
-              <p class="game-hub-desc">Культовая числовая головоломка со свайпами во все стороны. Доберитесь до плитки 2048!</p>
+              <h3 class="game-hub-title">🔢 2048 Gym Power • Сила трех сотен баксов</h3>
+              <p class="game-hub-desc">Складывай плитки от 2 до 2048, чтобы стать истинным Boss of this Gym!</p>
             </div>
           </div>
           <div class="game-hub-meta">
@@ -328,38 +328,38 @@
         <div class="leaderboard-top-bar">
           <div class="leaderboard-game-badge">
             <span id="leaderboard-game-icon">🏗</span>
-            <span id="leaderboard-game-title">Лидеры Башни коробок</span>
+            <span id="leaderboard-game-title">Лидеры Стек Штанги • Dungeon Bench</span>
           </div>
           <button class="icon-button" id="refresh-leaderboard" title="Обновить рекорд" aria-label="Обновить рекорд">↻</button>
         </div>
         <div id="game-leaderboard-list" class="leaderboard-list">
-          <div class="loading-state">Загрузка рекордов…</div>
+          <div class="loading-state">Загрузка рекордов качалки…</div>
         </div>
       </div>
     </section>
 
     <section class="view" id="fame-view">
       <div class="section-heading">
-        <div><p class="eyebrow">HALL OF FAME • FELLOW SLAVES</p><h2>Топ игроков</h2></div>
+        <div><p class="eyebrow">HALL OF FAME • FELLOW SLAVES</p><h2>👑 Зал Качков (Masters)</h2></div>
         <span class="count" id="fame-count">0</span>
       </div>
       <div id="fame-list" class="fame-list"></div>
-      <p id="fame-empty" class="empty-state" hidden>В Зале славы пока пусто — общайтесь в чате, собирайте предметы и совершайте подвиги, чтобы занять первое место!</p>
+      <p id="fame-empty" class="empty-state" hidden>В Зале Качков пока тихо. Флексите в чате, лутайте ремни и докажите, кто здесь Dungeon Master!</p>
     </section>
 
     <section class="view" id="archetypes-view">
-      <div class="section-heading"><div><p class="eyebrow">SLAVE OR MASTER • ХАРАКТЕР</p><h2>Архетипы</h2></div><button class="primary-button" id="new-archetype">＋ Предложить архетип</button></div>
+      <div class="section-heading"><div><p class="eyebrow">SLAVE OR MASTER • ХАРАКТЕР</p><h2>🎭 Каста Подземелья</h2></div><button class="primary-button" id="new-archetype">＋ Добавить образ</button></div>
       <div id="archetype-list" class="archetype-list"></div>
     </section>
 
     <section class="view" id="prompt-view">
-      <div class="section-heading"><div><p class="eyebrow">ROLEPLAY PROMPT • ОБРАЗ</p><h2 id="prompt-title">Промпт</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">ROLEPLAY PROMPT • ОБРАЗ</p><h2 id="prompt-title">Пrompt</h2></div></div>
       <pre id="prompt-content" class="prompt-content"></pre>
-      <p id="prompt-empty" class="empty-state">Выберите архетип, чтобы увидеть его промпт.</p>
+      <p id="prompt-empty" class="empty-state">Выберите роль из Касты Подземелья, чтобы увидеть её код.</p>
     </section>
     <section class="view" id="help-view">
-      <div class="section-heading"><div><p class="eyebrow">DUNGEON RULES • СПРАВКА</p><h2>Справка</h2></div></div>
-      <p class="help-intro">Нажмите на пример — Telegram откроет общий чат с друзьями и подставит готовый черновик. Проверьте его и отправьте сами.</p>
+      <div class="section-heading"><div><p class="eyebrow">DUNGEON RULES • СПРАВКА</p><h2>📜 Кодекс Раздевалки</h2></div></div>
+      <p class="help-intro">Welcome to the club buddy! Нажмите на пример команды — Telegram откроет чат качалки и подставит готовый черновик.</p>
       <div id="command-list" class="command-list"></div>
     </section>
     <div id="toast" class="toast" role="status"></div>
@@ -421,6 +421,30 @@
       <button class="icon-button" id="close-game-modal" aria-label="Закрыть игру">×</button>
     </div>
     <iframe id="game-iframe" src="about:blank" allow="autoplay"></iframe>
+
+    <!-- Всплывающий лидерборд поверх игры при Game Over -->
+    <div id="game-over-overlay" class="game-over-overlay" style="display:none;">
+      <div class="game-over-card">
+        <div class="game-over-badge" id="game-over-title">💀 ТРЕНИРОВКА ЗАВЕРШЕНА</div>
+        <div class="game-over-score-wrap">
+          <div class="game-over-score-lbl">Твой результат:</div>
+          <div class="game-over-score-val" id="game-over-score">0</div>
+        </div>
+        <div class="game-over-leaderboard-box">
+          <div class="game-over-lb-header">
+            <span>🏆 ТОП КАРТОЧКИ:</span>
+            <span class="game-over-game-name" id="game-over-game-name">Игра</span>
+          </div>
+          <div class="game-over-lb-list" id="game-over-lb-list">
+            <div class="loading-state">Загружаем лидеров качалки…</div>
+          </div>
+        </div>
+        <div class="game-over-actions">
+          <button class="game-over-btn btn-retry" id="game-over-retry">🔄 Играть снова</button>
+          <button class="game-over-btn btn-close" id="game-over-close">🚪 В каталог игр</button>
+        </div>
+      </div>
+    </div>
   </dialog>
   <script src="/app.js"></script>
 </body>

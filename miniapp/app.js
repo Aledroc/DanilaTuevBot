@@ -109,21 +109,21 @@
   }
 
   function renderHelp() {
-    const itemName = state.items[0]?.name || "предмет";
+    const itemName = state.items[0]?.name || "кожаный ремень";
     const commands = [
-      ["Открыть Mini App", "Профиль и инвентарь", "/app"],
-      ["Инвентарь", "Посмотреть свои предметы", "/inv"],
-      ["Использовать предмет", "Поменяйте действие перед отправкой", `/use ${itemName} | опиши, как я использую предмет`],
-      ["Справка бота", "Список основных команд в чате", "/help"],
-      ["Выбрать архетип", "Ключ можно посмотреть во вкладке «Архетипы»", "/set <ключ архетипа>"],
-      ["Свой образ", "Замените текст описанием персонажа", "/prompt <описание персонажа>"],
-      ["Цель персонажа", "Замените текст новой целью", "/goal <новая цель>"],
-      ["Посмотреть образ", "Показать текущую личность персонажа", "/who"],
-      ["Озвучка", "Включить или выключить голосовые ответы", "/voice on"],
-      ["Выключить озвучку", "Отключить голосовые ответы", "/voice off"],
-      ["Новый персонаж", "Сбросить и создать нового персонажа", "/reset"],
-      ["Создать изображение", "Замените текст описанием картинки", "/img <что нарисовать>"],
-      ["Передать предмет", "Замените имя и предмет; участник должен быть известен боту", "/giveitem <имя игрока> | <предмет>"],
+      ["Открыть Mini App", "Снаряга Слейва и Dungeon Games", "/app"],
+      ["Снаряга Слейва", "Посмотреть свои кожаные вещи", "/inv"],
+      ["Использовать предмет", "Do you like what you see? Поменяйте действие перед спанком", `/use ${itemName} | опиши, как я использую предмет`],
+      ["Кодекс Раздевалки", "Список основных команд качалки", "/help"],
+      ["Каста Подземелья", "Ключ роли смотри во вкладке «Каста Подземелья»", "/set <ключ роли>"],
+      ["Свой образ бойца", "Boy next door или Dungeon Master? Опиши персонажа", "/prompt <описание персонажа>"],
+      ["Цель в качалке", "Поставь себе цель на 300 bucks", "/goal <новая цель>"],
+      ["Посмотреть статус", "Who is the boss of this gym?", "/who"],
+      ["Голосовой флекс", "Включить стоны и басы качалки", "/voice on"],
+      ["Выключить голос", "Отключить голосовые ответы", "/voice off"],
+      ["Новый слейв", "Сбросить и начать путь бойца заново", "/reset"],
+      ["Сгенерировать арт", "Deep dark fantasy арт через генератор", "/img <что нарисовать>"],
+      ["Передать снарягу", "Поделись с fellow slave; участник должен быть в чате", "/giveitem <имя игрока> | <предмет>"],
     ];
     $("#command-list").innerHTML = commands.map(([title, description, message]) =>
       `<article class="command-row"><div class="command-main"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(description)}</p><code>${escapeHtml(message)}</code></div><button class="preset-button command-draft" type="button" data-draft="${escapeHtml(message)}">Подставить</button></article>`
@@ -262,7 +262,7 @@
     state.userName = data.user?.name || "";
     state.chatTarget = data.chat_target || null;
     state.chatUsername = state.chatUsername || state.chatTarget?.username || "";
-    $("#greeting").textContent = data.user?.name ? `Привет, ${data.user.name}` : "Профиль игрока";
+    $("#greeting").textContent = data.user?.name ? `Привет, ${data.user.name} • Качалка` : "🎮 Dungeon Games";
     renderInventory(); renderArchetypes(); renderHelp();
     await loadEconomyProfile();
     await loadShopItems();
@@ -275,20 +275,20 @@
   let selectedGame = "tower_stack"; // 'tower_stack' | 'timberjack' | 'knife_hit' | 'swipe_basketball' | 'brick_breaker' | 'colorswitch' | 'air_hockey' | 'whack_mole' | 'game_2048'
 
   const GAME_INFO_MAP = {
-    tower_stack: { title: "Лидеры Башни коробок", icon: "🏗", empty: "Рекордов в Башне коробок пока нет. Постройте первый этаж!" },
-    timberjack: { title: "Лидеры Дровосека", icon: "🪓", empty: "Рекордов в Дровосеке пока нет. Срубите дерево первым!" },
-    knife_hit: { title: "Лидеры Ножевого тира", icon: "🎯", empty: "Рекордов в Ножевом тире пока нет. Метните первый нож!" },
-    swipe_basketball: { title: "Лидеры Баскетбола", icon: "🏀", empty: "Рекордов в Баскетболе пока нет. Сделайте первый бросок!" },
-    brick_breaker: { title: "Лидеры Неонового Арканоида", icon: "🧱", empty: "Рекордов в Арканоиде пока нет. Разбейте первый кирпич!" },
-    colorswitch: { title: "Лидеры Color Switch", icon: "🌈", empty: "Рекордов в Color Switch пока нет. Сделайте первый прыжок!" },
-    air_hockey: { title: "Лидеры Неонового Аэрохоккея", icon: "🏒", empty: "Рекордов в Аэрохоккее пока нет. Выиграйте первый матч!" },
-    whack_mole: { title: "Лидеры «Ударь крота»", icon: "🔨", empty: "Рекордов в игре «Ударь крота» пока нет. Поймайте первого крота!" },
-    game_2048: { title: "Лидеры 2048 Классика", icon: "🔢", empty: "Рекордов в 2048 пока нет. Соберите первое легендарное число!" }
+    tower_stack: { title: "Лидеры Стек Штанги • Dungeon Bench", icon: "🏗", empty: "Рекордов в Стек Штанге пока нет. Поставь первый блин на гриф!" },
+    timberjack: { title: "Лидеры Leather Lumberjack • Лесоруб Билли", icon: "🪓", empty: "Рекордов у Лесоруба Билли пока нет. Вруби топор первым!" },
+    knife_hit: { title: "Лидеры Метание дилдо / Спанкинг • Spank Hit", icon: "🎯", empty: "Рекордов в Spank Hit пока нет. Запусти снаряд в цель!" },
+    swipe_basketball: { title: "Лидеры Dungeon Slam • Бросок в кольцо", icon: "🏀", empty: "Рекордов в Dungeon Slam пока нет. Сделай первый бросок в кольцо качалки!" },
+    brick_breaker: { title: "Лидеры Smash the Jabroni • Кибер-Дробилка", icon: "🧱", empty: "Рекордов в Кибер-Дробилке пока нет. Разбей первый блок платформой!" },
+    colorswitch: { title: "Лидеры Rainbow Dungeon • Цветной флекс", icon: "🌈", empty: "Рекордов в Rainbow Dungeon пока нет. Сделай первый флекс через кольцо!" },
+    air_hockey: { title: "Лидеры Ice Gym Clash • Аэрохоккей Слейвов", icon: "🏒", empty: "Рекордов в Ice Gym Clash пока нет. Победи Dungeon AI!" },
+    whack_mole: { title: "Лидеры Whack the Jabroni • Накажи Слейва", icon: "🔨", empty: "Рекордов в Whack the Jabroni пока нет. Накажи первого джаброни молотом!" },
+    game_2048: { title: "Лидеры 2048 Gym Power • Сила трех сотен баксов", icon: "🔢", empty: "Рекордов в 2048 Gym Power пока нет. Собери плитку 2048 и стань Boss of this Gym!" }
   };
 
-  async function loadGameLeaderboard() {
-    const list = $("#game-leaderboard-list");
-    if (!list) return;
+  async function loadGameLeaderboard(targetGameKey) {
+    const gameKey = targetGameKey || selectedGame;
+    selectedGame = gameKey;
 
     // Обновляем персональные рекорды для всех 9 игр
     try {
@@ -329,40 +329,98 @@
       if (game2048BestNode) game2048BestNode.textContent = game2048Best;
     } catch (_) {}
 
-    const info = GAME_INFO_MAP[selectedGame] || GAME_INFO_MAP.tower_stack;
+    const info = GAME_INFO_MAP[gameKey] || GAME_INFO_MAP.tower_stack;
+
+    // Карточка игры, под которой раскрывается инлайн-лидерборд
+    const targetCard = document.querySelector(`.game-hub-card[data-game="${gameKey}"]`);
+    let inlineDrawer = targetCard ? targetCard.querySelector(".game-card-leaderboard") : null;
+    if (targetCard && !inlineDrawer) {
+      inlineDrawer = document.createElement("div");
+      inlineDrawer.className = "game-card-leaderboard";
+      targetCard.appendChild(inlineDrawer);
+    }
+
+    if (inlineDrawer) {
+      inlineDrawer.innerHTML = `
+        <div class="card-lb-header">
+          <div class="card-lb-title">
+            <span>${info.icon}</span>
+            <span>Топ-10 • ${escapeHtml(info.title.replace(/^Лидеры\s*/, ''))}</span>
+          </div>
+          <button class="card-lb-close" title="Скрыть лидерборд" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="card-lb-body">
+          <div class="loading-state" style="padding:10px 0;font-size:12px;">Загружаем рекорды качалки…</div>
+        </div>
+      `;
+    }
+
+    // Подсвечиваем активную карточку и кнопку Топ
+    document.querySelectorAll(".game-hub-card").forEach((card) => {
+      const isMatch = card.dataset.game === gameKey;
+      card.classList.toggle("active-leaderboard-card", isMatch);
+      const drawer = card.querySelector(".game-card-leaderboard");
+      if (drawer && !isMatch) {
+        drawer.remove();
+      }
+    });
+    document.querySelectorAll("[data-leaderboard-for]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.leaderboardFor === gameKey);
+    });
+
+    // Обновляем заголовок и иконку нижнего запасного блока (если он есть)
     const titleNode = $("#leaderboard-game-title");
     const iconNode = $("#leaderboard-game-icon");
     if (titleNode) titleNode.textContent = info.title;
     if (iconNode) iconNode.textContent = info.icon;
-
-    // Подсвечиваем активную кнопку Топ и карточку
-    document.querySelectorAll(".game-hub-card").forEach((card) => {
-      card.classList.toggle("active-leaderboard-card", card.dataset.game === selectedGame);
-    });
-    document.querySelectorAll("[data-leaderboard-for]").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.leaderboardFor === selectedGame);
-    });
+    const bottomList = $("#game-leaderboard-list");
 
     try {
-      const queryParams = [`game=${encodeURIComponent(selectedGame)}`];
+      const queryParams = [`game=${encodeURIComponent(gameKey)}`];
       if (state.chatId) queryParams.push(`chat_id=${encodeURIComponent(state.chatId)}`);
       const query = `?${queryParams.join("&")}`;
 
       const data = await request(`/api/game/leaderboard${query}`);
       const leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-      if (!leaders.length) {
-        list.innerHTML = `<p class="empty-state">${info.empty}</p>`;
-        return;
+
+      const renderHtml = (items) => {
+        if (!items.length) {
+          return `<p class="empty-state" style="padding:8px 0;font-size:12px;">${info.empty}</p>`;
+        }
+        return items.map((item, index) => `
+          <article class="leader-row rank-${index + 1}">
+            <span class="leader-rank">${index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}</span>
+            <span class="leader-name">${escapeHtml(item.user_name || `Игрок ${item.user_id}`)}</span>
+            <span class="leader-score">${escapeHtml(item.score)}</span>
+          </article>
+        `).join("");
+      };
+
+      if (inlineDrawer) {
+        const body = inlineDrawer.querySelector(".card-lb-body");
+        if (body) body.innerHTML = renderHtml(leaders);
+        inlineDrawer.querySelector(".card-lb-close")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          inlineDrawer.remove();
+          targetCard?.classList.remove("active-leaderboard-card");
+          targetCard?.querySelector("[data-leaderboard-for]")?.classList.remove("active");
+        });
       }
-      list.innerHTML = leaders.map((item, index) => `
-        <article class="leader-row rank-${index + 1}">
-          <span class="leader-rank">${index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}</span>
-          <span class="leader-name">${escapeHtml(item.user_name || `Игрок ${item.user_id}`)}</span>
-          <span class="leader-score">${escapeHtml(item.score)} очков</span>
-        </article>
-      `).join("");
+
+      if (bottomList) {
+        bottomList.innerHTML = renderHtml(leaders);
+      }
+
+      return leaders;
     } catch (e) {
-      list.innerHTML = '<p class="empty-state">Не удалось загрузить таблицу рекордов.</p>';
+      if (inlineDrawer) {
+        const body = inlineDrawer.querySelector(".card-lb-body");
+        if (body) body.innerHTML = '<p class="empty-state" style="padding:8px 0;font-size:12px;">Не удалось загрузить рекорды.</p>';
+      }
+      if (bottomList) {
+        bottomList.innerHTML = '<p class="empty-state">Не удалось загрузить таблицу рекордов.</p>';
+      }
+      return [];
     }
   }
 
@@ -425,56 +483,108 @@
 
   const DEFAULT_SHOP_ITEMS = [
     {
-      id: "roast_friend",
-      name: "Заказной подкол друга",
-      icon: "🎯",
-      price: 50,
-      description: "Бот персонально и едко подколет указанного друга на выбранную тему в групповом чате!",
+      id: "vip_badge",
+      name: "👑 LORD OF THE DUNGEON (VIP)",
+      icon: "👑",
+      price: 5000,
+      description: "Элитный пожизненный статус короля спортзала. Персонаж признает вас своим боссом, уважительно обращается на 'Вы, мой Босс' с поклоном в каждом сообщении, дает доступ к золотой короне в Зале славы и бейджу [LORD VIP].",
+      requires_input: false,
+      fields: []
+    },
+    {
+      id: "slap_friend",
+      name: "🐟 Дружеский лещ / Мокрое полотенце",
+      icon: "🐟",
+      price: 120,
+      description: "Бот смачно отвешивает дружеского виртуального леща или бросает мокрое полотенце в лицо указанному другу при его появлении в чате со звонким звуком!",
       requires_input: true,
       fields: [
-        { id: "target_user", label: "Никнейм или имя друга", placeholder: "@username или Вася", required: true },
-        { id: "roast_topic", label: "Тема подкола", placeholder: "Например: опять опоздал в качалку или забыл пароль", required: true }
+        { id: "target_user", label: "Кому отвесить леща", placeholder: "@username или Вася", required: true },
+        { id: "reason", label: "За какую провинность", placeholder: "Например: не пожал сотку от груди", required: false }
       ]
     },
     {
+      id: "roast_friend",
+      name: "🎯 Спанкинг / Заказной подкол",
+      icon: "🎯",
+      price: 100,
+      description: "Бот персонально и со смачным хлопком подколет указанного бойца на выбранную тему прямо в качалке!",
+      requires_input: true,
+      fields: [
+        { id: "target_user", label: "Никнейм слейва или имя братана", placeholder: "@username или Van", required: true },
+        { id: "roast_topic", label: "Повод для порки", placeholder: "Например: забыл надеть кожаные ремни или филонит жим", required: true }
+      ]
+    },
+    {
+      id: "bot_whisper",
+      name: "🕵️ Анонимный слух / Сплетня",
+      icon: "🕵️",
+      price: 180,
+      description: "Бот вбрасывает в чат забавный анонимный слух или секрет от лица своего персонажа, не выдавая автора покупки.",
+      requires_input: true,
+      fields: [
+        { id: "whisper_text", label: "Текст слуха или инсайда", placeholder: "Например: говорят, в душевой завелся призрак Билли...", required: true }
+      ]
+    },
+    {
+      id: "paranoia_mode",
+      name: "🛸 Режим Паранойи и Масонов (1 час)",
+      icon: "🛸",
+      price: 250,
+      description: "Бот начинает во всем видеть тайный заговор рептилоидов, масонов и слежку агентов в чате!",
+      requires_input: false,
+      fields: []
+    },
+    {
+      id: "shout_announcement",
+      name: "📢 Мегафон / Крик на всю качалку",
+      icon: "📢",
+      price: 300,
+      description: "Персонаж прерывает разговор громогласным криком через рупор с вашим объявлением на весь чат!",
+      requires_input: true,
+      fields: [
+        { id: "shout_text", label: "Текст объявления в мегафон", placeholder: "Срочно всем построиться в шеренгу!", required: true }
+      ]
+    },
+    {
+      id: "dungeon_immunity",
+      name: "🛡️ Неприкасаемый Слейв (Иммунитет)",
+      icon: "🛡️",
+      price: 600,
+      description: "Иммунитет на неделю: бот ни при каких обстоятельствах не подкалывает владельца и заступается за него в спорах.",
+      requires_input: false,
+      fields: []
+    },
+    {
       id: "mood_change",
-      name: "Смена настроения бота",
+      name: "Атмосфера Подземелья (Вайб)",
       icon: "🎭",
-      price: 80,
-      description: "Переключите характер и вайб бота для всех в чате на следующие 2 часа!",
+      price: 150,
+      description: "Задай тон всей раздевалке на следующие 2 часа! Ass we can!",
       requires_input: true,
       fields: [
         {
           id: "vibe",
-          label: "Выберите вайб",
+          label: "Выбери настрой качалки",
           type: "select",
           options: [
-            { value: "gachi", label: "💪 Gachi-тренер (Суровый бодибилдер)" },
-            { value: "cyberpunk", label: "🤖 Кибер-бунтарь (Неон и хромированный сленг)" },
-            { value: "grandma", label: "👵 Добрая бабушка (С пирожками и заботой)" },
-            { value: "toxic_critic", label: "🧐 Душный ресторанный критик" }
+            { value: "gachi", label: "💪 Dungeon Master (Классический гачимучи флекс)" },
+            { value: "cyberpunk", label: "🤖 Кибер-Джаброни (Неоновый хром и синты)" },
+            { value: "grandma", label: "👵 Добрая бабушка (С протеиновыми пирожками)" },
+            { value: "toxic_critic", label: "🧐 Суровый судья соревнований по бодибилдингу" }
           ]
         }
       ]
     },
     {
-      id: "vip_badge",
-      name: "VIP Бейдж в чате",
-      icon: "👑",
-      price: 150,
-      description: "Золотая корона и статус VIP участника рядом с вашим именем в боте и Зале Славы!",
-      requires_input: false,
-      fields: []
-    },
-    {
       id: "custom_title",
-      name: "Личный титул",
+      name: "Кожаный Титул",
       icon: "🏷",
-      price: 100,
-      description: "Установите уникальный титул под своим профилем (например, «Мастер спорта по лени»)",
+      price: 200,
+      description: "Установи уникальный титул под своим профилем (например, «Performance Artist» или «Three Hundred Bucks»)",
       requires_input: true,
       fields: [
-        { id: "title_text", label: "Ваш новый титул", placeholder: "Например: Главный по гантелям", required: true }
+        { id: "title_text", label: "Твой новый титул", placeholder: "Например: Master of the Locker Room", required: true }
       ]
     }
   ];
@@ -771,15 +881,15 @@
     }
 
     // Слушатели кнопок запуска игр
-    $("#launch-tower")?.addEventListener("click", () => openGame("tower_stack", "🏗 Башня коробок", "/games/tower/index.html"));
-    $("#launch-timber")?.addEventListener("click", () => openGame("timberjack", "🪓 Timberman", "/games/timberman/index.html"));
-    $("#launch-knife")?.addEventListener("click", () => openGame("knife_hit", "🎯 Ножевой тир", "/games/knife/index.html"));
-    $("#launch-basketball")?.addEventListener("click", () => openGame("swipe_basketball", "🏀 Свайп-Баскетбол", "/games/basketball/index.html"));
-    $("#launch-bricks")?.addEventListener("click", () => openGame("brick_breaker", "🧱 Неоновый Арканоид", "/games/bricks/index.html"));
-    $("#launch-colorswitch")?.addEventListener("click", () => openGame("colorswitch", "🌈 Color Switch", "/games/colorswitch/index.html"));
-    $("#launch-airhockey")?.addEventListener("click", () => openGame("air_hockey", "🏒 Неоновый Аэрохоккей", "/games/airhockey/index.html"));
-    $("#launch-whack")?.addEventListener("click", () => openGame("whack_mole", "🔨 Ударь крота", "/games/whack/index.html"));
-    $("#launch-2048")?.addEventListener("click", () => openGame("game_2048", "🔢 2048 Классика", "/games/game2048/index.html"));
+    $("#launch-tower")?.addEventListener("click", () => openGame("tower_stack", "🏗 Стек Штанги • Dungeon Bench", "/games/tower/index.html"));
+    $("#launch-timber")?.addEventListener("click", () => openGame("timberjack", "🪓 Leather Lumberjack • Лесоруб Билли", "/games/timberman/index.html"));
+    $("#launch-knife")?.addEventListener("click", () => openGame("knife_hit", "🎯 Метание дилдо / Спанкинг • Spank Hit", "/games/knife/index.html"));
+    $("#launch-basketball")?.addEventListener("click", () => openGame("swipe_basketball", "🏀 Dungeon Slam • Бросок в кольцо", "/games/basketball/index.html"));
+    $("#launch-bricks")?.addEventListener("click", () => openGame("brick_breaker", "🧱 Smash the Jabroni • Кибер-Дробилка", "/games/bricks/index.html"));
+    $("#launch-colorswitch")?.addEventListener("click", () => openGame("colorswitch", "🌈 Rainbow Dungeon • Цветной флекс", "/games/colorswitch/index.html"));
+    $("#launch-airhockey")?.addEventListener("click", () => openGame("air_hockey", "🏒 Ice Gym Clash • Аэрохоккей Слейвов", "/games/airhockey/index.html"));
+    $("#launch-whack")?.addEventListener("click", () => openGame("whack_mole", "🔨 Whack the Jabroni • Накажи Слейва", "/games/whack/index.html"));
+    $("#launch-2048")?.addEventListener("click", () => openGame("game_2048", "🔢 2048 Gym Power • Сила трех сотен баксов", "/games/game2048/index.html"));
 
     // Быстрый переключатель таблицы рекордов по кнопкам «🏆 Топ» у каждой карточки
     $("#games-grid")?.addEventListener("click", (event) => {
@@ -787,28 +897,99 @@
       if (topBtn) {
         const gameKey = topBtn.dataset.leaderboardFor;
         if (gameKey) {
-          selectedGame = gameKey;
-          loadGameLeaderboard().catch(() => {});
-          const section = $("#games-leaderboard-section");
-          if (section) {
-            section.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          const targetCard = topBtn.closest(".game-hub-card");
+          const existingDrawer = targetCard?.querySelector(".game-card-leaderboard");
+          if (existingDrawer) {
+            // Если уже открыт под этой карточкой — сворачиваем при повторном клике
+            existingDrawer.remove();
+            targetCard.classList.remove("active-leaderboard-card");
+            topBtn.classList.remove("active");
+          } else {
+            selectedGame = gameKey;
+            loadGameLeaderboard(gameKey).catch(() => {});
+            targetCard?.scrollIntoView({ behavior: "smooth", block: "nearest" });
           }
         }
       }
     });
 
+    // Функция показа модального экрана Game Over с лидербордом поверх игры
+    async function showGameOverLeaderboard(gameKey, score) {
+      const overOverlay = $("#game-over-overlay");
+      const overScore = $("#game-over-score");
+      const overGameName = $("#game-over-game-name");
+      const overList = $("#game-over-lb-list");
+      if (!overOverlay) return;
+
+      const info = GAME_INFO_MAP[gameKey] || GAME_INFO_MAP[selectedGame] || GAME_INFO_MAP.tower_stack;
+      if (overScore) overScore.textContent = score != null ? score : "0";
+      if (overGameName) overGameName.textContent = info.title.replace(/^Лидеры\s*/, '');
+      if (overList) overList.innerHTML = '<div class="loading-state" style="padding:10px 0;font-size:12px;">Загружаем таблицу лидеров…</div>';
+
+      overOverlay.style.display = "flex";
+
+      try {
+        const leaders = await loadGameLeaderboard(gameKey);
+        if (overList) {
+          if (!leaders || !leaders.length) {
+            overList.innerHTML = `<p class="empty-state" style="padding:8px 0;font-size:12px;">${info.empty}</p>`;
+          } else {
+            // Показываем Топ-5 лидеров
+            overList.innerHTML = leaders.slice(0, 5).map((item, index) => `
+              <article class="leader-row rank-${index + 1}">
+                <span class="leader-rank">${index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}</span>
+                <span class="leader-name">${escapeHtml(item.user_name || `Игрок ${item.user_id}`)}</span>
+                <span class="leader-score">${escapeHtml(item.score)}</span>
+              </article>
+            `).join("");
+          }
+        }
+      } catch (_) {
+        if (overList) overList.innerHTML = '<p class="empty-state">Рекорды обновлены!</p>';
+      }
+    }
+
+    $("#game-over-retry")?.addEventListener("click", () => {
+      const overOverlay = $("#game-over-overlay");
+      if (overOverlay) overOverlay.style.display = "none";
+      if (iframe) {
+        try {
+          iframe.contentWindow?.location?.reload();
+        } catch (_) {
+          iframe.src = iframe.src;
+        }
+      }
+    });
+
+    $("#game-over-close")?.addEventListener("click", () => {
+      const overOverlay = $("#game-over-overlay");
+      if (overOverlay) overOverlay.style.display = "none";
+      if (closeBtn) closeBtn.click();
+    });
+
     if (closeBtn && modal && iframe) {
       closeBtn.addEventListener("click", () => {
+        const overOverlay = $("#game-over-overlay");
+        if (overOverlay) overOverlay.style.display = "none";
         iframe.src = "about:blank";
         modal.close();
         loadGameLeaderboard().catch(() => {});
+        // Фокус на карточке игры
+        const card = document.querySelector(`.game-hub-card[data-game="${selectedGame}"]`);
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     }
 
     // Слушатель сообщений от iframe игр
     window.addEventListener("message", (event) => {
-      if (event.data?.type === "CLOSE_GAME") {
+      const d = event.data;
+      if (!d) return;
+      if (d.type === "CLOSE_GAME") {
         if (closeBtn) closeBtn.click();
+      } else if (d.type === "GAME_OVER" || d.type === "SUBMIT_SCORE") {
+        const gameKey = d.game || selectedGame;
+        const score = d.score;
+        showGameOverLeaderboard(gameKey, score).catch(() => {});
       }
     });
 

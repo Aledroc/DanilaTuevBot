@@ -361,6 +361,9 @@
       } catch (_) {}
     }
     submitScore(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'colorswitch', score: score }, '*');
+    }
   }
 
   // Нормализация угла в диапазон [0, 2*PI)

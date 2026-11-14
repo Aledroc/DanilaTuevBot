@@ -397,6 +397,9 @@
 
         // Отправка на бэкенд
         submitScore(record);
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'GAME_OVER', game: 'tower_stack', score: record }, '*');
+        }
       }
 
       const option = {

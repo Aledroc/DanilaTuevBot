@@ -269,6 +269,9 @@
     }
 
     submitScore(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'whack_mole', score: score }, '*');
+    }
   }
 
   async function submitScore(finalScore) {

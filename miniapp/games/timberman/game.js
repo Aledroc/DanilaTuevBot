@@ -213,6 +213,9 @@
 
     // Отправка результата на сервер
     submitScore(score);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'GAME_OVER', game: 'timberjack', score: score }, '*');
+    }
   }
 
   async function submitScore(finalScore) {
