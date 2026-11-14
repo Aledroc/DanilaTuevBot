@@ -99,6 +99,16 @@ def _do_setvoice(message, src):
         "mime": mime,
         "transcript": transcript or None,
     }
+    try:
+        inventory_store.save_chat_voice(
+            cid,
+            preset="custom",
+            custom_audio_b64=voice_refs[cid]["audio_b64"],
+            custom_mime=mime,
+            custom_transcript=transcript or "",
+        )
+    except Exception:
+        pass
     bot.reply_to(
         message,
         "🎙 Голос запомнен. Расшифровка: " + (html.escape(transcript) if transcript else "не получена") +
@@ -283,15 +293,52 @@ def voice_toggle_cmd(message):
             bot.reply_to(message, "TTS не настроен: укажите FISH_AUDIO_API_KEY в окружении или config.py бота.")
             return
         if cid not in voice_refs:
+            # Пытаемся восстановить из БД
+            saved = None
+            try:
+                saved = inventory_store.load_chat_voice(cid)
+            except Exception:
+                pass
+            if saved and saved.get("preset"):
+                p_name = saved["preset"]
+                if p_name == "custom" and saved.get("custom_audio_b64"):
+                    voice_refs[cid] = {
+                        "audio_b64": saved["custom_audio_b64"],
+                        "mime": saved.get("custom_mime", "audio/ogg"),
+                        "transcript": saved.get("custom_transcript") or None,
+                    }
+                else:
+                    loaded = _load_voice_file(p_name)
+                    if loaded:
+                        voice_refs[cid] = loaded
+            # Если пресет всё еще не выбран — по умолчанию берем Danila
+            if cid not in voice_refs:
+                default_ref = _load_voice_file("danila")
+                if default_ref:
+                    voice_refs[cid] = default_ref
+                    try:
+                        inventory_store.save_chat_voice(cid, preset="danila", enabled=True)
+                    except Exception:
+                        pass
+        if cid not in voice_refs:
             bot.reply_to(
                 message,
-                "Сначала выбери пресет: /voice Valentin — или пришли образец через /setvoice.",
+                "Сначала выбери пресет: /voice Danila — или пришли образец через /setvoice.",
             )
             return
         voice_enabled[cid] = True
-        bot.reply_to(message, "🔊 Озвучка ответов включена.")
+        try:
+            inventory_store.save_chat_voice(cid, enabled=True)
+        except Exception:
+            pass
+        preset_name = voice_refs[cid].get("preset", "пользовательский")
+        bot.reply_to(message, f"🔊 Озвучка ответов включена (голос «{html.escape(preset_name)}»).")
     elif action in ("off", "выкл", "0", "выкл."):
         voice_enabled[cid] = False
+        try:
+            inventory_store.save_chat_voice(cid, enabled=False)
+        except Exception:
+            pass
         bot.reply_to(message, "🔇 Озвучка ответов выключена.")
     elif arg:
         if not config.FISH_AUDIO_API_KEY and not config.OPENROUTER_API_KEY:
@@ -303,10 +350,14 @@ def voice_toggle_cmd(message):
         except OSError:
             voice_ref = None
         if not voice_ref:
-            bot.reply_to(message, "Не найден или не подходит аудиофайл. Положи файл (до 12 МБ) рядом с ботом или в папку voices/ и укажи имя пресета без расширения, например: /voice Valentin")
+            bot.reply_to(message, "Не найден или не подходит аудиофайл. Положи файл (до 12 МБ) рядом с ботом или в папку voices/ и укажи имя пресета без расширения, например: /voice Danila")
             return
         voice_refs[cid] = voice_ref
         voice_enabled[cid] = True
+        try:
+            inventory_store.save_chat_voice(cid, preset=voice_ref["preset"], enabled=True)
+        except Exception:
+            pass
         if voice_ref.get("transcript_source") == "txt":
             transcript_status = "расшифровка загружена из .txt"
         elif voice_ref.get("transcript"):
@@ -315,12 +366,32 @@ def voice_toggle_cmd(message):
             transcript_status = f"транскрипция не получена — добавь {html.escape(Path(filename).stem)}.txt рядом с аудио"
         bot.reply_to(message, f"🔊 Включён голосовой пресет «{html.escape(voice_ref['preset'])}» ({transcript_status}).")
     else:
+        # Проверяем БД если нет в памяти
+        if cid not in voice_refs:
+            try:
+                saved = inventory_store.load_chat_voice(cid)
+                if saved and saved.get("preset"):
+                    p_name = saved["preset"]
+                    if p_name == "custom" and saved.get("custom_audio_b64"):
+                        voice_refs[cid] = {
+                            "audio_b64": saved["custom_audio_b64"],
+                            "mime": saved.get("custom_mime", "audio/ogg"),
+                            "transcript": saved.get("custom_transcript") or None,
+                        }
+                    else:
+                        loaded = _load_voice_file(p_name)
+                        if loaded:
+                            voice_refs[cid] = loaded
+                    if saved.get("enabled"):
+                        voice_enabled[cid] = True
+            except Exception:
+                pass
         status = "включена" if voice_enabled.get(cid) else "выключена"
-        has_ref = "есть" if cid in voice_refs else "нет"
+        ref_info = voice_refs[cid].get("preset", "пользовательский") if cid in voice_refs else "нет"
         bot.reply_to(
             message,
-            f"🔊 Озвучка: {status}. Образец голоса: {has_ref}.\n"
-            "Использование: <code>/voice Valentin</code>, <code>/voice on</code> или <code>/voice off</code>",
+            f"🔊 Озвучка: {status}. Образец голоса: {ref_info}.\n"
+            "Использование: <code>/voice Danila</code>, <code>/voice on</code> или <code>/voice off</code>",
             parse_mode="HTML",
         )
 

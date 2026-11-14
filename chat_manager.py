@@ -290,11 +290,11 @@ def _build_state(desc: str) -> dict:
         'full_name': ai_generate_name(desc),
         'desc': desc,
         'message_count': 0,
-        'target_count': random.randint(7, 10),
+        'target_count': random.randint(5, 10),
         'photo_count': 0,
-        'target_photo_count': random.randint(3, 4),
+        'target_photo_count': random.randint(1, 3),
         'video_count': 0,
-        'target_video_count': random.randint(4, 5),
+        'target_video_count': random.randint(1, 3),
         'story_turn': 0,
         'date': date.today().isoformat(),
         'last_example_idx': None,
@@ -758,6 +758,27 @@ def _speech_text(plain: str) -> str:
 
 def _maybe_send_voice(cid, plain: str, reply_to=None) -> bool:
     """Озвучивает и отправляет голосовое сообщение. Возвращает True если удалось."""
+    if not voice_enabled.get(cid) or cid not in voice_refs:
+        # Попробуем подтянуть сохранённые настройки из БД при перезапуске
+        try:
+            saved = inventory_store.load_chat_voice(cid)
+            if saved and saved.get("enabled"):
+                voice_enabled[cid] = True
+                if cid not in voice_refs:
+                    p_name = saved.get("preset") or "danila"
+                    if p_name == "custom" and saved.get("custom_audio_b64"):
+                        voice_refs[cid] = {
+                            "audio_b64": saved["custom_audio_b64"],
+                            "mime": saved.get("custom_mime", "audio/ogg"),
+                            "transcript": saved.get("custom_transcript") or None,
+                        }
+                    else:
+                        from handlers import _load_voice_file
+                        loaded = _load_voice_file(p_name)
+                        if loaded:
+                            voice_refs[cid] = loaded
+        except Exception:
+            pass
     if not voice_enabled.get(cid) or cid not in voice_refs:
         return False
     text = _speech_text(plain)

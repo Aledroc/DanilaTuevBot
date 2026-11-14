@@ -244,14 +244,23 @@ def handle_media(message):
     )
     if not addressed and message.reply_to_message and message.reply_to_message.from_user:
         return  # медиа в ответ другому человеку
-    state['media_count'] = state.get('media_count', 0) + 1
-    target = state.setdefault('target_media_count', random.randint(3, 5))
-    if not (addressed or state['media_count'] >= target):
-        return
+    is_video = bool(message.video or getattr(message, 'video_note', None))
+    if is_video:
+        state['video_count'] = state.get('video_count', 0) + 1
+        target_video = state.setdefault('target_video_count', random.randint(1, 3))
+        if not (addressed or state['video_count'] >= target_video):
+            return
+        state['video_count'] = 0
+        state['target_video_count'] = random.randint(1, 3)
+    else:
+        state['photo_count'] = state.get('photo_count', 0) + 1
+        target_photo = state.setdefault('target_photo_count', random.randint(1, 3))
+        if not (addressed or state['photo_count'] >= target_photo):
+            return
+        state['photo_count'] = 0
+        state['target_photo_count'] = random.randint(1, 3)
 
     spontaneous = not addressed
-    state['media_count'] = 0
-    state['target_media_count'] = random.randint(4, 7)
     bot.send_chat_action(cid, 'typing')
     time.sleep(random.uniform(0.5, 1.5))
 
@@ -396,13 +405,28 @@ def handle_text(message):
         or container_loss_target
     )
 
-    # В группах бот отвечает только если обратились к нему, либо в личке
-    if not is_private and not addressed:
-        return
+    if not addressed:
+        # Сообщение адресовано другому человеку — бот не вмешивается
+        to_other = bool(
+            message.reply_to_message and message.reply_to_message.from_user
+            and message.reply_to_message.from_user.id != BOT_ID
+        ) or bool(re.search(r'@\w+', text))
+        if to_other:
+            return
+
+        # Проходная реплика: считаем сообщения
+        state['message_count'] = state.get('message_count', 0) + 1
+        target_count = state.setdefault('target_count', random.randint(5, 10))
+        # Содержательность: не встревать на пустые смайлики / 1 букву,
+        # но на реплики от 10-15 символов или с вопросом/восклицанием встревать
+        clean_text = text.strip()
+        substantial = len(clean_text) >= 12 or '?' in clean_text or '!' in clean_text
+        if not (substantial and state['message_count'] >= target_count):
+            return
 
     spontaneous = not addressed
     state['message_count'] = 0
-    state['target_count'] = random.randint(8, 14)
+    state['target_count'] = random.randint(5, 10)
     state, goal = _prepare_turn(cid)
     system_prompt = get_system_prompt(state, goal, get_story_phase(state['story_turn']), user_name)
 

@@ -1084,6 +1084,19 @@ def _connect():
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS chat_voices (
+                chat_id INTEGER PRIMARY KEY,
+                preset TEXT NOT NULL DEFAULT '',
+                enabled INTEGER NOT NULL DEFAULT 0,
+                custom_audio_b64 TEXT NOT NULL DEFAULT '',
+                custom_mime TEXT NOT NULL DEFAULT '',
+                custom_transcript TEXT NOT NULL DEFAULT '',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_archetypes (
                 user_id INTEGER NOT NULL,
                 archetype_key TEXT NOT NULL,
@@ -1584,6 +1597,61 @@ def get_chat_style(chat_id: int) -> str:
             "SELECT prompt FROM chat_styles WHERE chat_id = ?", (int(chat_id),)
         ).fetchone()
     return row[0] if row else ""
+
+
+def save_chat_voice(chat_id: int, preset: str = "", enabled: bool | None = None,
+                    custom_audio_b64: str = "", custom_mime: str = "",
+                    custom_transcript: str = "") -> None:
+    """Сохраняет настройки голоса для чата (пресет или кастомный образец, статус вкл/выкл)."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT preset, enabled, custom_audio_b64, custom_mime, custom_transcript "
+            "FROM chat_voices WHERE chat_id = ?", (int(chat_id),)
+        ).fetchone()
+
+        cur_preset = row[0] if row else ""
+        cur_enabled = bool(row[1]) if row else False
+        cur_b64 = row[2] if row else ""
+        cur_mime = row[3] if row else ""
+        cur_transcript = row[4] if row else ""
+
+        new_preset = preset if preset != "" else cur_preset
+        new_enabled = int(enabled if enabled is not None else cur_enabled)
+        new_b64 = custom_audio_b64 if custom_audio_b64 != "" else cur_b64
+        new_mime = custom_mime if custom_mime != "" else cur_mime
+        new_transcript = custom_transcript if custom_transcript != "" else cur_transcript
+
+        conn.execute(
+            "INSERT INTO chat_voices (chat_id, preset, enabled, custom_audio_b64, custom_mime, custom_transcript, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(chat_id) DO UPDATE SET "
+            "preset = excluded.preset, "
+            "enabled = excluded.enabled, "
+            "custom_audio_b64 = excluded.custom_audio_b64, "
+            "custom_mime = excluded.custom_mime, "
+            "custom_transcript = excluded.custom_transcript, "
+            "updated_at = excluded.updated_at",
+            (int(chat_id), new_preset, new_enabled, new_b64, new_mime, new_transcript, int(time.time())),
+        )
+
+
+def load_chat_voice(chat_id: int) -> dict | None:
+    """Загружает настройки голоса чата из БД."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT preset, enabled, custom_audio_b64, custom_mime, custom_transcript "
+            "FROM chat_voices WHERE chat_id = ?", (int(chat_id),)
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "preset": row[0] or "",
+        "enabled": bool(row[1]),
+        "custom_audio_b64": row[2] or "",
+        "custom_mime": row[3] or "",
+        "custom_transcript": row[4] or "",
+    }
+
 
 
 def _idea_key(name: str) -> str:
