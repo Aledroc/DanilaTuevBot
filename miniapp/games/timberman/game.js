@@ -85,7 +85,7 @@
     trunk1: 'assets/image/trunk1.png',
     branchleft: 'assets/image/branch1.png',
     branchright: 'assets/image/branch2.png',
-    man: 'assets/image/man.png?v=1794772672',
+    man: 'assets/image/man.png?v=1794772855',
     rip: 'assets/image/rip.png',
     gameover: 'assets/image/gameover.png',
     play: 'assets/image/play.png',
