@@ -471,13 +471,13 @@
                   ctx.strokeStyle = isPerfect ? 'rgba(251, 191, 36, 0.4)' : 'rgba(0, 229, 255, 0.35)';
                   ctx.stroke();
 
-                  // Маркировка веса блина "20 KG"
+                  
                   ctx.shadowBlur = 0;
                   ctx.fillStyle = isPerfect ? '#fef08a' : '#e2e8f0';
                   ctx.font = `900 ${Math.max(10, Math.floor(h * 0.45))}px sans-serif`;
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'middle';
-                  ctx.fillText(isPerfect ? '★ 25 KG ★' : '20 KG', x + w / 2, y + h / 2);
+                  
 
                   ctx.restore();
                   return;
@@ -511,7 +511,7 @@
                   ctx.font = `800 ${Math.max(9, Math.floor(diskH * 0.4))}px sans-serif`;
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'middle';
-                  ctx.fillText('20 KG', x + w / 2, diskY + diskH / 2);
+                  
                   ctx.restore();
                   return;
                 }
