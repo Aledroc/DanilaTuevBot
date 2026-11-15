@@ -32,8 +32,8 @@
 
   // Загрузка спрайтов
   const assetPaths = {
-    target: '/games/knife/assets/images/target.png',
-    knife: '/games/knife/assets/images/knife.png',
+    target: 'assets/images/target.png?v=1794779354',
+    knife: 'assets/images/knife.png?v=1794779354',
   };
 
   const images = {};
@@ -539,23 +539,38 @@
         TARGET_RADIUS * 2
       );
     } else {
-      // Запасная процедурная отрисовка спила дерева
-      ctx.fillStyle = '#8b5a2b';
+      // Стальной олимпийский диск / титановое ядро мишени Dark Gym
+      const diskGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, TARGET_RADIUS);
+      diskGrad.addColorStop(0, '#1e293b');
+      diskGrad.addColorStop(0.65, '#0f172a');
+      diskGrad.addColorStop(1, '#020617');
+      ctx.fillStyle = diskGrad;
       ctx.beginPath();
       ctx.arc(0, 0, TARGET_RADIUS, 0, Math.PI * 2);
       ctx.fill();
-      ctx.lineWidth = 14;
-      ctx.strokeStyle = '#5a3818';
-      ctx.stroke();
 
-      // Годовые кольца
-      ctx.strokeStyle = 'rgba(60, 35, 10, 0.35)';
-      ctx.lineWidth = 4;
-      for (let r = 25; r < TARGET_RADIUS; r += 24) {
+      // Неоновая стальная окантовка с заклепками
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = '#00e5ff';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Концентрические стальные кольца
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
+      ctx.lineWidth = 3;
+      for (let r = 30; r < TARGET_RADIUS; r += 28) {
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
       }
+
+      // Центр (ядро 300$)
+      ctx.fillStyle = '#00e5ff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Воткнутые ножи (вращаются вместе с мишенью)
@@ -612,20 +627,31 @@
       );
     } else {
       // Запасная векторная отрисовка ножа
-      // Клинок (остриё вверху)
-      ctx.fillStyle = '#e2e8f0';
+      // Хромированное лезвие (остриё вверху)
+      const bladeGrad = ctx.createLinearGradient(-KNIFE_WIDTH / 2, 0, KNIFE_WIDTH / 2, 0);
+      bladeGrad.addColorStop(0, '#94a3b8');
+      bladeGrad.addColorStop(0.5, '#f8fafc');
+      bladeGrad.addColorStop(1, '#64748b');
+      ctx.fillStyle = bladeGrad;
       ctx.beginPath();
-      ctx.moveTo(0, -10);
+      ctx.moveTo(0, -12);
       ctx.lineTo(KNIFE_WIDTH / 2, 45);
       ctx.lineTo(-KNIFE_WIDTH / 2, 45);
       ctx.closePath();
       ctx.fill();
-      // Рукоятка (внизу)
-      ctx.fillStyle = '#2b6cb0';
+      // Гарда из вороненой стали с неоновым свечением
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillRect(-KNIFE_WIDTH * 0.55, 45, KNIFE_WIDTH * 1.1, 7);
+      // Рукоять из черной фактурной кожи
+      ctx.fillStyle = '#0f172a';
       ctx.fillRect(-KNIFE_WIDTH * 0.35, 52, KNIFE_WIDTH * 0.7, KNIFE_HEIGHT - 52);
-      // Гарда
-      ctx.fillStyle = '#cbd5e0';
-      ctx.fillRect(-KNIFE_WIDTH * 0.5, 45, KNIFE_WIDTH, 7);
+      // Заклепки на рукояти
+      ctx.fillStyle = '#e2e8f0';
+      for (let y = 62; y < KNIFE_HEIGHT - 10; y += 18) {
+        ctx.beginPath();
+        ctx.arc(0, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
