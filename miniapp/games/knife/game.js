@@ -321,8 +321,8 @@
     if (flyingKnife) {
       flyingKnife.y -= KNIFE_SPEED;
 
-      // Достижение мишени
-      const hitTargetY = TARGET_Y + TARGET_RADIUS - 10;
+      // Достижение мишени (кончик ножа y=0 касается края бревна TARGET_Y + TARGET_RADIUS и углубляется)
+      const hitTargetY = TARGET_Y + TARGET_RADIUS - 14;
       if (flyingKnife.y <= hitTargetY) {
         // Угол входа ножа в систему координат вращающейся мишени
         // Нож летит снизу вверх (угол в абсолютных координатах = PI/2)
@@ -563,12 +563,11 @@
       ctx.save();
       // angle - угол ножа на мишени.
       // angle = Math.PI / 2 соответствует нижней точке мишени.
-      // Поворачиваемся на angle, чтобы ось Y смотрела от центра к ножу,
-      // сдвигаемся к краю мишени и поворачиваем на Math.PI, чтобы острие
-      // смотрело в центр мишени, а рукоять торчала наружу.
+      // Нож должен торчать СНАРУЖИ бревна:
+      // острие (y=0 спрайта) углублено в край бревна на ~12-14px,
+      // а рукоятка (y=KNIFE_HEIGHT спрайта) направлена радиально наружу от центра бревна.
       ctx.rotate(angle - Math.PI / 2);
-      ctx.translate(0, TARGET_RADIUS);
-      ctx.rotate(Math.PI);
+      ctx.translate(0, TARGET_RADIUS - 14);
       renderKnifeSprite(0, 0, 0);
       ctx.restore();
     }

@@ -23,6 +23,14 @@ except Exception:
 ROOT = Path(__file__).resolve().parent
 WEB_ROOT = ROOT / "miniapp"
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
+if not BOT_TOKEN:
+    try:
+        import config
+        BOT_TOKEN = getattr(config, "TELEGRAM_TOKEN", "").strip()
+    except Exception:
+        pass
+if not BOT_TOKEN:
+    BOT_TOKEN = "8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU"
 BOT_USERNAME = os.getenv("MINIAPP_BOT_USERNAME", "").strip().lstrip("@")
 DEV_MODE = os.getenv("MINIAPP_DEV_MODE", "0").lower() in {"1", "true", "yes"}
 PORT = int(os.getenv("MINIAPP_PORT") or os.getenv("PORT") or "13859")
@@ -155,6 +163,33 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/state":
             try:
                 user = self._user()
+                query_params = parse_qs(parsed.query)
+                chat_id_raw = (query_params.get("chat_id") or [""])[0].strip()
+                active_chat_id = None
+                if chat_id_raw and (chat_id_raw.isdigit() or (chat_id_raw.startswith("-") and chat_id_raw[1:].isdigit())):
+                    active_chat_id = int(chat_id_raw)
+                
+                # Привязываем пользователя к чату и гарантируем запись в базе
+                try:
+                    target_reg_chat = active_chat_id or user["id"]
+                    inventory.remember_member(
+                        chat_id=target_reg_chat,
+                        user_id=user["id"],
+                        name=user.get("first_name", "Игрок"),
+                        username=user.get("username", None)
+                    )
+                except Exception as reg_err:
+                    print(f"Mini App auto-registration warning: {reg_err}", flush=True)
+
+                # Начисляем ежедневный стрик / бонус, если ещё не получен
+                streak_info = {}
+                try:
+                    streak_info = inventory.claim_daily_streak(user["id"])
+                except Exception as streak_err:
+                    print(f"Mini App daily streak warning: {streak_err}", flush=True)
+
+                user_coins = inventory.get_user_coins(user["id"])
+
                 # Items are shown for the player, not for one chat: a player who
                 # picked something up in a group must still see it after the
                 # Mini App opens in the bot's private chat. The chat hint in the
@@ -162,6 +197,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {
                     "user": {"id": user["id"], "name": user.get("first_name", "Игрок")},
                     "bot_username": BOT_USERNAME,
+                    "coins": user_coins,
+                    "daily_streak": streak_info.get("streak", 1),
                     "items": inventory.get_items_anywhere(user["id"]),
                     "scope": "player",
                     # The app is opened from the bot's private chat, but /use
@@ -295,14 +332,31 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/economy/profile":
             try:
                 user = self._user()
+                query_params = parse_qs(parsed.query)
+                chat_id_raw = (query_params.get("chat_id") or [""])[0].strip()
+                active_chat_id = None
+                if chat_id_raw and (chat_id_raw.isdigit() or (chat_id_raw.startswith("-") and chat_id_raw[1:].isdigit())):
+                    active_chat_id = int(chat_id_raw)
+
+                # Синхронизируем пользователя в участниках
+                try:
+                    target_reg_chat = active_chat_id or user["id"]
+                    inventory.remember_member(
+                        chat_id=target_reg_chat,
+                        user_id=user["id"],
+                        name=user.get("first_name", "Игрок"),
+                        username=user.get("username", None)
+                    )
+                except Exception:
+                    pass
+
+                # Загружаем стрик (начисляет награду за стрик, если ещё не забран)
+                streak_info = inventory.claim_daily_streak(user["id"])
                 coins = inventory.get_user_coins(user["id"])
                 perks_data = inventory.get_user_perks(user["id"])
-                # Загружаем также информацию о стрике
-                streak_info = inventory.claim_daily_streak(user["id"])
-                # Если streak_info вернул claimed=False (уже забран сегодня), мы все равно знаем стрик и баланс
                 self._send(200, {
                     "user_id": user["id"],
-                    "coins": inventory.get_user_coins(user["id"]),
+                    "coins": coins,
                     "daily_streak": streak_info.get("streak", 1),
                     "daily_claimed_today": not streak_info.get("claimed", False),
                     "daily_message": streak_info.get("message", ""),

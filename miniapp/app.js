@@ -112,24 +112,202 @@
 
   function renderHelp() {
     const itemName = state.items[0]?.name || "кожаный ремень";
-    const commands = [
-      ["Открыть Mini App", "Снаряга Слейва и Dungeon Games", "/app"],
-      ["Снаряга Слейва", "Посмотреть свои кожаные вещи", "/inv"],
-      ["Использовать предмет", "Do you like what you see? Поменяйте действие перед спанком", `/use ${itemName} | опиши, как я использую предмет`],
-      ["Кодекс Раздевалки", "Список основных команд качалки", "/help"],
-      ["Каста Подземелья", "Ключ роли смотри во вкладке «Каста Подземелья»", "/set <ключ роли>"],
-      ["Свой образ бойца", "Boy next door или Dungeon Master? Опиши персонажа", "/prompt <описание персонажа>"],
-      ["Цель в качалке", "Поставь себе цель на 300 bucks", "/goal <новая цель>"],
-      ["Посмотреть статус", "Who is the boss of this gym?", "/who"],
-      ["Голосовой флекс", "Включить стоны и басы качалки", "/voice on"],
-      ["Выключить голос", "Отключить голосовые ответы", "/voice off"],
-      ["Новый слейв", "Сбросить и начать путь бойца заново", "/reset"],
-      ["Сгенерировать арт", "Deep dark fantasy арт через генератор", "/img <что нарисовать>"],
-      ["Передать снарягу", "Поделись с fellow slave; участник должен быть в чате", "/giveitem <имя игрока> | <предмет>"],
+
+    const categories = [
+      {
+        id: "minigames",
+        title: "Мини-игры и Турниры",
+        icon: "🎮",
+        badge: "Dungeon Games",
+        badgeClass: "badge-games",
+        desc: "Соревнования в 9 играх качалки, кубок недели и прокачка ачивок",
+        commands: [
+          {
+            title: "Открыть Dungeon Games",
+            desc: "Главный хаб игр, турнирная таблица Boss Cup и инвентарь бойца",
+            cmd: "/app",
+            tag: "Основная"
+          },
+          {
+            title: "Турнир Недели (Boss Cup)",
+            desc: "Посмотреть текущий кубок качалки и лидеров недели",
+            cmd: "/cup",
+            tag: "Турнир"
+          },
+          {
+            title: "Кожаные Достижения",
+            desc: "Открыть список достижений и забрать заработанные награды",
+            cmd: "/achievements",
+            tag: "Награды"
+          }
+        ]
+      },
+      {
+        id: "economy",
+        title: "Экономика и Магазин",
+        icon: "💰",
+        badge: "Three Hundred Bucks",
+        badgeClass: "badge-economy",
+        desc: "Заработок монет, покупки в магазине $300 и элитные VIP статусы",
+        commands: [
+          {
+            title: "Баланс и Стрик",
+            desc: "Проверить сколько монет на счету и забрать ежедневную награду",
+            cmd: "/coins",
+            tag: "Баланс"
+          },
+          {
+            title: "Leather Shop ($300)",
+            desc: "Каталог товаров: спанкинг, фейк-бан, перки и VIP на неделю",
+            cmd: "/shop",
+            tag: "Каталог"
+          },
+          {
+            title: "Быстрая покупка",
+            desc: "Приобрести товар напрямую по его названию или коду",
+            cmd: "/buy vip_badge",
+            tag: "Покупка"
+          }
+        ]
+      },
+      {
+        id: "roleplay",
+        title: "Ролевая игра и Каста",
+        icon: "🎭",
+        badge: "Roleplay & Lore",
+        badgeClass: "badge-roleplay",
+        desc: "Управление характером бота, выбор касты и настройка целей",
+        commands: [
+          {
+            title: "Кто Boss of this Gym?",
+            desc: "Показать текущую роль бота, его настроение и активную цель",
+            cmd: "/who",
+            tag: "Статус"
+          },
+          {
+            title: "Выбрать Касту",
+            desc: "Переключить архетип бота (dungeon_master, billy, van, coach и др.)",
+            cmd: "/set dungeon_master",
+            tag: "Каста"
+          },
+          {
+            title: "Свой образ бойца",
+            desc: "Задать индивидуальный характер, правила поведения и историю бота",
+            cmd: "/prompt Суровый тренер по пауэрлифтингу, мотивирует криками и хлопками",
+            tag: "Промпт"
+          },
+          {
+            title: "Цель в качалке",
+            desc: "Задать текущую сюжетную цель для персонажа в чате",
+            cmd: "/goal пожать 300 кг от груди до конца недели",
+            tag: "Цель"
+          },
+          {
+            title: "Новый боец (Сброс)",
+            desc: "Очистить текущий контекст диалога и начать разговор с чистого листа",
+            cmd: "/reset",
+            tag: "Сброс"
+          }
+        ]
+      },
+      {
+        id: "inventory",
+        title: "Инвентарь и Предметы",
+        icon: "🎒",
+        badge: "Dungeon Gear",
+        badgeClass: "badge-inventory",
+        desc: "Найденные вещи, взаимодействие с предметами и передача друзьям",
+        commands: [
+          {
+            title: "Снаряга Слейва",
+            desc: "Посмотреть список всех собранных в чатах кожаных предметов",
+            cmd: "/inv",
+            tag: "Инвентарь"
+          },
+          {
+            title: "Использовать предмет",
+            desc: "Применить предмет из сумки с описанием желаемого действия",
+            cmd: `/use ${itemName} | смачно шлёпнуть по скамье для жима`,
+            tag: "Действие"
+          },
+          {
+            title: "Передать снарягу",
+            desc: "Отдать предмет другому бойцу, который есть в этом чате",
+            cmd: `/giveitem @username | ${itemName}`,
+            tag: "Передача"
+          }
+        ]
+      },
+      {
+        id: "voice",
+        title: "Озвучка и Медиа",
+        icon: "🎙",
+        badge: "Media & Audio",
+        badgeClass: "badge-voice",
+        desc: "Голосовые ответы с фирменными басами и генерация картинок",
+        commands: [
+          {
+            title: "Включить голос",
+            desc: "Включить озвучку ответов персонажа сочными голосовыми сообщениями",
+            cmd: "/voice on",
+            tag: "Голос"
+          },
+          {
+            title: "Выключить голос",
+            desc: "Отключить голосовые ответы и оставить только текст",
+            cmd: "/voice off",
+            tag: "Тишина"
+          },
+          {
+            title: "Голос персонажа",
+            desc: "Выбрать голос озвучки (billy, van, deep, coach)",
+            cmd: "/voice billy",
+            tag: "Тембр"
+          },
+          {
+            title: "Генератор артов",
+            desc: "Создать сочный Deep Dark Fantasy арт по текстовому описанию",
+            cmd: "/img Билли Херрингтон в неоновой качалке 80-х",
+            tag: "Арт"
+          }
+        ]
+      }
     ];
-    $("#command-list").innerHTML = commands.map(([title, description, message]) =>
-      `<article class="command-row"><div class="command-main"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(description)}</p><code>${escapeHtml(message)}</code></div><button class="preset-button command-draft" type="button" data-draft="${escapeHtml(message)}">Подставить</button></article>`
-    ).join("");
+
+    const container = $("#command-list");
+    if (!container) return;
+
+    container.innerHTML = categories.map((cat) => `
+      <section class="help-category-section" id="help-cat-${cat.id}">
+        <div class="help-category-header">
+          <div class="help-cat-title-wrap">
+            <span class="help-cat-icon">${cat.icon}</span>
+            <div class="help-cat-titles">
+              <h3 class="help-cat-title">${escapeHtml(cat.title)}</h3>
+              <p class="help-cat-desc">${escapeHtml(cat.desc)}</p>
+            </div>
+          </div>
+          <span class="help-cat-badge ${cat.badgeClass}">${escapeHtml(cat.badge)}</span>
+        </div>
+        <div class="help-commands-grid">
+          ${cat.commands.map((cmd) => `
+            <article class="help-command-card">
+              <div class="help-cmd-header">
+                <span class="help-cmd-title">${escapeHtml(cmd.title)}</span>
+                <span class="help-cmd-tag">${escapeHtml(cmd.tag)}</span>
+              </div>
+              <p class="help-cmd-desc">${escapeHtml(cmd.desc)}</p>
+              <div class="help-cmd-footer">
+                <code class="help-cmd-snippet">${escapeHtml(cmd.cmd)}</code>
+                <button class="preset-button command-draft-btn" type="button" data-draft="${escapeHtml(cmd.cmd)}" title="Подставить в чат Telegram">
+                  <span>✍️</span> Подставить
+                </button>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
   }
 
   function renderInventory() {
@@ -258,6 +436,12 @@
     // owns in every chat, so the list matches /inv.
     const query = chatId ? `?chat_id=${encodeURIComponent(chatId)}` : "";
     const data = await request(`/api/state${query}`);
+    if (data.coins != null) {
+      updateBalanceDisplay(data.coins);
+    }
+    if (data.daily_streak != null) {
+      updateStreakDisplay(data.daily_streak);
+    }
     state.items = data.items || []; state.archetypes = data.archetypes || []; state.selected = data.selected || "";
     state.botUsername = data.bot_username || "";
     state.userId = data.user?.id || 0;
@@ -440,6 +624,10 @@
       coinsEl.classList.add("coin-pulse");
     }
     if (shopCoinsEl) shopCoinsEl.textContent = state.coins;
+    // Синхронизируем кнопки в каталоге магазина
+    if (state.shopItems && state.shopItems.length) {
+      renderShopItems();
+    }
   }
 
   function updateStreakDisplay(streak) {
@@ -693,8 +881,13 @@
 
     catalog.innerHTML = state.shopItems.map((item) => {
       const isAffordable = state.coins >= item.price;
+      const diff = item.price - state.coins;
+      const btnText = isAffordable ? "Купить" : `Не хватает ${diff} 🪙`;
+      const btnClass = isAffordable ? "shop-card-buy-btn" : "shop-card-buy-btn not-enough";
+      const btnTitle = isAffordable ? "Купить предмет" : `Недостаточно средств: нужно ещё ${diff} 🪙`;
+
       return `
-        <article class="shop-card" data-item-id="${escapeHtml(item.id)}">
+        <article class="shop-card ${isAffordable ? "" : "card-disabled"}" data-item-id="${escapeHtml(item.id)}">
           <div class="shop-card-top">
             <div class="shop-card-icon">${item.icon || "🎁"}</div>
             <div class="shop-card-info">
@@ -707,8 +900,8 @@
               <span>🪙 ${escapeHtml(item.price)}</span>
               <span class="shop-card-price-label">монет</span>
             </div>
-            <button class="shop-card-buy-btn" data-buy-item="${escapeHtml(item.id)}" ${state.readOnly ? "disabled" : ""}>
-              Купить
+            <button class="${btnClass}" data-buy-item="${escapeHtml(item.id)}" title="${btnTitle}" ${state.readOnly ? "disabled" : ""}>
+              ${btnText}
             </button>
           </div>
         </article>
@@ -723,12 +916,39 @@
     if (!item) return;
     selectedShopItem = item;
 
+    const isAffordable = state.coins >= item.price;
+    const diff = item.price - state.coins;
+
     $("#shop-dialog-title").textContent = item.name;
     $("#shop-dialog-icon").textContent = item.icon || "🎁";
     $("#shop-dialog-item-name").textContent = item.name;
     $("#shop-dialog-item-desc").textContent = item.description || "";
     $("#shop-dialog-price").textContent = item.price;
-    $("#confirm-buy-price").textContent = item.price;
+
+    const warningEl = $("#shop-dialog-balance-warning");
+    const confirmBtn = $("#confirm-buy-btn");
+
+    if (warningEl) {
+      if (!isAffordable) {
+        warningEl.hidden = false;
+        warningEl.innerHTML = `⚠️ <strong>Недостаточно монет:</strong> на балансе <strong>${state.coins} 🪙</strong>, требуется <strong>${item.price} 🪙</strong> (нужно ещё <strong>${diff} 🪙</strong>). Заработайте монеты в мини-играх качалки!`;
+      } else {
+        warningEl.hidden = true;
+        warningEl.textContent = "";
+      }
+    }
+
+    if (confirmBtn) {
+      if (!isAffordable) {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add("btn-disabled");
+        confirmBtn.innerHTML = `Недостаточно монет (нужно ещё ${diff} 🪙)`;
+      } else {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove("btn-disabled");
+        confirmBtn.innerHTML = `Купить за 🪙 <span id="confirm-buy-price">${item.price}</span>`;
+      }
+    }
 
     const fieldsContainer = $("#shop-custom-fields");
     fieldsContainer.innerHTML = "";
@@ -768,7 +988,7 @@
     if (!selectedShopItem) return;
 
     if (state.coins < selectedShopItem.price) {
-      toast(`Недостаточно монет! Требуется 🪙 ${selectedShopItem.price}, у вас 🪙 ${state.coins}`);
+      toast(`❌ Недостаточно монет! Требуется ${selectedShopItem.price} 🪙, а у вас ${state.coins} 🪙`);
       return;
     }
 
@@ -846,8 +1066,20 @@
         openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
       }
     } finally {
-      buyBtn.disabled = false;
-      buyBtn.innerHTML = `Купить за 🪙 <span id="confirm-buy-price">${selectedShopItem.price}</span>`;
+      if (selectedShopItem) {
+        const canAffordNow = state.coins >= selectedShopItem.price;
+        buyBtn.disabled = !canAffordNow;
+        if (canAffordNow) {
+          buyBtn.classList.remove("btn-disabled");
+          buyBtn.innerHTML = `Купить за 🪙 <span id="confirm-buy-price">${selectedShopItem.price}</span>`;
+        } else {
+          buyBtn.classList.add("btn-disabled");
+          buyBtn.innerHTML = `Недостаточно монет (нужно ещё ${selectedShopItem.price - state.coins} 🪙)`;
+        }
+      } else {
+        buyBtn.disabled = false;
+        buyBtn.classList.remove("btn-disabled");
+      }
     }
   }
 

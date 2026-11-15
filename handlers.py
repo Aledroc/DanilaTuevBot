@@ -1018,7 +1018,9 @@ def shop_buy_cmd(message):
         extra_data = {"title": extra_arg}
     elif item_id == "mood_override":
         extra_data = {"mood": extra_arg}
-    elif item_id in ("custom_roast", "compliment_bomb", "fake_ban"):
+    elif item_id == "shout_announcement":
+        extra_data = {"text": extra_arg}
+    elif item_id in ("custom_roast", "compliment_bomb", "fake_ban", "slap_friend"):
         target_id = None
         target_name = ""
         if message.reply_to_message and message.reply_to_message.from_user:
@@ -1046,6 +1048,8 @@ def shop_buy_cmd(message):
             extra_data = {"target_user_id": target_id, "target_name": target_name, "compliment": extra_arg}
         elif item_id == "fake_ban":
             extra_data = {"target_user_id": target_id, "target_name": target_name, "reason": extra_arg or "слишком мощная форма"}
+        elif item_id == "slap_friend":
+            extra_data = {"target_user_id": target_id, "target_name": target_name, "reason": extra_arg or "для профилактики"}
 
     res = inventory_store.buy_shop_item(user.id, item_id, chat_id=cid, extra_data=extra_data)
     if not res.get("success"):

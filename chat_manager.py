@@ -882,7 +882,7 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
             pass
 
         # -------------------------------------------------------------------
-        # Заказные розыгрыши (compliment_bomb, fake_ban)
+        # Заказные розыгрыши (compliment_bomb, fake_ban, slap_friend, shout_announcement)
         # -------------------------------------------------------------------
         pending_prank = None
         try:
@@ -890,18 +890,30 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
             if pending_prank:
                 p_type = pending_prank.get("prank_type")
                 p_extra = pending_prank.get("extra_text") or ""
+                target_disp = inventory_prompt_owner_name or pending_prank.get("target_name") or "Игрок"
                 if p_type == "compliment_bomb":
                     system_prompt += (
-                        f"\n\n🌹 КОРОЛЕВСКИЙ РЕСПЕКТ / БОМБАРДИРОВКА КОМПЛИМЕНТАМИ: участник {inventory_prompt_owner_name or 'Игрок'} "
+                        f"\n\n🌹 КОРОЛЕВСКИЙ РЕСПЕКТ / БОМБАРДИРОВКА КОМПЛИМЕНТАМИ: участник {target_disp} "
                         "получил оплаченный королевский респект! Персонально осыпь его роскошными, эпичными эпитетами "
                         f"о его невероятной мощи, стальных бицепсах, харизме и идеальной форме в качалке! {p_extra}"
                     )
                 elif p_type == "fake_ban":
                     system_prompt += (
-                        f"\n\n🔨 ФЕЙКОВЫЙ БАН МОЛОТОМ ТОРА: участник {inventory_prompt_owner_name or 'Игрок'} "
+                        f"\n\n🔨 ФЕЙКОВЫЙ БАН МОЛОТОМ ТОРА: участник {target_disp} "
                         "приговорен к шуточному изгнанию из качалки! Торжественно, драматично и громогласно объяви ему шуточный бан "
                         f"с обратным отсчетом секунд до изгнания в духе архетипа! Причина бана: {p_extra or 'слишком мощная форма и дерзость'}. "
                         "Это дружеский пранк, сделай это максимально эпично и смешно!"
+                    )
+                elif p_type == "slap_friend":
+                    system_prompt += (
+                        f"\n\n🐟 ДРУЖЕСКИЙ ЛЕЩ / МОКРОЕ ПОЛОТЕНЦЕ: участнику {target_disp} оплачен дружеский лещ! "
+                        "Со смачным звоном отвесь ему смачного дружеского леща или звонкий шлепок мокрым полотенцем (*...*), "
+                        f"сопроводив это едким и угарным гачи-комментарием в духе роли! Повод: {p_extra or 'для тонуса и бодрости в качалке'}."
+                    )
+                elif p_type == "shout_announcement":
+                    system_prompt += (
+                        "\n\n📢 МЕГАФОН / КРИК НА ВСЮ КАЧАЛКУ: персонаж берет огромный рупор/мегафон и во всю глотку "
+                        f"орёт на весь чат официальное объявление: «{p_extra}»! Отыграй это максимально громко, эпично и со спецэффектами!"
                     )
         except Exception:
             pass
@@ -1326,11 +1338,10 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     failed_gives.append((gift["item"], recipient_name))
 
             display_name = html.escape(inventory_user_name or "Игрок")
-            # `cid` is the chat that triggered this turn. A pickup can be credited
-            # to the player while the reply is prepared there (see the /inv fix),
-            # so announce in the same chat instead of guessing another one.
-            notified = [cid]
             is_private = reply_to is not None and reply_to.chat.type == 'private'
+
+            # Сбор всех инвентарных событий в один компактный сервисный блок
+            inv_alerts = []
             for item_name in added:
                 try:
                     inventory_store.increment_stat(cid, owner_id, "items_collected")
@@ -1338,46 +1349,29 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     pass
                 item_html = html.escape(item_name)
                 label = "Получено" if is_private else f"{display_name} получает"
-                for chat_id in notified:
-                    try:
-                        bot.send_message(chat_id, f"🎒 {label}: <b>{item_html}</b>", parse_mode='HTML')
-                    except Exception:
-                        logging.exception("Failed to announce item pickup in chat %s", chat_id)
+                inv_alerts.append(f"🎒 {label}: <b>{item_html}</b>")
+
             for item_name in rejected_additions:
-                bot.send_message(
-                    cid,
-                    f"🎒 <b>{display_name}</b>, предмет «{html.escape(item_name)}» не поместился в инвентарь. "
-                    "Потрать или выбрось что-нибудь по сюжету и попробуй снова.",
-                    parse_mode='HTML',
-                )
+                inv_alerts.append(f"🎒 <b>{display_name}</b>: предмет «{html.escape(item_name)}» не поместился в инвентарь")
+
             for item_name, recipient_name in failed_gives:
-                bot.send_message(
-                    cid,
-                    f"🎒 Передача «{html.escape(item_name)}» для <b>{html.escape(recipient_name)}</b> "
-                    "не выполнена: проверь, что предмет есть в твоём инвентаре и у получателя есть место.",
-                    parse_mode='HTML',
-                )
+                inv_alerts.append(f"🎒 Передача «{html.escape(item_name)}» для <b>{html.escape(recipient_name)}</b> не выполнена (проверьте инвентарь/место)")
+
             for item_name, recipient_name in unknown_gives:
-                bot.send_message(
-                    cid,
-                    f"🎒 Не смог передать «{html.escape(item_name)}»: участник "
-                    f"«{html.escape(recipient_name)}» не найден в этом чате. Ответь на его "
-                    "сообщение или пусть он напишет боту хотя бы раз — после этого передача сработает.",
-                    parse_mode='HTML',
-                )
+                inv_alerts.append(f"🎒 Не найден участник «{html.escape(recipient_name)}» для передачи «{html.escape(item_name)}»")
+
             for item_name, recipient_name in completed_gives:
-                bot.send_message(
-                    cid,
-                    f"🎒 <b>{html.escape(recipient_name)}</b> получает: "
-                    f"<b>{html.escape(item_name)}</b>",
-                    parse_mode='HTML',
-                )
+                inv_alerts.append(f"🎒 <b>{html.escape(recipient_name)}</b> получает: <b>{html.escape(item_name)}</b>")
+
             for item_name in consumed:
-                bot.send_message(
-                    cid,
-                    f"🎒 Потрачен предмет: <b>{html.escape(item_name)}</b>",
-                    parse_mode='HTML',
-                )
+                inv_alerts.append(f"🎒 Потрачен предмет: <b>{html.escape(item_name)}</b>")
+
+            if inv_alerts:
+                # Отправляем ВСЕ оповещения одной аккуратной сервисной строкой
+                try:
+                    bot.send_message(cid, "\n".join(inv_alerts), parse_mode='HTML')
+                except Exception:
+                    logging.exception("Failed to announce inventory alerts in chat %s", cid)
         if pending_roast and pending_roast.get("roast_id"):
             try:
                 inventory_store.consume_pending_roast(pending_roast["roast_id"])

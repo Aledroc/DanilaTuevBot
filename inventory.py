@@ -2885,6 +2885,30 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
         # Смачный гачи-выхлоп в чате
         extra_str = "golden_fart"
 
+    elif item_id == "slap_friend":
+        target_id = 0
+        target_name = ""
+        reason = ""
+        if extra_data and isinstance(extra_data, dict):
+            target_id = int(extra_data.get("target_user_id") or 0)
+            target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
+            reason = str(extra_data.get("reason") or extra_data.get("slap_reason") or extra_data.get("extra_text") or "").strip()
+        if not target_id:
+            return {"success": False, "message": "Укажите цель для леща (ответьте на сообщение друга или укажите ник)!"}
+        extra_str = f"target:{target_id}:{target_name}"
+        if chat_id:
+            order_pending_prank(chat_id, user_id, target_id, target_name or f"Игрок {target_id}", "slap_friend", reason)
+
+    elif item_id == "shout_announcement":
+        announcement_text = ""
+        if extra_data and isinstance(extra_data, dict):
+            announcement_text = str(extra_data.get("text") or extra_data.get("announcement") or extra_data.get("extra_text") or "").strip()
+        if not announcement_text:
+            return {"success": False, "message": "Укажите текст объявления для мегафона (например: /buy shout_announcement Текст)!"}
+        extra_str = announcement_text[:250]
+        if chat_id:
+            order_pending_prank(chat_id, user_id, 0, "Все в чате", "shout_announcement", extra_str)
+
     elif item_id == "compliment_bomb":
         target_id = 0
         target_name = ""
