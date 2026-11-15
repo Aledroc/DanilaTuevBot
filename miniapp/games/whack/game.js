@@ -7,7 +7,7 @@
   const searchParams = new URLSearchParams(window.location.search);
   const chatId = searchParams.get('chat_id') || tg?.initDataUnsafe?.chat?.id || null;
   const initData = tg?.initData || '';
-  const userName = tg?.initDataUnsafe?.user?.first_name || 'Ловкий Охотник';
+  const userName = tg?.initDataUnsafe?.user?.first_name || 'Dungeon Master';
 
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
@@ -460,17 +460,17 @@
         h.timer = 0;
 
         if (h.type === 'BOMB') {
-          // Удар по бомбе! Штраф очков и сброс комбо
+          // Удар по взрывчатке / ловушке! Штраф очков и сброс комбо
           const penalty = Math.min(score, 25);
           score = Math.max(0, score - 25);
           combo = 0;
           playBombSound();
           triggerHaptic('notification', 'error');
 
-          spawnFloatingText(h.x, moleY - 20, `-${penalty} 💣 БОМБА!`, '#ff2a2a', 32);
+          spawnFloatingText(h.x, moleY - 20, `-${penalty} 💀 DUNGEON TRAP!`, '#ff2a5f', 32);
           spawnExplosion(h.x, moleY, '#ff3b30', 25);
         } else if (h.type === 'GOLD') {
-          // Золотой крот! x2 очки (+20 базовых * комбо)
+          // Золотой Джаброни! x2 очки (+20 базовых * комбо)
           combo++;
           if (combo > maxCombo) maxCombo = combo;
           totalWhacked++;
@@ -481,11 +481,19 @@
           playHitSound(true);
           triggerHaptic('impact', 'heavy');
 
-          spawnFloatingText(h.x, moleY - 30, `+${gained} ЗОЛОТО! ⭐`, '#ffd700', 36);
+          // Сочные Гачи комбо-тексты
+          let comboGachi = '💥 300 BUCKS COMBO';
+          if (combo >= 10) {
+            comboGachi = '⚡ ASS WE CAN';
+          } else if (combo >= 5) {
+            comboGachi = '🔨 SPANK!';
+          }
+
+          spawnFloatingText(h.x, moleY - 30, `+${gained} ${comboGachi}! ⭐`, '#ffd700', 34);
           spawnStars(h.x, moleY - 45, '#ffe600');
-          spawnExplosion(h.x, moleY, '#ffbe0b', 22);
+          spawnExplosion(h.x, moleY, '#ffbe0b', 24);
         } else {
-          // Обычный крот (+10 базовых)
+          // Обычный Джаброни (+10 базовых)
           combo++;
           if (combo > maxCombo) maxCombo = combo;
           totalWhacked++;
@@ -496,10 +504,18 @@
           playHitSound(false);
           triggerHaptic('impact', 'medium');
 
-          const comboTxt = combo > 2 ? ` (x${combo}!)` : '';
-          spawnFloatingText(h.x, moleY - 30, `+${gained}${comboTxt}`, '#a6ff00', 30);
-          spawnStars(h.x, moleY - 45, '#9ef01a');
-          spawnExplosion(h.x, moleY, '#70e000', 16);
+          let spankText = '🔨 SPANK!';
+          if (combo >= 15) {
+            spankText = '⚡ ASS WE CAN!';
+          } else if (combo >= 8) {
+            spankText = '💥 300 BUCKS!';
+          } else if (combo >= 3) {
+            spankText = `🔨 SPANK! x${combo}`;
+          }
+
+          spawnFloatingText(h.x, moleY - 30, `+${gained} ${spankText}`, '#00f0ff', 30);
+          spawnStars(h.x, moleY - 45, '#00f0ff');
+          spawnExplosion(h.x, moleY, '#38bdf8', 18);
         }
         break; // один удар поражает одного крота
       }
@@ -624,23 +640,32 @@
   }
 
   function drawBackground() {
-    // Сочная травянистая лужайка
+    // Благородный тёмный интерьер Dungeon Gym
     const bgGrad = ctx.createLinearGradient(0, 0, 0, CH);
-    bgGrad.addColorStop(0, '#1c2e17');
-    bgGrad.addColorStop(0.3, '#2b4424');
-    bgGrad.addColorStop(1, '#131e10');
+    bgGrad.addColorStop(0, '#0c101c');
+    bgGrad.addColorStop(0.35, '#131b2e');
+    bgGrad.addColorStop(1, '#060911');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CW, CH);
 
-    // Декоративные травинки и текстура
-    ctx.fillStyle = 'rgba(74, 124, 63, 0.2)';
-    for (let i = 0; i < 40; i++) {
-      const tx = (i * 137) % CW;
-      const ty = (i * 243) % CH;
+    // Неоновые отблески качалки и кожаные маты
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
+    for (let i = 0; i < 35; i++) {
+      const tx = (i * 149) % CW;
+      const ty = (i * 263) % CH;
       ctx.beginPath();
-      ctx.arc(tx, ty, 35, 0, Math.PI * 2);
+      ctx.arc(tx, ty, 40, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Текстовая надпись на стене данжена
+    ctx.save();
+    ctx.font = '900 28px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.07)';
+    ctx.letterSpacing = '8px';
+    ctx.fillText('DUNGEON GYM • SPANK ARENA', CW / 2, 220);
+    ctx.restore();
   }
 
   function drawHUD() {
@@ -649,44 +674,45 @@
 
     // Плашка с очками (Слева)
     const cardY = 85;
-    ctx.fillStyle = 'rgba(15, 26, 12, 0.85)';
+    ctx.fillStyle = 'rgba(12, 18, 32, 0.9)';
     roundRect(ctx, 30, cardY, 200, 75, 18);
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(158, 240, 26, 0.4)';
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
     ctx.stroke();
 
-    ctx.font = '700 14px -apple-system, sans-serif';
-    ctx.fillStyle = '#9ef01a';
+    ctx.font = '800 13px -apple-system, sans-serif';
+    ctx.fillStyle = '#00f0ff';
     ctx.textAlign = 'left';
-    ctx.fillText('ОЧКИ', 50, cardY + 28);
+    ctx.fillText('BUCKS 💰', 50, cardY + 28);
     ctx.font = '900 32px -apple-system, sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(score.toString(), 50, cardY + 62);
 
     // Плашка с таймером (Справа)
-    ctx.fillStyle = 'rgba(15, 26, 12, 0.85)';
+    ctx.fillStyle = 'rgba(12, 18, 32, 0.9)';
     roundRect(ctx, CW - 230, cardY, 200, 75, 18);
     ctx.fill();
     const isUrgent = timeLeft <= 10;
-    ctx.strokeStyle = isUrgent ? 'rgba(255, 68, 68, 0.8)' : 'rgba(158, 240, 26, 0.4)';
+    ctx.strokeStyle = isUrgent ? 'rgba(255, 42, 95, 0.9)' : 'rgba(0, 240, 255, 0.45)';
     ctx.stroke();
 
-    ctx.font = '700 14px -apple-system, sans-serif';
-    ctx.fillStyle = isUrgent ? '#ff4d4d' : '#9ef01a';
-    ctx.fillText('ВРЕМЯ', CW - 210, cardY + 28);
+    ctx.font = '800 13px -apple-system, sans-serif';
+    ctx.fillStyle = isUrgent ? '#ff4d79' : '#00f0ff';
+    ctx.fillText('РАУНД ⏱', CW - 210, cardY + 28);
     ctx.font = '900 32px -apple-system, sans-serif';
-    ctx.fillStyle = isUrgent ? '#ff3b30' : '#ffffff';
+    ctx.fillStyle = isUrgent ? '#ff2a5f' : '#ffffff';
     ctx.fillText(`${Math.ceil(timeLeft)} сек`, CW - 210, cardY + 62);
 
     // Комбо счетчик (По центру)
     if (combo > 1) {
-      ctx.fillStyle = 'rgba(255, 190, 11, 0.9)';
+      ctx.fillStyle = combo >= 10 ? '#ffd700' : '#00f0ff';
       ctx.font = '900 24px -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.shadowColor = '#ffbe0b';
-      ctx.shadowBlur = 12;
-      ctx.fillText(`🔥 x${combo} СЕРИЯ!`, CW / 2, cardY + 48);
+      ctx.shadowColor = combo >= 10 ? '#ffd700' : '#00f0ff';
+      ctx.shadowBlur = 14;
+      const comboLabel = combo >= 10 ? `⚡ x${combo} ASS WE CAN!` : `🔨 x${combo} SPANK!`;
+      ctx.fillText(comboLabel, CW / 2, cardY + 48);
       ctx.shadowBlur = 0;
     }
 
@@ -696,34 +722,35 @@
   function drawHole(hole) {
     ctx.save();
 
-    // 1. Задняя стенка норки / Земляной вал
+    // 1. Кожаный подиум люка / Кольцо арены
     ctx.beginPath();
-    ctx.ellipse(hole.x, hole.y + 4, hole.radiusX + 12, hole.radiusY + 8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#1c150c';
+    ctx.ellipse(hole.x, hole.y + 4, hole.radiusX + 14, hole.radiusY + 10, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#080c16';
     ctx.fill();
 
-    // Земляной ободок вокруг норки
+    // Стальной заклепанный обод люка
     ctx.beginPath();
     ctx.ellipse(hole.x, hole.y, hole.radiusX + 8, hole.radiusY + 6, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#4a3319';
+    ctx.fillStyle = '#1e293b';
     ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    // Внутренняя темнота норки
+    // Тёмный провал люка в раздевалку
     ctx.beginPath();
     ctx.ellipse(hole.x, hole.y, hole.radiusX, hole.radiusY, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#0f0a06';
+    ctx.fillStyle = '#04060a';
     ctx.fill();
 
-    // 2. Крот / Персонаж, вылезающий из норки (с маской обрезки по нижнему краю норки)
+    // 2. Джаброни / Ловушка, вылезающие из люка
     if (hole.progress > 0) {
       ctx.save();
-      // Клиппинг: крот не должен торчать снизу норки
       ctx.beginPath();
-      // Прямоугольник выше дна норки
-      ctx.rect(hole.x - hole.radiusX - 30, hole.y - 180, (hole.radiusX + 30) * 2, 180 + hole.radiusY * 0.4);
+      ctx.rect(hole.x - hole.radiusX - 30, hole.y - 190, (hole.radiusX + 30) * 2, 190 + hole.radiusY * 0.4);
       ctx.clip();
 
-      const moleY = hole.y - hole.progress * 85;
+      const moleY = hole.y - hole.progress * 90;
       if (hole.type === 'BOMB') {
         drawBomb(ctx, hole.x, moleY, hole.state === 'HIT');
       } else {
@@ -732,15 +759,15 @@
       ctx.restore();
     }
 
-    // 3. Передний край норки (трава и кочки, перекрывающие крота спереди)
+    // 3. Передний край люка (кожаный бортик со стальной каймой)
     ctx.beginPath();
     ctx.ellipse(hole.x, hole.y + 2, hole.radiusX + 4, hole.radiusY * 0.6, 0, 0, Math.PI);
-    ctx.fillStyle = '#3a5a2a';
+    ctx.fillStyle = '#1e283d';
     ctx.fill();
 
     ctx.beginPath();
     ctx.ellipse(hole.x, hole.y + 6, hole.radiusX + 2, hole.radiusY * 0.45, 0, 0, Math.PI);
-    ctx.fillStyle = '#223618';
+    ctx.fillStyle = '#0f172a';
     ctx.fill();
 
     ctx.restore();
@@ -750,125 +777,143 @@
     context.save();
     context.translate(x, y);
 
-    const bodyColor = isGold ? '#f59e0b' : '#6b4f38';
-    const highlightColor = isGold ? '#fcd34d' : '#8d6e52';
-    const bellyColor = isGold ? '#fef3c7' : '#d7b89c';
+    // Персонаж — наглый Джаброни в коже / кепке качалки
+    const skinTone = isGold ? '#d97706' : '#e0a97a';
+    const leatherTone = isGold ? '#b45309' : '#1e293b';
 
-    // Тело крота
-    context.fillStyle = bodyColor;
+    // 1. Мощные мускулистые плечи / торс Джаброни
+    context.fillStyle = skinTone;
     context.beginPath();
-    context.ellipse(0, 30, 48, 55, 0, 0, Math.PI * 2);
+    context.ellipse(0, 36, 52, 48, 0, 0, Math.PI * 2);
     context.fill();
 
-    // Блики на теле
-    context.fillStyle = highlightColor;
+    // Кожаная портупея / ремни качалки крест-накрест на груди
+    context.strokeStyle = isGold ? '#ffd700' : '#0f172a';
+    context.lineWidth = 5;
     context.beginPath();
-    context.ellipse(-12, 15, 14, 28, -0.2, 0, Math.PI * 2);
+    context.moveTo(-35, 12);
+    context.lineTo(35, 55);
+    context.moveTo(35, 12);
+    context.lineTo(-35, 55);
+    context.stroke();
+
+    // Стальная пряжка по центру
+    context.fillStyle = isGold ? '#fef08a' : '#94a3b8';
+    context.beginPath();
+    context.arc(0, 33, 6, 0, Math.PI * 2);
     context.fill();
 
-    // Пузико
-    context.fillStyle = bellyColor;
+    // 2. Мускулистая шея и голова
+    context.fillStyle = skinTone;
     context.beginPath();
-    context.ellipse(0, 38, 26, 32, 0, 0, Math.PI * 2);
+    context.ellipse(0, -10, 38, 36, 0, 0, Math.PI * 2);
     context.fill();
 
-    // Голова
-    context.fillStyle = bodyColor;
+    // Наглая челюсть / подбородок
+    context.fillStyle = skinTone;
     context.beginPath();
-    context.ellipse(0, -12, 42, 38, 0, 0, Math.PI * 2);
+    context.ellipse(0, 10, 24, 18, 0, 0, Math.PI * 2);
     context.fill();
 
-    // Мордочка (светлая область)
-    context.fillStyle = bellyColor;
-    context.beginPath();
-    context.ellipse(0, -2, 28, 20, 0, 0, Math.PI * 2);
-    context.fill();
-
-    // Носик
-    context.fillStyle = isGold ? '#dc2626' : '#ec4899';
-    context.beginPath();
-    context.ellipse(0, -10, 10, 7, 0, 0, Math.PI * 2);
-    context.fill();
-
-    // Глазки
-    if (isHit) {
-      // Оглушённые глаза-крестики (X_X)
-      drawCrossEye(context, -16, -22);
-      drawCrossEye(context, 16, -22);
-
-      // Головокружительный рот волной
-      context.beginPath();
-      context.moveTo(-14, 8);
-      context.quadraticCurveTo(-6, 2, 0, 8);
-      context.quadraticCurveTo(6, 14, 14, 8);
-      context.lineWidth = 3;
-      context.strokeStyle = '#4a2810';
-      context.stroke();
-    } else {
-      // Весёлые круглые глаза
-      context.fillStyle = '#ffffff';
-      context.beginPath();
-      context.ellipse(-16, -22, 10, 13, 0, 0, Math.PI * 2);
-      context.ellipse(16, -22, 10, 13, 0, 0, Math.PI * 2);
-      context.fill();
-
-      // Зрачки
-      context.fillStyle = '#111111';
-      context.beginPath();
-      context.arc(-15, -21, 5, 0, Math.PI * 2);
-      context.arc(17, -21, 5, 0, Math.PI * 2);
-      context.fill();
-
-      // Белые блики в зрачках
-      context.fillStyle = '#ffffff';
-      context.beginPath();
-      context.arc(-17, -23, 2, 0, Math.PI * 2);
-      context.arc(15, -23, 2, 0, Math.PI * 2);
-      context.fill();
-
-      // Задорная улыбка с зубиком
-      context.beginPath();
-      context.arc(0, 2, 14, 0.2, Math.PI - 0.2);
-      context.lineWidth = 3;
-      context.strokeStyle = '#382010';
-      context.stroke();
-
-      // Передние белые зубки крота
-      context.fillStyle = '#ffffff';
-      roundRect(context, -6, 4, 12, 8, 2);
-      context.fill();
-      context.stroke();
-    }
-
-    // Если золотой — корона на голове! 👑
+    // 3. Кепка качалки или кожаная маска с заклепками
     if (isGold) {
+      // Золотой Джаброни: Золотая корона босса / цепь $300
       context.fillStyle = '#ffbe0b';
       context.strokeStyle = '#d97706';
-      context.lineWidth = 2;
+      context.lineWidth = 2.5;
       context.beginPath();
-      context.moveTo(-20, -42);
-      context.lineTo(-24, -60);
-      context.lineTo(-10, -50);
-      context.lineTo(0, -66);
-      context.lineTo(10, -50);
-      context.lineTo(24, -60);
-      context.lineTo(20, -42);
+      context.moveTo(-24, -38);
+      context.lineTo(-28, -58);
+      context.lineTo(-12, -48);
+      context.lineTo(0, -68);
+      context.lineTo(12, -48);
+      context.lineTo(28, -58);
+      context.lineTo(24, -38);
       context.closePath();
       context.fill();
       context.stroke();
 
-      // Рубины в короне
-      context.fillStyle = '#ef4444';
+      // Золотая цепь на шее
+      context.strokeStyle = '#ffd700';
+      context.lineWidth = 4;
       context.beginPath();
-      context.arc(0, -52, 3, 0, Math.PI * 2);
+      context.arc(0, 18, 22, 0.2, Math.PI - 0.2);
+      context.stroke();
+    } else {
+      // Обычный Джаброни: Черная кожаная кепка / брутальный козырек
+      context.fillStyle = '#0f172a';
+      context.beginPath();
+      // Купол кепки
+      context.ellipse(0, -32, 34, 18, 0, Math.PI, 0);
       context.fill();
+      // Козырек кепки
+      context.fillStyle = '#1e293b';
+      context.beginPath();
+      context.ellipse(0, -30, 42, 10, 0, 0, Math.PI);
+      context.fill();
+      // Стальная эмблема на кепке
+      context.fillStyle = '#00f0ff';
+      context.fillRect(-6, -42, 12, 6);
     }
 
-    // Лапки по бокам
-    context.fillStyle = bellyColor;
+    // 4. Глаза / Очки Джаброни
+    if (isHit) {
+      // Оглушенный вид: крестики в глазах
+      drawCrossEye(context, -14, -14);
+      drawCrossEye(context, 14, -14);
+
+      // Разинутый рот с выбитой спесью
+      context.fillStyle = '#450a0a';
+      context.beginPath();
+      context.ellipse(0, 10, 10, 8, 0, 0, Math.PI * 2);
+      context.fill();
+    } else {
+      // Тёмные стильные очки качалки или наглый прищур
+      context.fillStyle = '#090d16';
+      context.strokeStyle = isGold ? '#ffd700' : '#00f0ff';
+      context.lineWidth = 2;
+      roundRect(context, -25, -20, 20, 13, 3);
+      context.fill();
+      context.stroke();
+
+      roundRect(context, 5, -20, 20, 13, 3);
+      context.fill();
+      context.stroke();
+
+      // Мостик очков
+      context.beginPath();
+      context.moveTo(-5, -14);
+      context.lineTo(5, -14);
+      context.stroke();
+
+      // Блики на линзах
+      context.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      context.beginPath();
+      context.ellipse(-17, -15, 6, 2, -0.4, 0, Math.PI * 2);
+      context.ellipse(13, -15, 6, 2, -0.4, 0, Math.PI * 2);
+      context.fill();
+
+      // Наглая ухмылка Джаброни
+      context.strokeStyle = '#3e1a06';
+      context.lineWidth = 2.5;
+      context.beginPath();
+      context.moveTo(-10, 8);
+      context.quadraticCurveTo(0, 15, 12, 6);
+      context.stroke();
+    }
+
+    // 5. Бицепсы по бокам (кулаки в кожаных напульсниках)
+    context.fillStyle = skinTone;
     context.beginPath();
-    context.ellipse(-42, 28, 12, 16, -0.4, 0, Math.PI * 2);
-    context.ellipse(42, 28, 12, 16, 0.4, 0, Math.PI * 2);
+    context.ellipse(-44, 25, 12, 16, -0.3, 0, Math.PI * 2);
+    context.ellipse(44, 25, 12, 16, 0.3, 0, Math.PI * 2);
+    context.fill();
+
+    // Напульсники на руках
+    context.fillStyle = isGold ? '#ffd700' : '#0f172a';
+    roundRect(context, -50, 28, 14, 8, 2);
+    context.fill();
+    roundRect(context, 36, 28, 14, 8, 2);
     context.fill();
 
     context.restore();
@@ -937,25 +982,44 @@
     const angle = -0.8 + Math.sin(ham.progress * Math.PI) * 1.3;
     ctx.rotate(angle);
 
-    // Рукоятка молотка
-    ctx.fillStyle = '#a16207';
-    ctx.strokeStyle = '#78350f';
+    // Рукоятка карающего молота (обтянутая черной кожей с заклёпками)
+    ctx.fillStyle = '#1e1b18';
+    ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
-    roundRect(ctx, -8, -120, 16, 120, 6);
+    roundRect(ctx, -9, -125, 18, 125, 6);
     ctx.fill();
     ctx.stroke();
 
-    // Металлическая ударная головка
-    const headGrad = ctx.createLinearGradient(-35, -145, 35, -105);
-    headGrad.addColorStop(0, '#94a3b8');
-    headGrad.addColorStop(0.5, '#f8fafc');
-    headGrad.addColorStop(1, '#475569');
+    // Кожаные полосы обмотки рукоятки
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+    ctx.lineWidth = 2;
+    for (let i = -115; i < -15; i += 18) {
+      ctx.beginPath();
+      ctx.moveTo(-8, i);
+      ctx.lineTo(8, i + 8);
+      ctx.stroke();
+    }
+
+    // Золотое / стальное массивное навершие молота Dungeon Master'а
+    const headGrad = ctx.createLinearGradient(-42, -155, 42, -105);
+    headGrad.addColorStop(0, '#ffd700');
+    headGrad.addColorStop(0.35, '#fffbeb');
+    headGrad.addColorStop(0.7, '#d97706');
+    headGrad.addColorStop(1, '#78350f');
+
     ctx.fillStyle = headGrad;
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = '#451a03';
     ctx.lineWidth = 4;
-    roundRect(ctx, -38, -150, 76, 38, 8);
+    roundRect(ctx, -42, -158, 84, 44, 10);
     ctx.fill();
     ctx.stroke();
+
+    // Стальные шипы / золотая гравировка на боковине молота
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '900 16px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡300', 0, -136);
 
     ctx.restore();
   }
@@ -1002,53 +1066,59 @@
   // --- Оверлеи стартового и финального экрана ---
   function renderStartOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 16, 8, 0.88)';
+    ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#9ef01a';
+    ctx.shadowColor = '#00f0ff';
     ctx.shadowBlur = 24;
-    ctx.font = '900 56px -apple-system, sans-serif';
-    ctx.fillStyle = '#9ef01a';
-    ctx.fillText('УДАРЬ КРОТА', CW / 2, 380);
+    ctx.font = '900 52px -apple-system, sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText('WHACK THE JABRONI', CW / 2, 375);
+
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 18;
+    ctx.font = '900 36px -apple-system, sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('НАКАЖИ СЛЕЙВА 🔨', CW / 2, 430);
 
     ctx.shadowBlur = 0;
-    ctx.font = '700 22px -apple-system, sans-serif';
+    ctx.font = '700 20px -apple-system, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('⚡ Битва на сверхбыструю реакцию! ⚡', CW / 2, 435);
+    ctx.fillText('⚡ Турнир Данжена на реакцию и силу спанка! ⚡', CW / 2, 485);
 
     ctx.font = '500 18px -apple-system, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fillText('Тапайте по кротам, как только они вылезают.', CW / 2, 490);
-    ctx.fillText('⭐ Золотой крот даёт x2 очков.', CW / 2, 525);
-    ctx.fillText('💣 Осторожно с бомбами: отнимают очки!', CW / 2, 560);
-    ctx.fillText('⏱ У вас есть ровно 45 секунд.', CW / 2, 595);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('Тапай по наглым Джаброни, пока они не скрылись.', CW / 2, 530);
+    ctx.fillText('⭐ Золотой Джаброни даёт x2 очков ($300 Bucks).', CW / 2, 565);
+    ctx.fillText('💀 Не бей по ловушкам данжена: штраф очков!', CW / 2, 600);
+    ctx.fillText('⏱ У вас есть ровно 45 секунд чистого экшена.', CW / 2, 635);
 
     // Кнопка Играть
     const btnW = 340;
     const btnH = 76;
     const btnX = (CW - btnW) / 2;
-    const btnY = 660;
+    const btnY = 680;
 
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
-    grad.addColorStop(0, '#70e000');
-    grad.addColorStop(1, '#9ef01a');
+    grad.addColorStop(0, '#00d2ff');
+    grad.addColorStop(1, '#ff0055');
 
-    ctx.shadowColor = '#9ef01a';
-    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 22;
     ctx.fillStyle = grad;
     roundRect(ctx, btnX, btnY, btnW, btnH, 20);
     ctx.fill();
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#0f1a08';
-    ctx.font = '900 28px -apple-system, sans-serif';
-    ctx.fillText('ИГРАТЬ 🔨', CW / 2, btnY + 48);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 26px -apple-system, sans-serif';
+    ctx.fillText('ВОЙТИ В ДАНЖЕН 🔨', CW / 2, btnY + 48);
 
     if (bestScore > 0) {
       ctx.font = '700 20px -apple-system, sans-serif';
       ctx.fillStyle = '#ffd700';
-      ctx.fillText(`🏆 Ваш рекорд: ${bestScore}`, CW / 2, 785);
+      ctx.fillText(`🏆 Твой рекорд: ${bestScore} Bucks`, CW / 2, 795);
     }
 
     ctx.restore();
@@ -1056,57 +1126,57 @@
 
   function renderGameOverOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 16, 8, 0.92)';
+    ctx.fillStyle = 'rgba(8, 12, 22, 0.94)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#ffbe0b';
+    ctx.shadowColor = '#ffd700';
     ctx.shadowBlur = 22;
-    ctx.font = '900 52px -apple-system, sans-serif';
-    ctx.fillStyle = '#ffbe0b';
-    ctx.fillText('ВРЕМЯ ВЫШЛО!', CW / 2, 360);
+    ctx.font = '900 50px -apple-system, sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('СПАНК-РАУНД ОКОНЧЕН!', CW / 2, 355);
 
     ctx.shadowBlur = 0;
     ctx.font = '700 22px -apple-system, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fillText('ВАШ ИТОГОВЫЙ СЧЁТ', CW / 2, 420);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.fillText('ЗАРАБОТАНО DUNGEON BUCKS', CW / 2, 415);
 
-    ctx.shadowColor = '#9ef01a';
-    ctx.shadowBlur = 24;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 25;
     ctx.font = '900 84px -apple-system, sans-serif';
-    ctx.fillStyle = '#9ef01a';
-    ctx.fillText(score.toString(), CW / 2, 510);
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText(`${score} 💰`, CW / 2, 505);
 
     ctx.shadowBlur = 0;
     ctx.font = '600 20px -apple-system, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Поймано кротов: ${totalWhacked} шт.`, CW / 2, 565);
-    ctx.fillText(`Макс. серия комбо: x${maxCombo}`, CW / 2, 600);
+    ctx.fillText(`Наказано Джаброни: ${totalWhacked} шт.`, CW / 2, 560);
+    ctx.fillText(`Макс. серия Ass We Can: x${maxCombo}`, CW / 2, 595);
 
     ctx.font = '700 22px -apple-system, sans-serif';
     ctx.fillStyle = '#ffd700';
-    ctx.fillText(`🏆 Лучший рекорд: ${bestScore}`, CW / 2, 650);
+    ctx.fillText(`🏆 Рекорд Данжена: ${bestScore}`, CW / 2, 645);
 
     // Кнопка Играть снова
     const btnW = 340;
     const btnH = 76;
     const btnX = (CW - btnW) / 2;
-    const btnY = 700;
+    const btnY = 695;
 
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
-    grad.addColorStop(0, '#70e000');
-    grad.addColorStop(1, '#9ef01a');
+    grad.addColorStop(0, '#00d2ff');
+    grad.addColorStop(1, '#ff0055');
 
-    ctx.shadowColor = '#9ef01a';
+    ctx.shadowColor = '#00f0ff';
     ctx.shadowBlur = 20;
     ctx.fillStyle = grad;
     roundRect(ctx, btnX, btnY, btnW, btnH, 20);
     ctx.fill();
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#0f1a08';
-    ctx.font = '900 28px -apple-system, sans-serif';
-    ctx.fillText('ЕЩЁ РАЗ ↺', CW / 2, btnY + 48);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 26px -apple-system, sans-serif';
+    ctx.fillText('ЕЩЁ СПАНКОВ ↺', CW / 2, btnY + 48);
 
     ctx.restore();
   }

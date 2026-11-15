@@ -105,6 +105,10 @@
   // Летающие отрубленные щепки / бревна (анимация отлета)
   const flyingLogs = [];
 
+  // Всплывающие фразы при ударах (ASS WE CAN, SLAP, etc.)
+  const hitQuotes = [];
+  const GACHI_QUOTES = ['ASS WE CAN! 💪', 'DEEP! ⚡', 'SLAP! 💥', 'COME ON! 🔥', 'OH YES! ⛓️', 'BOY NEXT DOOR! 🏋️'];
+
   function initTrunk() {
     tree = ['trunk', 'trunk'];
     for (let i = 2; i < 7; i++) {
@@ -187,6 +191,18 @@
     if (score > bestScore) {
       bestScore = score;
       try { localStorage.setItem('timberman_best_score', bestScore); } catch (_) {}
+    }
+
+    // Добавляем эффект фразы при ударах каждые несколько рубок или случайно
+    if (score % 3 === 0 || Math.random() < 0.3) {
+      const quoteText = GACHI_QUOTES[Math.floor(Math.random() * GACHI_QUOTES.length)];
+      hitQuotes.push({
+        text: quoteText,
+        x: side === 'left' ? 320 : 760,
+        y: 1160,
+        vy: -4,
+        alpha: 1.0
+      });
     }
 
     // Добавляем время (чем больше счет, тем меньше добавляется)
@@ -365,22 +381,56 @@
         flyingLogs.splice(i, 1);
       }
     }
+
+    // Обновление всплывающих реплик
+    for (let i = hitQuotes.length - 1; i >= 0; i--) {
+      const hq = hitQuotes[i];
+      hq.y += hq.vy;
+      hq.alpha -= 0.025;
+      if (hq.alpha <= 0) {
+        hitQuotes.splice(i, 1);
+      }
+    }
   }
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Фон
+    // 1. Фон — Ночной Dungeon Gym Forest с неоновым свечением
     if (images.background) {
       ctx.drawImage(images.background, 0, 0, 1080, 1775);
     }
+    // Накладываем атмосферный фильтр Dungeon Gym: глубокий кобальт / графит с неоновым освещением
+    ctx.save();
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 1775);
+    bgGrad.addColorStop(0, 'rgba(4, 7, 18, 0.75)');
+    bgGrad.addColorStop(0.4, 'rgba(10, 20, 42, 0.55)');
+    bgGrad.addColorStop(0.85, 'rgba(5, 9, 20, 0.7)');
+    bgGrad.addColorStop(1, 'rgba(2, 4, 10, 0.9)');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1080, 1775);
 
-    // 2. Пень внизу
+    // Добавляем неоновую колонну в центре за деревом
+    const centerGlow = ctx.createRadialGradient(540, 900, 50, 540, 900, 550);
+    centerGlow.addColorStop(0, 'rgba(0, 229, 255, 0.12)');
+    centerGlow.addColorStop(0.5, 'rgba(0, 119, 182, 0.05)');
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = centerGlow;
+    ctx.fillRect(0, 0, 1080, 1775);
+    ctx.restore();
+
+    // 2. Пень внизу (с кожаным/стальным оттенком)
     if (images.stump) {
+      ctx.save();
       ctx.drawImage(images.stump, 352, 1394, 385, 81);
+      // Окантовка пня неоновым кобальтом
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(352, 1394, 385, 81);
+      ctx.restore();
     }
 
-    // 3. Ствол дерева (6 секций от пня вверх)
+    // 3. Ствол дерева (6 секций от пня вверх) со стальными ремнями и заклепками
     for (let i = 0; i < 6; i++) {
       const logType = tree[i];
       const y = 1394 - TRUNK_HEIGHT * (i + 1);
@@ -390,7 +440,31 @@
       else if (logType === 'right') img = images.branchright;
 
       if (img) {
+        ctx.save();
         ctx.drawImage(img, 37, y, 1004, TRUNK_HEIGHT);
+        
+        // Рисуем стильные кожаные ремни с металлическими заклепками на бревнах (Dungeon theme)
+        const trunkCenter = 540;
+        const trunkHalfW = 140;
+        
+        // Кожаный ремень
+        ctx.fillStyle = 'rgba(20, 24, 33, 0.85)';
+        ctx.fillRect(trunkCenter - trunkHalfW, y + 110, trunkHalfW * 2, 22);
+        
+        // Неоновая прошивка ремня
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(trunkCenter - trunkHalfW, y + 110, trunkHalfW * 2, 22);
+
+        // Стальные заклепки
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath();
+        ctx.arc(trunkCenter - 80, y + 121, 4, 0, Math.PI * 2);
+        ctx.arc(trunkCenter, y + 121, 4, 0, Math.PI * 2);
+        ctx.arc(trunkCenter + 80, y + 121, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
       }
     }
 
@@ -411,6 +485,19 @@
       ctx.restore();
     }
 
+    // 4.1. Всплывающие фразы при ударах (ASS WE CAN, SLAP, etc.)
+    for (const hq of hitQuotes) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, hq.alpha);
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = '900 36px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 16;
+      ctx.fillText(hq.text, hq.x, hq.y);
+      ctx.restore();
+    }
+
     // 5. Дровосек или Могилка (RIP)
     if (gameState === STATE_GAMEOVER) {
       if (images.rip) {
@@ -423,19 +510,26 @@
       }
     }
 
-    // 6. Таймер времени (вверху)
+    // 6. Таймер времени (вверху) — стилизованный под шкалу выносливости Gym
     if (gameState === STATE_PLAYING || gameState === STATE_START) {
       if (images.timeContainer && images.timeBar) {
         ctx.drawImage(images.timeContainer, 255, 100, 569, 150);
 
         const currentBarWidth = Math.max(0, (timeLeft / MAX_TIME) * 508);
         if (currentBarWidth > 0) {
-          // Вырезаем полоску пропорционально
-          ctx.drawImage(
-            images.timeBar,
-            0, 0, (currentBarWidth / 508) * 508, 91,
-            285, 130, currentBarWidth, 91
-          );
+          ctx.save();
+          // Рисуем неоново-синюю шкалу выносливости вместо обычной зеленой
+          const barGrad = ctx.createLinearGradient(285, 130, 285 + currentBarWidth, 130);
+          barGrad.addColorStop(0, '#00b4d8');
+          barGrad.addColorStop(1, '#00e5ff');
+          ctx.fillStyle = barGrad;
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(285, 130, currentBarWidth, 91, 10) : ctx.rect(285, 130, currentBarWidth, 91);
+          ctx.fill();
+          ctx.strokeStyle = '#e0f2fe';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
         }
       }
     }
@@ -445,12 +539,40 @@
 
     // 8. Экран старта / кликни для начала
     if (gameState === STATE_START) {
-      if (images.logo) {
-        ctx.drawImage(images.logo, (1080 - 500) / 2, 380, 500, 188);
-      }
-      if (images.clic) {
-        ctx.drawImage(images.clic, (1080 - 456) / 2, 1480, 456, 144);
-      }
+      ctx.save();
+      // Стильный логотип Leather Lumberjack • Лесоруб Билли
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 48px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 24;
+      ctx.fillText('LEATHER LUMBERJACK', 540, 410);
+
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = '800 32px -apple-system, sans-serif';
+      ctx.shadowBlur = 12;
+      ctx.fillText('⚡ ЛЕСОРУБ БИЛЛИ ⚡', 540, 465);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '700 24px -apple-system, sans-serif';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Руби ствол со свистом, boy next door!', 540, 515);
+
+      // Плашка старта
+      ctx.fillStyle = 'rgba(13, 22, 40, 0.85)';
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(540 - 230, 1470, 460, 90, 45) : ctx.rect(540 - 230, 1470, 460, 90);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = '900 32px -apple-system, sans-serif';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 15;
+      ctx.fillText('💪 РУБИ СТВОЛ! (TAP)', 540, 1528);
+      ctx.restore();
     }
 
     // 9. Экран Game Over
@@ -458,6 +580,23 @@
       if (images.gameover) {
         ctx.drawImage(images.gameover, 104, 300, 872, 1100);
       }
+      
+      // Накладываем стильную плашку поражения: ⚡ ЛОПНУЛИ РЕМНИ!
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '900 52px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 25;
+      ctx.fillText('⚡ ЛОПНУЛИ РЕМНИ! ⚡', 540, 450);
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '800 32px -apple-system, sans-serif';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 12;
+      ctx.fillText('💀 СТВОЛ ОКАЗАЛСЯ СЛИШКОМ МОЩНЫМ', 540, 505);
+      ctx.restore();
+
       if (images.play) {
         ctx.drawImage(images.play, 350, 900, 376, 233);
       }

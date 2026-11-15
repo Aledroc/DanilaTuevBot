@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Ударь крота — Whack-a-Mole</title>
+  <title>Whack the Jabroni • Накажи Слейва</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #141b12;
+      background: #0d111b;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     #game-container {
@@ -27,13 +27,13 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background: radial-gradient(circle at 50% 35%, #2a3d24 0%, #111a0e 100%);
+      background: radial-gradient(circle at 50% 35%, #182238 0%, #080c14 100%);
       touch-action: none;
     }
     canvas {
       display: block;
       touch-action: none;
-      box-shadow: 0 0 30px rgba(0,0,0,0.6);
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.2), 0 0 70px rgba(0,0,0,0.8);
     }
     /* Верхняя панель управления */
     .top-controls {
@@ -49,25 +49,26 @@
     }
     .control-btn {
       pointer-events: auto;
-      background: rgba(22, 34, 18, 0.88);
+      background: rgba(14, 21, 37, 0.88);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(138, 201, 38, 0.35);
-      color: #9ef01a;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      color: #00f0ff;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: 0.5px;
       padding: 8px 14px;
       border-radius: 12px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
       transition: transform 0.1s, background 0.15s;
     }
     .control-btn:active {
       transform: scale(0.95);
-      background: rgba(35, 54, 28, 0.95);
+      background: rgba(0, 240, 255, 0.2);
     }
   </style>
 </head>

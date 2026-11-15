@@ -148,12 +148,12 @@
   // Всплывающие очки (+100, x3 COMBO)
   let floatingTexts = [];
 
-  // Цветовая палитра неона
+  // Цветовая палитра Гачимучи Gym: Кожаные подушки, Титановые блины, Золотые слитки
   const NEON_PALETTES = {
-    hp1: { fill: '#00f0ff', stroke: '#a6f9ff', glow: '#00f0ff' }, // Циан
-    hp2: { fill: '#bd00ff', stroke: '#e899ff', glow: '#bd00ff' }, // Неоново-фиолетовый
-    hp3: { fill: '#ff0055', stroke: '#ff99b8', glow: '#ff0055' }, // Неоново-розовый / Рубин
-    gold: { fill: '#ffbe0b', stroke: '#fff1a8', glow: '#ffbe0b' }, // Золото
+    hp1: { fill: '#1e293b', stroke: '#00f0ff', glow: '#00f0ff', label: '10KG' }, // Синий титановый блин
+    hp2: { fill: '#3b1728', stroke: '#ff007f', glow: '#ff007f', label: '25KG' }, // Кожаная подушка качалки
+    hp3: { fill: '#3a2e0a', stroke: '#ffd700', glow: '#ffd700', label: '50KG' }, // Золотой силовой блок 50KG
+    gold: { fill: '#ffbe0b', stroke: '#fff1a8', glow: '#ffbe0b', label: '300$' }, // 300 Bucks блок
   };
 
   function createLevel(lvl) {
@@ -321,7 +321,7 @@
   function applyPowerUp(type) {
     playSfx('powerup');
     if (type === 'multi') {
-      spawnFloatingText(paddle.x, paddle.y - 40, 'МУЛЬТИ-ШАР! 🟢', '#39ff14', 28);
+      spawnFloatingText(paddle.x, paddle.y - 40, '🔥 300 BUCKS MULTIPLIER!', '#ffd700', 28);
       // Клонируем существующие шары в трех направлениях
       const newBalls = [];
       balls.forEach(b => {
@@ -343,14 +343,14 @@
       });
       balls.push(...newBalls);
     } else if (type === 'wide') {
-      spawnFloatingText(paddle.x, paddle.y - 40, 'ШИРОКАЯ РАКЕТКА! 🔵', '#00f0ff', 28);
+      spawnFloatingText(paddle.x, paddle.y - 40, '💥 MAXIMUM POWER ГАНТЕЛЬ!', '#00f0ff', 28);
       paddle.width = PADDLE_BASE_WIDTH * 1.6;
       paddle.widthTimer = 600; // ~10 сек
     } else if (type === 'laser') {
-      spawnFloatingText(paddle.x, paddle.y - 40, 'ЛАЗЕРЫ! 🔴', '#ff0055', 28);
+      spawnFloatingText(paddle.x, paddle.y - 40, '⚡ JABRONI DOWN ЛАЗЕРЫ!', '#ff0055', 28);
       paddle.laserTimer = 450; // ~7.5 сек
     } else if (type === 'slow') {
-      spawnFloatingText(paddle.x, paddle.y - 40, 'ЗАМЕДЛЕНИЕ! 🟡', '#ffbe0b', 28);
+      spawnFloatingText(paddle.x, paddle.y - 40, '💪 РЕЛАКС В САУНЕ!', '#ffbe0b', 28);
       balls.forEach(b => {
         b.vx *= 0.72;
         b.vy *= 0.72;
@@ -557,7 +557,8 @@
           spawnExplosion(nearestX, nearestY, palette.glow, 14);
 
           if (combo > 1) {
-            spawnFloatingText(nearestX, nearestY - 20, `+${pointsGained} (x${combo} COMBO!)`, '#ffbe0b', 24);
+            const comboText = combo >= 4 ? `💥 MAXIMUM POWER x${combo}!` : combo >= 2 ? `⚡ JABRONI DOWN x${combo}!` : `+${pointsGained}`;
+            spawnFloatingText(nearestX, nearestY - 20, `${comboText} (+${pointsGained})`, '#ffd700', 22);
           } else {
             spawnFloatingText(nearestX, nearestY - 20, `+${pointsGained}`, '#ffffff', 20);
           }
@@ -716,28 +717,28 @@
     ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 14;
 
-    // Внутренний градиент
+    // Внутренний металлический/кожаный градиент
     const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
     grad.addColorStop(0, palette.stroke);
-    grad.addColorStop(1, palette.fill);
+    grad.addColorStop(0.2, palette.fill);
+    grad.addColorStop(1, '#05070c');
     ctx.fillStyle = grad;
 
     roundRect(ctx, b.x, b.y, b.w, b.h, 6);
     ctx.fill();
 
-    // Неоновая окантовка
+    // Неоновая окантовка титанового блина / кожаной подушки
     ctx.lineWidth = 2;
     ctx.strokeStyle = palette.stroke;
     ctx.stroke();
 
-    // Если прочность > 1, рисуем метки-индикаторы прочности
-    if (b.hp > 1) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 13px -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`★${b.hp}`, b.x + b.w / 2, b.y + b.h / 2);
-    }
+    // Вес блина и метки прочности
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const tag = b.hp > 1 ? `${palette.label} ★${b.hp}` : palette.label;
+    ctx.fillText(tag, b.x + b.w / 2, b.y + b.h / 2);
 
     ctx.restore();
   }
@@ -747,28 +748,38 @@
     const px = paddle.x - paddle.width / 2;
     const py = paddle.y - paddle.height / 2;
 
-    const glowColor = paddle.laserTimer > 0 ? '#ff0055' : paddle.widthTimer > 0 ? '#00f0ff' : '#00f0ff';
+    const glowColor = paddle.laserTimer > 0 ? '#ff0055' : paddle.widthTimer > 0 ? '#00f0ff' : '#ffd700';
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = 18;
 
+    // Хромированный стальной пояс / гантель Gym
     const grad = ctx.createLinearGradient(px, py, px, py + paddle.height);
     grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.3, glowColor);
-    grad.addColorStop(1, '#0b1626');
+    grad.addColorStop(0.25, '#d4af37');
+    grad.addColorStop(0.5, '#475569');
+    grad.addColorStop(0.85, '#1e293b');
+    grad.addColorStop(1, '#0f172a');
     ctx.fillStyle = grad;
 
     roundRect(ctx, px, py, paddle.width, paddle.height, 10);
     ctx.fill();
 
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.strokeStyle = glowColor;
     ctx.stroke();
+
+    // Хромированные набалдашники гантели по бокам платформы
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.arc(px + 8, paddle.y, 7, 0, Math.PI * 2);
+    ctx.arc(px + paddle.width - 8, paddle.y, 7, 0, Math.PI * 2);
+    ctx.fill();
 
     // Неоновые пушки лазера если активен бонус
     if (paddle.laserTimer > 0) {
       ctx.fillStyle = '#ff0055';
-      ctx.fillRect(px + 4, py - 6, 8, 8);
-      ctx.fillRect(px + paddle.width - 12, py - 6, 8, 8);
+      ctx.fillRect(px + 4, py - 8, 8, 10);
+      ctx.fillRect(px + paddle.width - 12, py - 8, 8, 10);
     }
 
     ctx.restore();
@@ -834,11 +845,11 @@
 
   function renderHUD() {
     ctx.save();
-    ctx.fillStyle = 'rgba(6, 8, 16, 0.85)';
+    ctx.fillStyle = 'rgba(5, 7, 12, 0.88)';
     ctx.fillRect(0, 0, CW, 70);
 
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(0, 70);
     ctx.lineTo(CW, 70);
@@ -846,25 +857,26 @@
 
     // Очки
     ctx.textAlign = 'left';
-    ctx.font = '900 24px -apple-system, sans-serif';
+    ctx.font = '900 22px -apple-system, sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(`⚡ BUCKS: ${score}`, 24, 44);
+
+    // Уровень качалки
+    ctx.textAlign = 'center';
+    ctx.font = '800 18px -apple-system, sans-serif';
     ctx.fillStyle = '#00f0ff';
     ctx.shadowColor = '#00f0ff';
-    ctx.shadowBlur = 8;
-    ctx.fillText(`СЧЁТ: ${score}`, 24, 44);
+    ctx.shadowBlur = 6;
+    ctx.fillText(`DUNGEON УРОВЕНЬ ${level}`, CW / 2, 44);
 
-    // Уровень
-    ctx.textAlign = 'center';
-    ctx.font = '700 18px -apple-system, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`УРОВЕНЬ ${level}`, CW / 2, 44);
-
-    // Жизни
+    // Жизни / Сила
     ctx.textAlign = 'right';
     ctx.font = '22px -apple-system, sans-serif';
     ctx.fillStyle = '#ff0055';
     let hearts = '';
-    for (let i = 0; i < lives; i++) hearts += '❤️ ';
+    for (let i = 0; i < lives; i++) hearts += '💪 ';
     ctx.fillText(hearts, CW - 24, 44);
 
     ctx.restore();
@@ -872,74 +884,76 @@
 
   function renderStartOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(6, 8, 16, 0.85)';
+    ctx.fillStyle = 'rgba(5, 7, 12, 0.88)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#00f0ff';
+    ctx.shadowColor = '#ffd700';
     ctx.shadowBlur = 24;
     ctx.font = '900 48px -apple-system, sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('SMASH THE JABRONI', CW / 2, 440);
     ctx.fillStyle = '#00f0ff';
-    ctx.fillText('НЕОНОВЫЙ', CW / 2, 440);
-    ctx.fillText('АРКАНОИД', CW / 2, 500);
+    ctx.fillText('КИБЕР-ДРОБИЛКА', CW / 2, 500);
 
     ctx.shadowBlur = 0;
     ctx.font = '600 20px -apple-system, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    ctx.fillText('Разбивайте кирпичи, ловите бонусы', CW / 2, 560);
-    ctx.fillText('и выбивайте комбо-множители очков!', CW / 2, 595);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+    ctx.fillText('Круши титановые блины хромированной гантелью!', CW / 2, 560);
+    ctx.fillText('Лови 300 BUCKS бонусы и активируй MAXIMUM POWER!', CW / 2, 595);
 
     // Кнопка Старт
-    const btnW = 320;
+    const btnW = 340;
     const btnH = 74;
     const btnX = (CW - btnW) / 2;
     const btnY = 660;
 
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
-    grad.addColorStop(0, '#00d2ff');
-    grad.addColorStop(1, '#00f0ff');
+    grad.addColorStop(0, '#d4af37');
+    grad.addColorStop(0.5, '#ffd700');
+    grad.addColorStop(1, '#ff9100');
 
-    ctx.shadowColor = '#00f0ff';
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
     ctx.shadowBlur = 20;
     ctx.fillStyle = grad;
     roundRect(ctx, btnX, btnY, btnW, btnH, 18);
     ctx.fill();
 
-    ctx.fillStyle = '#060810';
-    ctx.font = '900 26px -apple-system, sans-serif';
+    ctx.fillStyle = '#05070c';
+    ctx.font = '900 24px -apple-system, sans-serif';
     ctx.shadowBlur = 0;
-    ctx.fillText('ИГРАТЬ 🚀', CW / 2, btnY + 46);
+    ctx.fillText('НАЧАТЬ ДРОБЛЕНИЕ 💥', CW / 2, btnY + 46);
 
     ctx.restore();
   }
 
   function renderGameOverOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(6, 8, 16, 0.9)';
+    ctx.fillStyle = 'rgba(5, 7, 12, 0.92)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
     ctx.shadowColor = '#ff0055';
     ctx.shadowBlur = 22;
-    ctx.font = '900 52px -apple-system, sans-serif';
+    ctx.font = '900 50px -apple-system, sans-serif';
     ctx.fillStyle = '#ff0055';
-    ctx.fillText('ИГРА ОКОНЧЕНА', CW / 2, 430);
+    ctx.fillText('JABRONI DOWN!', CW / 2, 420);
 
     ctx.shadowBlur = 0;
     ctx.font = '700 22px -apple-system, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText('ВАШ РЕЗУЛЬТАТ', CW / 2, 490);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.fillText('ЗАРАБОТАНО BUCKS', CW / 2, 480);
 
-    ctx.shadowColor = '#00f0ff';
+    ctx.shadowColor = '#ffd700';
     ctx.shadowBlur = 18;
     ctx.font = '900 80px -apple-system, sans-serif';
-    ctx.fillStyle = '#00f0ff';
-    ctx.fillText(score.toString(), CW / 2, 575);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText(score.toString(), CW / 2, 565);
 
     ctx.shadowBlur = 0;
     ctx.font = '700 22px -apple-system, sans-serif';
-    ctx.fillStyle = '#ffbe0b';
-    ctx.fillText(`Лучший рекорд: ${bestScore}`, CW / 2, 630);
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText(`🏆 Лучший силовой рекорд: ${bestScore}`, CW / 2, 625);
 
     // Кнопка Еще раз
     const btnW = 340;
@@ -948,19 +962,20 @@
     const btnY = 680;
 
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
-    grad.addColorStop(0, '#00d2ff');
-    grad.addColorStop(1, '#00f0ff');
+    grad.addColorStop(0, '#d4af37');
+    grad.addColorStop(0.5, '#ffd700');
+    grad.addColorStop(1, '#ff9100');
 
-    ctx.shadowColor = '#00f0ff';
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
     ctx.shadowBlur = 20;
     ctx.fillStyle = grad;
     roundRect(ctx, btnX, btnY, btnW, btnH, 18);
     ctx.fill();
 
-    ctx.fillStyle = '#060810';
+    ctx.fillStyle = '#05070c';
     ctx.font = '900 26px -apple-system, sans-serif';
     ctx.shadowBlur = 0;
-    ctx.fillText('ИГРАТЬ СНОВА ↺', CW / 2, btnY + 47);
+    ctx.fillText('ПОВТОРИТЬ ПОДХОД ↺', CW / 2, btnY + 47);
 
     ctx.restore();
   }

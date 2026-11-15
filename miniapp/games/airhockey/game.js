@@ -518,31 +518,31 @@
     puck.vy *= PUCK_FRICTION;
 
     // Шлейф движения шайбы
-    puck.trail.push({ x: puck.x, y: puck.y, alpha: 1.0 });
-    if (puck.trail.length > 9) puck.trail.shift();
+    puck.trail.push({ x: puck.x, y: puck.y, vx: puck.vx, vy: puck.vy, alpha: 1.0 });
+    if (puck.trail.length > 14) puck.trail.shift();
   }
 
   function onGoalScored(scorer) {
     gameState = 'GOAL_CELEBRATION';
     celebrationTimer = 75; // кадров празднования (~1.25 сек)
-    screenShake = 16;
+    screenShake = 18;
 
     if (scorer === 'player') {
       playerScore++;
-      celebrationBanner = 'ГОООЛ! ⚽🔥';
+      celebrationBanner = '⚡ ГОЛ В РАЗДЕВАЛКУ!';
       celebrationColor = '#00f0ff';
       playSynthSound('goal', 1.0);
       triggerHaptic('success');
-      addGoalFlash('ГООЛ!', '#00f0ff');
+      addGoalFlash('⚡ ГОЛ В РАЗДЕВАЛКУ!', '#00f0ff');
       addSparks(puck.x, puck.y, '#00f0ff', 40, 1.8);
-      addSparks(puck.x, puck.y, '#39ff14', 30, 1.4);
+      addSparks(puck.x, puck.y, '#ffd700', 30, 1.5);
     } else {
       aiScore++;
-      celebrationBanner = 'ПРОПУЩЕН ГОЛ! ⚡';
-      celebrationColor = '#ff0055';
+      celebrationBanner = '💥 НАКАЗАНИЕ В ПАРТЕРЕ!';
+      celebrationColor = '#ff2a5f';
       playSynthSound('concede', 1.0);
       triggerHaptic('warning');
-      addGoalFlash('ПРОПУЩЕНО!', '#ff0055');
+      addGoalFlash('💀 ПРОПУЩЕН УДАР!', '#ff0055');
       addSparks(puck.x, puck.y, '#ff0055', 35, 1.5);
     }
 
@@ -617,20 +617,25 @@
     // 2. Борта и разметка стола
     drawRink();
 
-    // 3. Шлейф шайбы
+    // 3. Шлейф шайбы (яркий неоновый плазменный след)
     puck.trail.forEach((t, idx) => {
+      const progress = (idx + 1) / puck.trail.length;
+      ctx.save();
       ctx.beginPath();
-      ctx.arc(t.x, t.y, puck.radius * (0.4 + (idx / puck.trail.length) * 0.6), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 240, 255, ${0.08 * (idx + 1)})`;
+      ctx.arc(t.x, t.y, puck.radius * (0.35 + progress * 0.65), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0, 240, 255, ${0.05 + progress * 0.28})`;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = progress * 16;
       ctx.fill();
+      ctx.restore();
     });
 
     // 4. Шайба
     drawPuck();
 
-    // 5. Биты игроков
-    drawMallet(player.x, player.y, player.radius, player.color, player.glowColor, 'ВЫ');
-    drawMallet(ai.x, ai.y, ai.radius, ai.color, ai.glowColor, 'AI');
+    // 5. Биты игроков (Кожаные перчатки / стальные штампы)
+    drawMallet(player.x, player.y, player.radius, player.color, player.glowColor, 'YOU', 'BOSS');
+    drawMallet(ai.x, ai.y, ai.radius, ai.color, ai.glowColor, 'SLAVE', 'JABRONI');
 
     // 6. Частицы и искры
     particles.forEach(p => {
@@ -765,8 +770,23 @@
     ctx.arc(CW / 2, CH / 2, 90, 0, Math.PI * 2);
     ctx.stroke();
 
+    // Брендовая разметка арены: DUNGEON ARENA
+    ctx.font = '900 24px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '6px';
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 12;
+    ctx.fillText('DUNGEON ARENA', CW / 2, CH / 2 - 40);
+
+    ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
+    ctx.shadowColor = '#ff0055';
+    ctx.fillText('LEATHER GYM CLASH', CW / 2, CH / 2 + 40);
+
     // Центральная точка
     ctx.fillStyle = '#00f0ff';
+    ctx.shadowBlur = 15;
     ctx.beginPath();
     ctx.arc(CW / 2, CH / 2, 8, 0, Math.PI * 2);
     ctx.fill();
@@ -789,74 +809,105 @@
 
   function drawPuck() {
     ctx.save();
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 18;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 22;
 
     // Внешний диск шайбы
-    const pGrad = ctx.createRadialGradient(puck.x - 6, puck.y - 6, 2, puck.x, puck.y, puck.radius);
+    const pGrad = ctx.createRadialGradient(puck.x - 7, puck.y - 7, 2, puck.x, puck.y, puck.radius);
     pGrad.addColorStop(0, '#ffffff');
-    pGrad.addColorStop(0.4, '#00f0ff');
-    pGrad.addColorStop(1, '#005588');
+    pGrad.addColorStop(0.3, '#38bdf8');
+    pGrad.addColorStop(0.7, '#0284c7');
+    pGrad.addColorStop(1, '#031c34');
 
     ctx.fillStyle = pGrad;
     ctx.beginPath();
     ctx.arc(puck.x, puck.y, puck.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Обод шайбы
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#ffffff';
+    // Стальной рельефный обод шайбы
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#e0f2fe';
     ctx.stroke();
 
-    // Внутренний неоновый глазок
-    ctx.fillStyle = '#ffffff';
+    // Внутренняя эмблема ядра с 300 bucks печатью
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(puck.x, puck.y, puck.radius * 0.35, 0, Math.PI * 2);
+    ctx.arc(puck.x, puck.y, puck.radius * 0.42, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = '#060a17';
+    ctx.font = '900 11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', puck.x, puck.y);
 
     ctx.restore();
   }
 
-  function drawMallet(x, y, radius, color, glowColor, label) {
+  function drawMallet(x, y, radius, color, glowColor, label, sublabel) {
     ctx.save();
 
     // Неоновое свечение вокруг биты
     ctx.shadowColor = color;
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur = 28;
 
-    // Внешнее основание биты
-    const grad = ctx.createRadialGradient(x - radius * 0.2, y - radius * 0.2, radius * 0.1, x, y, radius);
+    // Внешнее основание биты (стилизация под стальной штамп с кожаным ободом)
+    const grad = ctx.createRadialGradient(x - radius * 0.25, y - radius * 0.25, radius * 0.1, x, y, radius);
     grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.3, color);
-    grad.addColorStop(0.8, '#101426');
-    grad.addColorStop(1, color);
+    grad.addColorStop(0.2, color);
+    grad.addColorStop(0.65, '#1e2433'); // вороненая сталь / черная кожа
+    grad.addColorStop(1, '#0b0e17');
 
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.lineWidth = 3;
+    // Внешнее стальное кольцо с насечками
+    ctx.lineWidth = 4;
     ctx.strokeStyle = color;
     ctx.stroke();
 
-    // Ручка биты (внутренняя круглая кнопка)
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = '#060814';
+    // Кожаная заклёпка / пояс перчатки
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.arc(x, y, radius * 0.45, 0, Math.PI * 2);
+    ctx.arc(x, y, radius * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Внутренняя рукоятка биты (стальной штамп)
+    ctx.shadowBlur = 12;
+    const innerGrad = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, radius * 0.48);
+    innerGrad.addColorStop(0, '#475569');
+    innerGrad.addColorStop(0.6, '#0f172a');
+    innerGrad.addColorStop(1, '#020617');
+
+    ctx.fillStyle = innerGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.48, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Текстовая метка
+    // Текстовая метка роли (BOSS / SLAVE)
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 13px -apple-system, sans-serif';
+    ctx.font = '900 12px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y);
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(label, x, y - 5);
+
+    if (sublabel) {
+      ctx.font = '800 9px -apple-system, sans-serif';
+      ctx.fillStyle = color;
+      ctx.fillText(sublabel, x, y + 8);
+    }
 
     ctx.restore();
   }
@@ -911,38 +962,39 @@
 
   function renderStartOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(5, 7, 18, 0.88)';
+    ctx.fillStyle = 'rgba(5, 7, 18, 0.90)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
-    ctx.font = '900 52px -apple-system, sans-serif';
+    ctx.font = '900 48px -apple-system, sans-serif';
     ctx.fillStyle = '#00f0ff';
     ctx.shadowColor = '#00f0ff';
     ctx.shadowBlur = 25;
-    ctx.fillText('НЕОНОВЫЙ', CW / 2, 400);
+    ctx.fillText('ICE GYM CLASH', CW / 2, 390);
 
     ctx.fillStyle = '#ff0055';
     ctx.shadowColor = '#ff0055';
-    ctx.fillText('АЭРОХОККЕЙ', CW / 2, 460);
+    ctx.font = '900 38px -apple-system, sans-serif';
+    ctx.fillText('АЭРОХОККЕЙ СЛЕЙВОВ', CW / 2, 445);
 
     ctx.shadowBlur = 0;
     ctx.font = '600 20px -apple-system, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillText('Управляйте битой пальцем 🏑', CW / 2, 530);
-    ctx.fillText('Забивайте шайбу в ворота AI 🥅', CW / 2, 565);
-    ctx.fillText('Матч до 7 голов или 60 секунд ⚡', CW / 2, 600);
+    ctx.fillText('🥊 Кожаные перчатки на стол!', CW / 2, 515);
+    ctx.fillText('Забей шайбу Джаброни в раздевалку 🥅', CW / 2, 550);
+    ctx.fillText('Дуэль до 7 голов или 60 секунд ⚡', CW / 2, 585);
 
     if (bestScore > 0) {
       ctx.font = '700 22px -apple-system, sans-serif';
       ctx.fillStyle = '#ffd700';
-      ctx.fillText(`🏆 Лучший рекорд: ${bestScore}`, CW / 2, 655);
+      ctx.fillText(`🏆 Твой статус: Boss of Gym (${bestScore} очков)`, CW / 2, 645);
     }
 
     // Кнопка Старт
     const btnW = 340;
     const btnH = 74;
     const btnX = (CW - btnW) / 2;
-    const btnY = 715;
+    const btnY = 705;
 
     ctx.shadowColor = '#00f0ff';
     ctx.shadowBlur = 20;
@@ -956,46 +1008,49 @@
 
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 26px -apple-system, sans-serif';
-    ctx.fillText('ИГРАТЬ 🏒', CW / 2, btnY + 46);
+    ctx.font = '900 25px -apple-system, sans-serif';
+    ctx.fillText('ВСТАТЬ ЗА СТОЛ 🏒', CW / 2, btnY + 46);
 
     ctx.restore();
   }
 
   function renderGameOverOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(5, 7, 18, 0.92)';
+    ctx.fillStyle = 'rgba(5, 7, 18, 0.94)';
     ctx.fillRect(0, 0, CW, CH);
 
     const isWinner = playerScore > aiScore;
     const isDraw = playerScore === aiScore;
 
     ctx.textAlign = 'center';
-    ctx.font = '900 48px -apple-system, sans-serif';
+    ctx.font = '900 44px -apple-system, sans-serif';
     ctx.fillStyle = isWinner ? '#00f0ff' : (isDraw ? '#ffaa00' : '#ff0055');
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 25;
-    ctx.fillText(isWinner ? 'ПОБЕДА! 🏆' : (isDraw ? 'НИЧЬЯ! 🤝' : 'ПОРАЖЕНИЕ! 💥'), CW / 2, 420);
+    
+    // Тексты победы и поражения по ТЗ
+    const outcomeTitle = isWinner ? '🏆 VICTORY: YOU ARE THE BOSS' : (isDraw ? '🤝 НИЧЬЯ В ДАНЖЕНЕ' : '💀 DEFEAT: СЛЕЙВ ПРОИГРАЛ');
+    ctx.fillText(outcomeTitle, CW / 2, 410);
 
     ctx.shadowBlur = 0;
-    ctx.font = '800 34px -apple-system, sans-serif';
+    ctx.font = '800 36px -apple-system, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${playerScore} : ${aiScore}`, CW / 2, 480);
+    ctx.fillText(`${playerScore} : ${aiScore}`, CW / 2, 470);
 
     const matchBonus = isWinner ? 100 : 0;
     const earnedPoints = Math.max(0, playerScore * 25 + (playerScore - aiScore) * 15 + matchBonus);
 
     ctx.font = '600 20px -apple-system, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fillText('НАБРАНО ОЧКОВ', CW / 2, 535);
+    ctx.fillText('DUNGEON BUCKS ЗАРАБОТАНО', CW / 2, 530);
 
     ctx.font = '900 64px -apple-system, sans-serif';
     ctx.fillStyle = '#ffd700';
-    ctx.fillText(earnedPoints.toString(), CW / 2, 605);
+    ctx.fillText(`${earnedPoints} 💰`, CW / 2, 600);
 
     ctx.font = '700 20px -apple-system, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillText(`Рекорд: ${bestScore}`, CW / 2, 650);
+    ctx.fillText(`Рекорд качалки: ${bestScore}`, CW / 2, 645);
 
     // Кнопка Играть снова
     const btnW = 340;
@@ -1015,8 +1070,8 @@
 
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 25px -apple-system, sans-serif';
-    ctx.fillText('ИГРАТЬ СНОВА ↺', CW / 2, btnY + 46);
+    ctx.font = '900 24px -apple-system, sans-serif';
+    ctx.fillText('РЕВАНШ В ДАНЖЕНЕ ↺', CW / 2, btnY + 46);
 
     ctx.restore();
   }

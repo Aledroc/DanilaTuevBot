@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Неоновый Аэрохоккей — Neon Air Hockey</title>
+  <title>Ice Gym Clash • Аэрохоккей Слейвов</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #060814;
+      background: #060913;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     #game-container {
@@ -27,13 +27,13 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background: radial-gradient(circle at 50% 50%, #0d122b 0%, #050711 100%);
+      background: radial-gradient(circle at 50% 50%, #0c142b 0%, #050811 100%);
       touch-action: none;
     }
     canvas {
       display: block;
       touch-action: none;
-      box-shadow: 0 0 30px rgba(0,0,0,0.6);
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.25), 0 0 80px rgba(0, 0, 0, 0.85);
     }
     .top-controls {
       position: absolute;
@@ -48,13 +48,14 @@
     }
     .control-btn {
       pointer-events: auto;
-      background: rgba(18, 23, 45, 0.82);
+      background: rgba(13, 19, 36, 0.88);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(0, 240, 255, 0.3);
+      border: 1px solid rgba(0, 240, 255, 0.4);
       color: #00f0ff;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: 0.5px;
       padding: 8px 14px;
       border-radius: 12px;
       cursor: pointer;

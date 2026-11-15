@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>2048 Классика — Classic Swipe</title>
+  <title>2048: Dungeon Gym Edition</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,9 +17,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #faf8ef;
-      font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
-      color: #776e65;
+      background: #0c101c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e2e8f0;
     }
     #game-container {
       width: 100vw;
@@ -33,6 +33,7 @@
       justify-content: space-between;
       touch-action: none;
       box-sizing: border-box;
+      background: radial-gradient(circle at 50% 20%, #172033 0%, #0c101c 100%);
     }
     .top-bar {
       display: flex;
@@ -41,30 +42,32 @@
       margin-bottom: 10px;
     }
     .back-btn {
-      background: #8f7a66;
-      border: none;
-      color: #f9f6f2;
-      font-size: 14px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #00f0ff;
+      font-size: 13px;
       font-weight: bold;
       padding: 8px 14px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+      transition: all 0.15s ease;
     }
     .back-btn:active {
-      background: #7f6a56;
+      background: rgba(0, 240, 255, 0.2);
       transform: scale(0.96);
     }
     .sound-btn {
-      background: #bbada0;
-      border: none;
-      color: #f9f6f2;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
       font-size: 13px;
       font-weight: bold;
       padding: 8px 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
     }
     .sound-btn:active {
@@ -77,48 +80,56 @@
       margin-bottom: 12px;
     }
     .title-col h1 {
-      font-size: 42px;
-      font-weight: 800;
+      font-size: 40px;
+      font-weight: 900;
       line-height: 1;
-      color: #776e65;
+      color: #00f0ff;
+      text-shadow: 0 0 16px rgba(0, 240, 255, 0.45);
+      letter-spacing: 1px;
     }
     .title-col .subtitle {
       font-size: 13px;
-      color: #8f7a66;
+      color: #94a3b8;
       font-weight: 600;
+      margin-top: 4px;
     }
     .scores-col {
       display: flex;
       gap: 8px;
     }
     .score-box {
-      background: #bbada0;
+      background: #1e293b;
+      border: 1px solid rgba(0, 240, 255, 0.25);
       padding: 6px 14px;
-      border-radius: 6px;
+      border-radius: 8px;
       color: #fff;
       text-align: center;
-      min-width: 72px;
+      min-width: 76px;
       position: relative;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     .score-box .label {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 10px;
+      font-weight: 800;
       text-transform: uppercase;
-      color: #eee4da;
+      color: #00f0ff;
+      letter-spacing: 0.5px;
     }
     .score-box .value {
       font-size: 20px;
-      font-weight: 700;
+      font-weight: 800;
+      color: #ffffff;
     }
     .score-addition {
       position: absolute;
-      top: -15px;
-      right: 10px;
-      font-size: 18px;
-      font-weight: bold;
-      color: #e74c3c;
+      top: -16px;
+      right: 8px;
+      font-size: 17px;
+      font-weight: 900;
+      color: #38bdf8;
       animation: floatUp 0.6s ease-out forwards;
       pointer-events: none;
+      text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
     }
     @keyframes floatUp {
       0% { opacity: 1; transform: translateY(0); }
@@ -130,41 +141,58 @@
       max-width: min(100vw - 28px, 100dvh - 200px);
       aspect-ratio: 1 / 1;
       margin: 0 auto;
-      background: #bbada0;
-      border-radius: 10px;
-      padding: 12px;
+      background: #111827;
+      border: 2px solid rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.6);
+      border-radius: 12px;
+      padding: 10px;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       grid-template-rows: repeat(4, 1fr);
-      gap: 12px;
+      gap: 10px;
       touch-action: none;
       box-sizing: border-box;
     }
     .grid-cell {
-      background: rgba(238, 228, 218, 0.35);
-      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
       width: 100%;
       height: 100%;
     }
     .tiles-layer {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
       pointer-events: none;
     }
     .tile {
       position: absolute;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-weight: bold;
-      border-radius: 6px;
+      text-align: center;
+      font-weight: 800;
+      border-radius: 8px;
       transition: transform 100ms ease-in-out, top 100ms ease-in-out, left 100ms ease-in-out;
       will-change: transform, top, left;
-      font-size: 28px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      padding: 2px 4px;
+      line-height: 1.15;
+    }
+    .tile .tile-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .tile .tile-num {
+      font-size: 18px;
+      font-weight: 900;
+      opacity: 0.95;
     }
     .tile.tile-appear {
       animation: appear 150ms ease-out forwards;
@@ -181,25 +209,96 @@
       50% { transform: scale(1.15); }
       100% { transform: scale(1); }
     }
-    /* Цвета плиток gabrielecirulli */
-    .tile-2 { background: #eee4da; color: #776e65; }
-    .tile-4 { background: #ede0c8; color: #776e65; }
-    .tile-8 { background: #f2b179; color: #f9f6f2; }
-    .tile-16 { background: #f59563; color: #f9f6f2; }
-    .tile-32 { background: #f67c5f; color: #f9f6f2; }
-    .tile-64 { background: #f65e3b; color: #f9f6f2; }
-    .tile-128 { background: #edcf72; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 10px 1px rgba(237, 207, 114, 0.4); }
-    .tile-256 { background: #edcc61; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 12px 2px rgba(237, 204, 97, 0.45); }
-    .tile-512 { background: #edc850; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 14px 3px rgba(237, 200, 80, 0.5); }
-    .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 20px; box-shadow: 0 0 16px 4px rgba(237, 197, 63, 0.55); }
-    .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 20px; box-shadow: 0 0 20px 6px rgba(237, 194, 46, 0.65); }
-    .tile-super { background: #3c3a32; color: #f9f6f2; font-size: 18px; }
+
+    /* Ранги качалки Dungeon Gym */
+    .tile-2 {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .tile-4 {
+      background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+      color: #cbd5e1;
+      border: 1px solid rgba(203, 213, 225, 0.35);
+    }
+    .tile-8 {
+      background: linear-gradient(135deg, #0f4c81 0%, #0284c7 100%);
+      color: #ffffff;
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.4);
+    }
+    .tile-16 {
+      background: linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
+      color: #ffffff;
+      border: 1px solid rgba(14, 165, 233, 0.6);
+      box-shadow: 0 0 14px rgba(14, 165, 233, 0.45);
+    }
+    .tile-32 {
+      background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+      color: #ffffff;
+      border: 1px solid rgba(99, 102, 241, 0.6);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
+    }
+    .tile-64 {
+      background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+      color: #ffffff;
+      border: 1px solid rgba(139, 92, 246, 0.65);
+      box-shadow: 0 0 18px rgba(139, 92, 246, 0.55);
+    }
+    .tile-128 {
+      background: linear-gradient(135deg, #be185d 0%, #ec4899 100%);
+      color: #ffffff;
+      border: 1px solid rgba(236, 72, 153, 0.7);
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+    }
+    .tile-128 .tile-title { font-size: 11px; }
+    .tile-256 {
+      background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
+      color: #ffffff;
+      border: 1px solid rgba(249, 115, 22, 0.75);
+      box-shadow: 0 0 22px rgba(249, 115, 22, 0.65);
+    }
+    .tile-256 .tile-title { font-size: 11px; }
+    .tile-512 {
+      background: linear-gradient(135deg, #0284c7 0%, #00f0ff 100%);
+      color: #060913;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.75);
+    }
+    .tile-512 .tile-title { font-size: 12px; }
+    .tile-1024 {
+      background: linear-gradient(135deg, #b45309 0%, #ffd700 100%);
+      color: #000000;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 28px rgba(255, 215, 0, 0.85);
+    }
+    .tile-1024 .tile-title { font-size: 11px; }
+    .tile-2048 {
+      background: linear-gradient(135deg, #ffd700 0%, #ff0055 100%);
+      color: #ffffff;
+      border: 2px solid #ffd700;
+      box-shadow: 0 0 35px rgba(255, 215, 0, 0.95);
+      animation: bossPulse 1.5s infinite alternate;
+    }
+    .tile-2048 .tile-title { font-size: 10px; }
+    .tile-super {
+      background: linear-gradient(135deg, #ff0055 0%, #7928ca 100%);
+      color: #ffffff;
+      border: 2px solid #00f0ff;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 1);
+    }
+    .tile-super .tile-title { font-size: 10px; }
+
+    @keyframes bossPulse {
+      0% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.7); }
+      100% { box-shadow: 0 0 40px rgba(255, 0, 85, 0.95); }
+    }
 
     /* Оверлей окончания игры */
     .game-message {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(238, 228, 218, 0.85);
+      background: rgba(12, 16, 28, 0.92);
       border-radius: 10px;
       display: none;
       flex-direction: column;
@@ -207,7 +306,9 @@
       align-items: center;
       z-index: 100;
       animation: fadeIn 350ms ease-in-out forwards;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(6px);
+      text-align: center;
+      padding: 20px;
     }
     @keyframes fadeIn {
       from { opacity: 0; }
@@ -217,37 +318,38 @@
       display: flex;
     }
     .game-message h2 {
-      font-size: 32px;
-      font-weight: 800;
-      color: #776e65;
+      font-size: 30px;
+      font-weight: 900;
+      color: #00f0ff;
       margin-bottom: 8px;
+      text-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
     }
     .game-message p {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
-      color: #8f7a66;
-      margin-bottom: 18px;
+      color: #cbd5e1;
+      margin-bottom: 20px;
     }
     .game-message .actions {
       display: flex;
       gap: 12px;
     }
     .game-message button {
-      background: #8f7a66;
-      color: #f9f6f2;
+      background: linear-gradient(135deg, #00d2ff 0%, #0066ff 100%);
+      color: #ffffff;
       border: none;
-      font-weight: bold;
+      font-weight: 800;
       font-size: 15px;
-      padding: 10px 20px;
-      border-radius: 8px;
+      padding: 12px 22px;
+      border-radius: 10px;
       cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 102, 255, 0.4);
     }
     .game-message button:active {
-      background: #7f6a56;
       transform: scale(0.96);
     }
     .game-message button.keep-going {
-      background: #f59563;
+      background: linear-gradient(135deg, #ff0055 0%, #ffaa00 100%);
     }
 
     .bottom-info {
@@ -255,21 +357,23 @@
       justify-content: space-between;
       align-items: center;
       padding: 8px 0;
-      color: #776e65;
+      color: #94a3b8;
       font-size: 13px;
+      font-weight: 600;
     }
     .restart-btn {
-      background: #8f7a66;
-      color: #f9f6f2;
-      border: none;
-      font-weight: bold;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      font-weight: 700;
       font-size: 13px;
       padding: 8px 16px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
+      transition: all 0.15s;
     }
     .restart-btn:active {
-      background: #7f6a56;
+      background: rgba(255, 255, 255, 0.1);
       transform: scale(0.96);
     }
   </style>
@@ -283,8 +387,8 @@
 
     <div class="header-row">
       <div class="title-col">
-        <h1>2048</h1>
-        <div class="subtitle">Свайпай плитки и объединяй!</div>
+        <h1>2048 GYM</h1>
+        <div class="subtitle">Свайпай слейвов до Босса качалки!</div>
       </div>
       <div class="scores-col">
         <div class="score-box">
@@ -319,10 +423,10 @@
       <div class="tiles-layer" id="tiles-layer"></div>
 
       <div class="game-message" id="game-message">
-        <h2 id="msg-title">Конец игры!</h2>
-        <p id="msg-desc">Счёт сохранён в Зал Славы</p>
+        <h2 id="msg-title">Конец раунда!</h2>
+        <p id="msg-desc">Счёт занесён в Зал Славы Данжена</p>
         <div class="actions">
-          <button id="btn-retry">Сыграть ещё</button>
+          <button id="btn-retry">Новый подход ↺</button>
           <button id="btn-keep" class="keep-going" style="display:none;">Продолжить</button>
         </div>
       </div>

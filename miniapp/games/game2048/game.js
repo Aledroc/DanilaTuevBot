@@ -7,7 +7,23 @@
   const searchParams = new URLSearchParams(window.location.search);
   const chatId = searchParams.get('chat_id') || tg?.initDataUnsafe?.chat?.id || null;
   const initData = tg?.initData || '';
-  const userName = tg?.initDataUnsafe?.user?.first_name || 'Математик 2048';
+  const userName = tg?.initDataUnsafe?.user?.first_name || 'Gym Master';
+
+  // Ранги качалки по ТЗ
+  const GACHI_RANKS = {
+    2: 'Slave',
+    4: 'Jabroni',
+    8: 'Boy Next Door',
+    16: 'Leather Boy',
+    32: 'Fisting King',
+    64: 'Gym Gladiator',
+    128: 'Dungeon Master',
+    256: 'Master of Gym',
+    512: 'Deep Dark',
+    1024: 'Billy Legend',
+    2048: '👑 BOSS OF THIS GYM',
+    4096: '⚡ TITAN OF 300 BUCKS'
+  };
 
   // Звуковой синтезатор Web Audio API
   let soundEnabled = true;
@@ -181,7 +197,12 @@
         tileEl.style.height = `${cellSize}px`;
         tileEl.style.top = `${r * (cellSize + gap)}px`;
         tileEl.style.left = `${c * (cellSize + gap)}px`;
-        tileEl.textContent = tile.value;
+
+        const rankName = GACHI_RANKS[tile.value] || (tile.value >= 4096 ? '⚡ TITAN OF 300 BUCKS' : `Rank ${tile.value}`);
+        tileEl.innerHTML = `
+          <div class="tile-title">${rankName}</div>
+          <div class="tile-num">(${tile.value})</div>
+        `;
 
         tilesLayer.appendChild(tileEl);
       }
@@ -368,8 +389,8 @@
 
   function handleWin() {
     soundWin();
-    msgTitleNode.textContent = 'Ты собрал 2048! 🎉';
-    msgDescNode.textContent = `Твой великолепный счёт: ${score}`;
+    msgTitleNode.textContent = '👑 BOSS OF THIS GYM (2048)!';
+    msgDescNode.textContent = `Ты доказал превосходство в Данжене! Счёт: ${score} 💰`;
     btnKeep.style.display = 'inline-block';
     gameMsgNode.classList.add('active');
     submitScoreToServer(score);
@@ -377,8 +398,8 @@
 
   function handleGameOver() {
     soundGameOver();
-    msgTitleNode.textContent = 'Игра окончена!';
-    msgDescNode.textContent = `Финальный результат: ${score}`;
+    msgTitleNode.textContent = '💀 СЛЕЙВ УПАЛ БЕЗ СИЛ!';
+    msgDescNode.textContent = `Заработанные Bucks: ${score} 💰`;
     btnKeep.style.display = 'none';
     gameMsgNode.classList.add('active');
     submitScoreToServer(score);

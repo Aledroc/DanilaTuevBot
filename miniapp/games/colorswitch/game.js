@@ -527,7 +527,9 @@
           st.collected = true;
           score += 1;
           playStarSound();
-          scorePopups.push({ x: st.x, y: st.y, text: '+1', life: 1 });
+          const praiseTexts = ['💪 PERFECT FLEX', '⚡ FISTING IS 300 BUCKS', '🔥 MAXIMUM POWER', '👑 GYM BOSS', '💥 GAINS!'];
+          const chosenPraise = praiseTexts[score % praiseTexts.length];
+          scorePopups.push({ x: CW / 2, y: st.y - 15, text: `${chosenPraise} (+1)`, life: 1 });
           // Звездные искры
           for (let i = 0; i < 15; i++) {
             const a = Math.random() * Math.PI * 2;
@@ -766,6 +768,16 @@
       ctx.beginPath();
       ctx.arc(obs.x, obs.y, obs.radius, startA, endA);
       ctx.stroke();
+
+      // Отрисовка силовых "блинов / рукояток" на стыках дуг для стиля кольца силы качалки
+      const midA = (startA + endA) / 2;
+      const hx = obs.x + Math.cos(midA) * obs.radius;
+      const hy = obs.y + Math.sin(midA) * obs.radius;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, obs.thickness * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.restore();
     }
     ctx.restore();
@@ -918,50 +930,54 @@
   // HUD: текущий счёт и рекорд
   function renderHUD() {
     ctx.save();
-    ctx.font = '900 68px sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.font = '900 64px sans-serif';
+    ctx.fillStyle = '#ffd700';
     ctx.textAlign = 'left';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 8;
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+    ctx.shadowBlur = 12;
     ctx.fillText(`${score}`, 32, 100);
 
-    ctx.font = '700 20px sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '800 20px sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowColor = 'rgba(0, 240, 255, 0.6)';
+    ctx.shadowBlur = 8;
     ctx.textAlign = 'right';
-    ctx.fillText(`РЕКОРД: ${bestScore}`, CW - 32, 85);
+    ctx.fillText(`🏆 РЕКОРД GYM: ${bestScore}`, CW - 32, 85);
     ctx.restore();
   }
 
   // Оверлей старта
   function renderStartOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 12, 16, 0.72)';
+    ctx.fillStyle = 'rgba(8, 10, 16, 0.88)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
     ctx.font = '900 48px sans-serif';
-    ctx.fillStyle = '#f6e21b';
-    ctx.shadowColor = '#f6e21b';
-    ctx.shadowBlur = 20;
-    ctx.fillText('COLOR SWITCH', CW / 2, CH * 0.35);
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 22;
+    ctx.fillText('RAINBOW DUNGEON', CW / 2, CH * 0.35);
 
-    ctx.font = '700 22px sans-serif';
-    ctx.fillStyle = '#fff';
+    ctx.font = '800 24px sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 12;
+    ctx.fillText('ЦВЕТНОЙ ФЛЕКС КАЧАЛКИ', CW / 2, CH * 0.40);
+
     ctx.shadowBlur = 0;
-    ctx.fillText('ЦВЕТНОЙ ПЕРЕКЛЮЧАТЕЛЬ', CW / 2, CH * 0.40);
-
-    ctx.font = '500 18px sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    ctx.fillText('Проходи только через свой цвет!', CW / 2, CH * 0.47);
-    ctx.fillText('Собирай звёзды и сферы смены цвета', CW / 2, CH * 0.51);
+    ctx.font = '600 20px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('Входи в ритм и проходи сквозь кольца силы!', CW / 2, CH * 0.47);
+    ctx.fillText('Касайся только своего цвета • Perfect Flex', CW / 2, CH * 0.51);
 
     // Мигающая кнопка тапа
-    const pulseAlpha = 0.6 + Math.sin(Date.now() * 0.006) * 0.4;
-    ctx.font = '700 26px sans-serif';
-    ctx.fillStyle = `rgba(22, 224, 230, ${pulseAlpha})`;
-    ctx.shadowColor = '#16e0e6';
-    ctx.shadowBlur = 12;
-    ctx.fillText('ТАПНИ, ЧТОБЫ НАЧАТЬ', CW / 2, CH * 0.62);
+    const pulseAlpha = 0.7 + Math.sin(Date.now() * 0.007) * 0.3;
+    ctx.font = '900 26px sans-serif';
+    ctx.fillStyle = `rgba(255, 215, 0, ${pulseAlpha})`;
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 14;
+    ctx.fillText('ТАПНИ, ЧТОБЫ ВОЙТИ В РИТМ 💪', CW / 2, CH * 0.62);
 
     ctx.restore();
   }
@@ -969,46 +985,53 @@
   // Оверлей конца игры
   function renderGameOverOverlay() {
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+    ctx.fillStyle = 'rgba(8, 10, 16, 0.92)';
     ctx.fillRect(0, 0, CW, CH);
 
     ctx.textAlign = 'center';
     ctx.font = '900 46px sans-serif';
-    ctx.fillStyle = '#ff017b';
-    ctx.shadowColor = '#ff017b';
+    ctx.fillStyle = '#ff0055';
+    ctx.shadowColor = '#ff0055';
     ctx.shadowBlur = 22;
-    ctx.fillText('ИГРА ОКОНЧЕНА', CW / 2, CH * 0.34);
+    ctx.fillText('💀 СБИЛСЯ С РИТМА!', CW / 2, CH * 0.34);
 
     ctx.shadowBlur = 0;
-    ctx.font = '600 20px sans-serif';
+    ctx.font = '700 20px sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
-    ctx.fillText('ВАШ СЧЁТ', CW / 2, CH * 0.41);
+    ctx.fillText('ИТОГОВЫЙ СИЛОВОЙ СЧЁТ', CW / 2, CH * 0.41);
 
-    ctx.font = '900 74px sans-serif';
-    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 76px sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 16;
     ctx.fillText(`${score}`, CW / 2, CH * 0.48);
 
+    ctx.shadowBlur = 0;
     if (score >= bestScore && score > 0) {
-      ctx.font = '700 20px sans-serif';
-      ctx.fillStyle = '#f6e21b';
-      ctx.shadowColor = '#f6e21b';
+      ctx.font = '800 22px sans-serif';
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
       ctx.shadowBlur = 12;
-      ctx.fillText('★ НОВЫЙ ЛИЧНЫЙ РЕКОРД! ★', CW / 2, CH * 0.54);
+      ctx.fillText('★ НОВЫЙ РЕКОРД DUNGEON GYM! ★', CW / 2, CH * 0.54);
       ctx.shadowBlur = 0;
     } else {
       ctx.font = '600 20px sans-serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText(`Лучший рекорд: ${bestScore}`, CW / 2, CH * 0.54);
+      ctx.fillText(`Лучший рекорд зала: ${bestScore}`, CW / 2, CH * 0.54);
     }
 
     // Кнопка рестарта
-    ctx.fillStyle = '#16e0e6';
-    roundRect(ctx, CW / 2 - 150, CH * 0.62, 300, 68, 18);
+    const grad = ctx.createLinearGradient(CW / 2 - 160, 0, CW / 2 + 160, 0);
+    grad.addColorStop(0, '#d4af37');
+    grad.addColorStop(0.5, '#ffd700');
+    grad.addColorStop(1, '#ff9100');
+    ctx.fillStyle = grad;
+    roundRect(ctx, CW / 2 - 160, CH * 0.62, 320, 68, 18);
     ctx.fill();
 
-    ctx.font = '800 24px sans-serif';
-    ctx.fillStyle = '#111319';
-    ctx.fillText('ИГРАТЬ СНОВА', CW / 2, CH * 0.62 + 42);
+    ctx.font = '900 24px sans-serif';
+    ctx.fillStyle = '#080a10';
+    ctx.fillText('НАЧАТЬ ПОДХОД ЗАНОВО ↺', CW / 2, CH * 0.62 + 42);
 
     ctx.restore();
   }

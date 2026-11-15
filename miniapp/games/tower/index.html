@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Башня коробок / Стек — Mini App</title>
+  <title>Dungeon Bench • Стек Штанги — Gym Mini App</title>
   <style>
     * {
       box-sizing: border-box;
@@ -21,8 +21,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #f95240 url(assets/main-bg.png) center/cover no-repeat;
+      background: radial-gradient(circle at 50% 30%, #0d172e 0%, #060913 75%, #020408 100%);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #fff;
     }
     @font-face {
       font-family: wenxue;
@@ -58,31 +59,33 @@
     }
     .top-btn {
       pointer-events: auto;
-      background: rgba(20, 24, 30, 0.82);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #fff;
+      background: rgba(13, 20, 36, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      color: #00e5ff;
       font-size: 13px;
-      font-weight: 600;
-      padding: 7px 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 8px 14px;
       border-radius: 12px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-      transition: transform 0.1s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.15);
+      transition: all 0.15s;
     }
     .top-btn:active {
       transform: scale(0.95);
+      background: rgba(0, 229, 255, 0.2);
     }
 
     /* Экран загрузки */
     .loading-screen {
       position: absolute;
       inset: 0;
-      background: #f05a50;
+      background: radial-gradient(circle at center, #0f1c38 0%, #060912 100%);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -90,28 +93,49 @@
       z-index: 40;
       color: #fff;
     }
-    .loading-screen img {
-      width: 140px;
-      margin-bottom: 20px;
+    .loading-badge {
+      font-size: 48px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 15px #00e5ff);
+      animation: pulse 1.5s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); filter: drop-shadow(0 0 10px #00e5ff); }
+      100% { transform: scale(1.08); filter: drop-shadow(0 0 25px #00e5ff); }
+    }
+    .loading-title-gym {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #00e5ff;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+      margin-bottom: 18px;
     }
     .loading-bar-wrap {
-      width: 60%;
+      width: 65%;
+      max-width: 280px;
       height: 14px;
-      border: 3px solid #fff;
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(0, 229, 255, 0.6);
       border-radius: 10px;
       padding: 2px;
       margin-bottom: 12px;
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
     }
     .loading-bar-fill {
       width: 0%;
       height: 100%;
-      background: #fff;
+      background: linear-gradient(90deg, #00b4d8 0%, #00e5ff 100%);
       border-radius: 6px;
+      box-shadow: 0 0 8px #00e5ff;
       transition: width 0.2s ease;
     }
     .loading-text {
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 1px;
     }
 
     /* Стартовый экран */
@@ -122,55 +146,98 @@
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
-      padding: 60px 24px 36px;
+      padding: 65px 24px 38px;
       z-index: 30;
       pointer-events: none;
+      background: linear-gradient(180deg, rgba(8,13,26,0.7) 0%, rgba(8,13,26,0.3) 50%, rgba(8,13,26,0.85) 100%);
     }
-    .landing-title {
-      width: 72%;
-      max-width: 320px;
-      animation: swing 2s ease-in-out alternate infinite;
+    .landing-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      animation: swing 2.2s ease-in-out alternate infinite;
       transform-origin: top center;
     }
+    .landing-logo-badge {
+      font-size: 42px;
+      filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.7));
+    }
+    .landing-h1 {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8), 0 0 20px rgba(0, 229, 255, 0.6);
+      line-height: 1.15;
+    }
+    .landing-subh1 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #00e5ff;
+      text-transform: uppercase;
+    }
     @keyframes swing {
-      0% { transform: rotate(4deg); }
-      100% { transform: rotate(-4deg); }
+      0% { transform: rotate(2.5deg); }
+      100% { transform: rotate(-2.5deg); }
     }
     .landing-actions {
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       pointer-events: auto;
     }
     .landing-start-btn {
-      width: 65%;
-      max-width: 260px;
+      width: 82%;
+      max-width: 290px;
+      padding: 18px 24px;
+      background: linear-gradient(135deg, #00e5ff 0%, #0077b6 100%);
+      color: #060913;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
       cursor: pointer;
-      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
-      transition: transform 0.15s;
+      box-shadow: 0 0 25px rgba(0, 229, 255, 0.6), 0 8px 20px rgba(0, 0, 0, 0.6);
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
     }
     .landing-start-btn:active {
-      transform: scale(0.94);
+      transform: scale(0.95);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
     }
     .landing-tip {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 14px;
-      font-weight: 600;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-      background: rgba(0, 0, 0, 0.25);
-      padding: 6px 16px;
-      border-radius: 16px;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 700;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      background: rgba(13, 20, 36, 0.75);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      padding: 8px 18px;
+      border-radius: 20px;
+      backdrop-filter: blur(6px);
+      text-align: center;
+      max-width: 90%;
     }
 
     /* Модалка Game Over */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.72);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      background: rgba(4, 7, 15, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -184,12 +251,13 @@
       pointer-events: auto;
     }
     .modal-box {
-      width: 86%;
+      width: 88%;
       max-width: 340px;
-      background: #fff;
-      border-radius: 24px;
+      background: #0d1527;
+      border: 2px solid rgba(0, 229, 255, 0.4);
+      border-radius: 26px;
       overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      box-shadow: 0 0 40px rgba(0, 229, 255, 0.25), 0 20px 50px rgba(0,0,0,0.8);
       text-align: center;
       transform: translateY(20px) scale(0.95);
       transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
@@ -198,55 +266,72 @@
       transform: translateY(0) scale(1);
     }
     .modal-header-bg {
-      background: #f05a50 url(assets/main-bg.png) center/cover;
-      padding: 24px 16px 16px;
+      background: linear-gradient(180deg, #162444 0%, #0d1527 100%);
+      padding: 24px 18px 18px;
       color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .modal-over-img {
-      width: 70%;
-      margin: 0 auto 10px;
+    .modal-over-badge {
+      font-size: 42px;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.7));
+    }
+    .modal-fail-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #f87171;
+      text-transform: uppercase;
+      text-shadow: 0 0 15px rgba(248, 113, 113, 0.5);
+      margin-bottom: 12px;
     }
     .modal-score-wrap {
       margin: 12px 0 6px;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(0, 229, 255, 0.15);
     }
     .modal-score-title {
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 1.5px;
-      color: rgba(255, 255, 255, 0.85);
+      color: #94a3b8;
       font-weight: 700;
     }
     .modal-score-val {
-      font-size: 52px;
-      line-height: 1;
+      font-size: 44px;
+      line-height: 1.1;
       font-weight: 900;
-      color: #ffeb3b;
-      text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      color: #00e5ff;
+      text-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
     }
     .modal-best-score {
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.9);
-      margin-top: 4px;
+      color: #cbd5e1;
+      margin-top: 6px;
       font-weight: 600;
     }
     .modal-body {
-      padding: 20px 20px 24px;
-      background: #fff;
+      padding: 20px;
+      background: #0d1527;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
     .btn-again {
       width: 100%;
-      background: #22c55e;
-      color: #fff;
+      background: linear-gradient(135deg, #00e5ff 0%, #0077b6 100%);
+      color: #060913;
       border: none;
       padding: 14px;
       border-radius: 14px;
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
       transition: transform 0.1s;
     }
     .btn-again:active {
@@ -254,13 +339,13 @@
     }
     .btn-exit {
       width: 100%;
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px solid #cbd5e1;
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       padding: 12px;
       border-radius: 14px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
     }
     .btn-exit:active {
@@ -284,19 +369,24 @@
 
   <!-- Экран загрузки -->
   <div class="loading-screen" id="loading-screen">
-    <img src="assets/main-loading.gif" alt="Загрузка">
+    <div class="loading-badge">🏋️‍♂️</div>
+    <div class="loading-title-gym">DUNGEON BENCH</div>
     <div class="loading-bar-wrap">
       <div class="loading-bar-fill" id="loading-fill"></div>
     </div>
-    <div class="loading-text" id="loading-text">0%</div>
+    <div class="loading-text" id="loading-text">Разогреваем сталь... 0%</div>
   </div>
 
   <!-- Стартовый экран -->
   <div class="landing-screen hide" id="landing-screen">
-    <img src="assets/main-index-title.png" class="landing-title" alt="Tower Building">
+    <div class="landing-header">
+      <div class="landing-logo-badge">⚡🏋️‍♂️⚡</div>
+      <div class="landing-h1">Dungeon Bench</div>
+      <div class="landing-subh1">Стек Штанги • Качалка Билли</div>
+    </div>
     <div class="landing-actions">
-      <div class="landing-tip">Тапай по экрану, чтобы ставить блоки ровно!</div>
-      <img src="assets/main-index-start.png" class="landing-start-btn" id="btn-start" alt="Играть">
+      <div class="landing-tip">Ставь блины ровно на гриф, boy next door!</div>
+      <button class="landing-start-btn" id="btn-start">Ударь для жима! 💪</button>
     </div>
   </div>
 
@@ -304,21 +394,161 @@
   <div class="modal-overlay" id="game-over-modal">
     <div class="modal-box">
       <div class="modal-header-bg">
-        <img src="assets/main-modal-over.png" class="modal-over-img" alt="Игра окончена">
+        <div class="modal-over-badge">💀</div>
+        <div class="modal-fail-title">СОРВАЛ СПИНУ!</div>
         <div class="modal-score-wrap">
-          <div class="modal-score-title">Построено этажей</div>
-          <div class="modal-score-val font-wenxue" id="final-score">0</div>
+          <div class="modal-score-title">Твой вес на штанге:</div>
+          <div class="modal-score-val font-wenxue" id="final-score">0 кг</div>
         </div>
-        <div class="modal-best-score" id="best-score-label">Лучший рекорд: 0</div>
+        <div class="modal-best-score" id="best-score-label">Рекорд спортзала: 0 кг</div>
       </div>
       <div class="modal-body">
-        <button class="btn-again" id="btn-restart">Построить еще раз 🏗</button>
-        <button class="btn-exit" id="btn-to-leaderboard">Таблица рекордов 🏆</button>
+        <button class="btn-again" id="btn-restart">Повторить подход 🏋️‍♂️</button>
+        <button class="btn-exit" id="btn-to-leaderboard">Таблица чемпионов 🏆</button>
       </div>
     </div>
   </div>
 
   <script src="dist/main.js"></script>
+  <script>
+    // Dungeon Gym Canvas Styler: заменяет цвета неба и блоков на неоновые металлические блины и темно-кобальтовый зал
+    (() => {
+      // Подменяем метод рендера блоков U и фона L если возможно, либо перехватываем отрисовку через Canvas context proxy
+      const origGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, attribs) {
+        const ctx = origGetContext.apply(this, arguments);
+        if (type === '2d' && this.id === 'canvas' && !ctx._gymHacked) {
+          ctx._gymHacked = true;
+
+          // Перехват drawImage для замены спрайтов блинов (block, block-perfect, hook)
+          const origDrawImage = ctx.drawImage;
+          ctx.drawImage = function(img) {
+            // Проверяем, если отрисовывается блок/блин
+            if (img && img.src) {
+              const src = img.src;
+              if (src.includes('block.png') || src.includes('block-perfect.png')) {
+                // Рисуем стальной блин штанги с неоновой окантовкой
+                const isPerfect = src.includes('block-perfect.png');
+                const x = arguments[1];
+                const y = arguments[2];
+                const w = arguments[3];
+                const h = arguments[4];
+                if (typeof w === 'number' && typeof h === 'number') {
+                  ctx.save();
+                  
+                  // Базовый блин — темная матовая сталь
+                  const grad = ctx.createLinearGradient(x, y, x, y + h);
+                  if (isPerfect) {
+                    grad.addColorStop(0, '#1e293b');
+                    grad.addColorStop(0.3, '#334155');
+                    grad.addColorStop(0.7, '#0f172a');
+                    grad.addColorStop(1, '#020617');
+                  } else {
+                    grad.addColorStop(0, '#1a202c');
+                    grad.addColorStop(0.4, '#2d3748');
+                    grad.addColorStop(0.7, '#171923');
+                    grad.addColorStop(1, '#0a0d14');
+                  }
+
+                  // Закругленные края блина
+                  const radius = Math.min(8, h / 4);
+                  ctx.beginPath();
+                  ctx.roundRect ? ctx.roundRect(x, y, w, h, radius) : ctx.rect(x, y, w, h);
+                  ctx.fillStyle = grad;
+                  ctx.fill();
+
+                  // Неоновая окантовка (Бирюзово-голубая или Золотая при Perfect)
+                  ctx.lineWidth = isPerfect ? 3.5 : 2;
+                  ctx.strokeStyle = isPerfect ? '#fbbf24' : '#00e5ff';
+                  ctx.shadowColor = isPerfect ? '#f59e0b' : '#00e5ff';
+                  ctx.shadowBlur = isPerfect ? 14 : 8;
+                  ctx.stroke();
+
+                  // Внутренняя полоса / обод блина
+                  ctx.beginPath();
+                  ctx.roundRect ? ctx.roundRect(x + 6, y + 4, w - 12, h - 8, 4) : ctx.rect(x + 6, y + 4, w - 12, h - 8);
+                  ctx.lineWidth = 1;
+                  ctx.strokeStyle = isPerfect ? 'rgba(251, 191, 36, 0.4)' : 'rgba(0, 229, 255, 0.35)';
+                  ctx.stroke();
+
+                  // Маркировка веса блина "20 KG"
+                  ctx.shadowBlur = 0;
+                  ctx.fillStyle = isPerfect ? '#fef08a' : '#e2e8f0';
+                  ctx.font = `900 ${Math.max(10, Math.floor(h * 0.45))}px sans-serif`;
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText(isPerfect ? '★ 25 KG ★' : '20 KG', x + w / 2, y + h / 2);
+
+                  ctx.restore();
+                  return;
+                }
+              } else if (src.includes('block-rope.png')) {
+                // Рисуем стальной гриф/цепь качалки
+                const x = arguments[1];
+                const y = arguments[2];
+                const w = arguments[3];
+                const h = arguments[4];
+                if (typeof w === 'number' && typeof h === 'number') {
+                  ctx.save();
+                  // Стальной подвес
+                  ctx.fillStyle = '#64748b';
+                  ctx.fillRect(x + w / 2 - 2, y, 4, h);
+                  // Отрисовываем блин на конце
+                  const diskH = h * 0.7;
+                  const diskY = y + h - diskH;
+                  const grad = ctx.createLinearGradient(x, diskY, x, diskY + diskH);
+                  grad.addColorStop(0, '#334155');
+                  grad.addColorStop(0.5, '#475569');
+                  grad.addColorStop(1, '#0f172a');
+                  ctx.fillStyle = grad;
+                  ctx.beginPath();
+                  ctx.roundRect ? ctx.roundRect(x, diskY, w, diskH, 6) : ctx.rect(x, diskY, w, diskH);
+                  ctx.fill();
+                  ctx.strokeStyle = '#00e5ff';
+                  ctx.lineWidth = 2;
+                  ctx.stroke();
+                  ctx.fillStyle = '#38bdf8';
+                  ctx.font = `800 ${Math.max(9, Math.floor(diskH * 0.4))}px sans-serif`;
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText('20 KG', x + w / 2, diskY + diskH / 2);
+                  ctx.restore();
+                  return;
+                }
+              }
+            }
+            return origDrawImage.apply(this, arguments);
+          };
+
+          // Подменяем линейные градиенты неба на глубокий Dungeon Gym (графит, сталь, неоновый синий)
+          const origCreateLinearGradient = ctx.createLinearGradient;
+          ctx.createLinearGradient = function(x0, y0, x1, y1) {
+            const grad = origCreateLinearGradient.apply(this, arguments);
+            const origAddColorStop = grad.addColorStop;
+            grad.addColorStop = function(offset, color) {
+              // Если это фоновый градиент или текст счета (по цветам #FAD961/#F76B1C или цветам неба)
+              if (color === '#FAD961' || color === '#F76B1C') {
+                // Превращаем счет в неоновый бирюзовый/золотой
+                return origAddColorStop.call(this, offset, offset === 0 ? '#00e5ff' : '#0284c7');
+              }
+              // Цвета неба в игре: rgb(200, 255, 150)... заменим на оттенки темного спортзала
+              if (color.startsWith('rgb(') || color.startsWith('rgba(')) {
+                // Темный кобальт и глубокий графит
+                const gymColors = [
+                  '#050811', '#0b1329', '#0d1935', '#081026', '#02040a'
+                ];
+                const mappedColor = offset === 0 ? gymColors[1] : gymColors[0];
+                return origAddColorStop.call(this, offset, mappedColor);
+              }
+              return origAddColorStop.call(this, offset, color);
+            };
+            return grad;
+          };
+        }
+        return ctx;
+      };
+    })();
+  </script>
   <script src="assets/zepto-1.1.6.min.js"></script>
   <script>
     (() => {
@@ -329,7 +559,7 @@
       const searchParams = new URLSearchParams(window.location.search);
       const chatId = searchParams.get('chat_id') || tg?.initDataUnsafe?.chat?.id || null;
       const initData = tg?.initData || '';
-      const userName = tg?.initDataUnsafe?.user?.first_name || 'Строитель';
+      const userName = tg?.initDataUnsafe?.user?.first_name || 'Boy Next Door';
 
       let soundOn = true;
       let game = null;
@@ -345,12 +575,11 @@
       // Размеры под экран
       let gameWidth = window.innerWidth;
       let gameHeight = window.innerHeight;
-      // На мобильных устройствах занимаем 100% ширины и высоты без обрезки по ratio!
 
       function updateLoading(status) {
         const percent = Math.min(100, Math.floor((status.success / status.total) * 100));
         $('#loading-fill').css('width', percent + '%');
-        $('#loading-text').text(percent + '%');
+        $('#loading-text').text('Разогреваем сталь... ' + percent + '%');
         if (percent >= 100) {
           setTimeout(() => {
             $('#loading-screen').addClass('hide');
@@ -382,7 +611,7 @@
       }
 
       function onGameOver(scoreVal, floorsVal) {
-        // За соревновательный результат берем количество успешно уложенных этажей (floorsVal) или score
+        // За соревновательный результат берем количество успешно уложенных блинов (floorsVal) или score
         const record = floorsVal > 0 ? floorsVal : scoreVal;
         if (record > bestScore) {
           bestScore = record;
@@ -391,11 +620,15 @@
           } catch (_) {}
         }
 
-        $('#final-score').text(record);
-        $('#best-score-label').text('Лучший рекорд: ' + bestScore + ' эт.');
+        // 1 блин = 20 кг + базовый гриф 20 кг для брутальности качалки
+        const weightKg = record > 0 ? 20 + record * 20 : 0;
+        const bestWeightKg = bestScore > 0 ? 20 + bestScore * 20 : 0;
+
+        $('#final-score').text(weightKg + ' кг (' + record + ' бл.)');
+        $('#best-score-label').text('Рекорд спортзала: ' + bestWeightKg + ' кг');
         $('#game-over-modal').addClass('active');
 
-        // Отправка на бэкенд
+        // Отправка на бэкенд (отправляем число блинов/очков)
         submitScore(record);
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ type: 'GAME_OVER', game: 'tower_stack', score: record }, '*');
