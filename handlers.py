@@ -1094,3 +1094,59 @@ def tournament_cup_cmd(message):
     bot.send_message(cid, "\n".join(lines), parse_mode='HTML')
 
 
+@bot.message_handler(commands=['achievements', 'ach', 'badges'])
+def achievements_cmd(message):
+    """Просмотр личных достижений, прогресса и наград."""
+    user = message.from_user
+    if not user:
+        return
+    cid = message.chat.id
+
+    try:
+        inventory_store.check_user_achievements(user.id)
+    except Exception:
+        pass
+
+    achievements = inventory_store.get_user_achievements(user.id)
+    if not achievements:
+        bot.reply_to(message, "🏅 В подземелье пока нет зарегистрированных достижений.")
+        return
+
+    unlocked = [a for a in achievements if a.get("unlocked")]
+    claimed = [a for a in achievements if a.get("claimed")]
+    total = len(achievements)
+    unclaimed = [a for a in unlocked if not a.get("claimed")]
+
+    text_parts = [
+        f"🏅 <b>Зал Достижений бойца {html.escape(user.first_name)}</b>",
+        f"Разблокировано: <b>{len(unlocked)} / {total}</b> | Получено наград: <b>{len(claimed)}</b>\n"
+    ]
+
+    if unlocked:
+        text_parts.append("<b>🏆 Твои открытые ремни и трофеи:</b>")
+        for a in unlocked[:8]:
+            status = "✅" if a.get("claimed") else "🎁 <i>(можно забрать)</i>"
+            text_parts.append(f"{a['icon']} <b>{html.escape(a['name'])}</b> (+{a['reward']} 🪙) — {status}")
+        if len(unlocked) > 8:
+            text_parts.append(f"<i>...и ещё {len(unlocked) - 8} наград в приложении!</i>")
+        text_parts.append("")
+
+    # Показываем ближайшие к разблокировке
+    locked = [a for a in achievements if not a.get("unlocked")]
+    if locked:
+        text_parts.append("<b>🎯 Ближайшие цели:</b>")
+        for a in locked[:4]:
+            req = a.get("req_progress", 1)
+            curr = min(a.get("current_progress", 0), req)
+            text_parts.append(f"{a['icon']} <b>{html.escape(a['name'])}</b>: {curr}/{req} — <i>{html.escape(a['desc'])}</i>")
+        text_parts.append("")
+
+    if unclaimed:
+        text_parts.append(f"🎉 <b>У тебя есть {len(unclaimed)} незабранных наград!</b> Открой /app вкладку «Достижения», чтобы забрать монеты 🪙")
+    else:
+        text_parts.append("💡 Полный список достижений и фильтры доступны в <b>/app</b> во вкладке «🏅 Достижения».")
+
+    bot.reply_to(message, "\n".join(text_parts), parse_mode='HTML')
+
+
+

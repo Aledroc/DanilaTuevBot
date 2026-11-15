@@ -86,18 +86,32 @@ def remember_command_member(message):
     if command == '/help':
         bot.send_message(
             message.chat.id,
-            "📖 <b>Команды бота</b>\n"
-            "🎒 /app — открыть профиль и инвентарь\n"
-            "🎒 /inv — посмотреть свои вещи\n"
-            "🪄 <code>/use предмет | действие</code> — использовать предмет\n"
-            "🎭 <code>/set ключ_архетипа</code> — выбрать архетип (ключ смотрите во вкладке «Архетипы» в /app)\n"
-            "📝 <code>/prompt описание и стиль</code> — задать образ персонажа и пожелания к ответам\n"
-            "🎯 <code>/goal цель</code> — задать цель; <code>/who</code> — посмотреть образ\n"
-            "🔊 <code>/voice Valentin</code> — выбрать голос; <code>/voice on</code> / <code>/voice off</code> — озвучка\n"
-            "🔄 <code>/reset</code> — начать нового персонажа\n"
-            "🎨 <code>/img описание</code> — создать изображение\n\n"
-            "Нажмите /app, чтобы открыть Mini App. Примеры команд можно нажимать "
-            "во вкладке «Справка» — они откроются в чате как черновик.",
+            "🏛 <b>DEEP DARK GYM • МЕНЮ КОМАНД</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🎮 <b>Мини-игры и Турниры:</b>\n"
+            "  • /app — открыть мини-приложение, 9 игр и инвентарь\n"
+            "  • /cup — кубок недели и таблица чемпионов\n"
+            "  • /achievements (/ach) — твои достижения и награды\n\n"
+            "💰 <b>Экономика и Магазин ($300 Store):</b>\n"
+            "  • /coins — баланс монет и серия посещений (стрик)\n"
+            "  • /shop — витрина товаров, приколов и VIP-статуса\n"
+            "  • <code>/buy &lt;товар&gt;</code> — купить перк или прикол в чате\n\n"
+            "🎭 <b>Ролевая игра и Каста:</b>\n"
+            "  • /who — текущий образ и статус персонажа\n"
+            "  • <code>/set &lt;роль&gt;</code> — выбрать архетип персонажа\n"
+            "  • <code>/prompt &lt;описание&gt;</code> — задать характер и манеру речи\n"
+            "  • <code>/goal &lt;цель&gt;</code> — поставить глобальную цель\n"
+            "  • /reset — сбросить персонажа и начать заново\n\n"
+            "🎒 <b>Инвентарь и Предметы:</b>\n"
+            "  • /inv — посмотреть свой кожаный инвентарь\n"
+            "  • <code>/use &lt;вещь&gt; | &lt;действие&gt;</code> — применить предмет\n"
+            "  • <code>/giveitem &lt;кому&gt; | &lt;вещь&gt;</code> — передать предмет другу\n\n"
+            "🎙 <b>Озвучка и Медиа:</b>\n"
+            "  • <code>/voice &lt;имя&gt;</code> — выбрать голос (Valentin, Danila, etc.)\n"
+            "  • /voice on / /voice off — включить или выключить озвучку\n"
+            "  • <code>/img &lt;описание&gt;</code> — сгенерировать Deep Dark Fantasy арт\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💡 <i>Нажмите /app для быстрого запуска игр, магазина и таблицы рекордов.</i>",
             parse_mode='HTML',
         )
         return
@@ -504,6 +518,25 @@ if __name__ == '__main__':
     mini_app.start_background()
     start_midnight_reset_thread()
     # start_proactive_loop_thread()  # Отключено: бот больше не спамит авто-сообщениями в тишине чата
+
+    # Регистрация меню команд Telegram для всплывающей кнопки Меню [/]
+    try:
+        from telebot.types import BotCommand
+        bot.set_my_commands([
+            BotCommand("app", "🎮 Мини-игры, инвентарь и магазин"),
+            BotCommand("help", "📖 Полный список команд клуба"),
+            BotCommand("coins", "🪙 Монеты и стрик посещений"),
+            BotCommand("shop", "🏪 Leather Shop ($300 Store)"),
+            BotCommand("achievements", "🏅 Достижения и награды"),
+            BotCommand("cup", "🏆 Еженедельный кубок качалки"),
+            BotCommand("who", "🎭 Кто ты? Текущий образ и статус"),
+            BotCommand("inv", "🎒 Посмотреть кожаный инвентарь"),
+            BotCommand("reset", "🔄 Начать нового персонажа с нуля"),
+        ])
+        print("[BOOT] Telegram bot commands menu registered successfully.")
+    except Exception as cmd_err:
+        print(f"[BOOT] Notice: Could not register Telegram bot commands: {cmd_err}")
+
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.CRITICAL)

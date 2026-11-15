@@ -963,19 +963,83 @@
 
   // --- Система Достижений (Achievements) ---
 
+  const DEFAULT_ACHIEVEMENTS = [
+    { id: "tower_master", name: "Небоскреб качалки", desc: "Построить башню от 20 этажей в Tower Stack", icon: "🏗️", reward: 150, category: "minigames", req_progress: 20 },
+    { id: "timber_beast", name: "Лесоруб Билли", desc: "Набрать 50+ очков в Timberman", icon: "🪓", reward: 150, category: "minigames", req_progress: 50 },
+    { id: "knife_sniper", name: "Мастер спанкинга", desc: "Набрать 30+ очков в Knife Hit", icon: "🗡️", reward: 150, category: "minigames", req_progress: 30 },
+    { id: "hoop_legend", name: "Dungeon Slammer", desc: "Забить 15+ мячей в Баскетболе", icon: "🏀", reward: 150, category: "minigames", req_progress: 15 },
+    { id: "brick_breaker", name: "Дробитель кирпичей", desc: "Набрать 500+ очков в Арканоиде", icon: "🧱", reward: 150, category: "minigames", req_progress: 500 },
+    { id: "color_god", name: "Радужный флекс", desc: "Набрать 25+ очков в Color Switch", icon: "🌈", reward: 150, category: "minigames", req_progress: 25 },
+    { id: "hockey_pro", name: "Гроза шайбы", desc: "Набрать 7+ очков в Аэрохоккее", icon: "🏒", reward: 150, category: "minigames", req_progress: 7 },
+    { id: "mole_hunter", name: "Каратель Джаброни", desc: "Набрать 40+ очков в Whack-a-Mole", icon: "🔨", reward: 150, category: "minigames", req_progress: 40 },
+    { id: "math_genius", name: "Сила 2048", desc: "Собрать плитку 2048 в игре", icon: "🔢", reward: 300, category: "minigames", req_progress: 2048 },
+    { id: "all_rounder", name: "Универсальный атлет", desc: "Сыграть во все 9 мини-игр клуба", icon: "🏅", reward: 400, category: "minigames", req_progress: 9 },
+    { id: "game_champion", name: "Покоритель аркад", desc: "Сыграть суммарно 50 раз в мини-игры", icon: "🕹️", reward: 250, category: "minigames", req_progress: 50 },
+    { id: "first_words", name: "Добро пожаловать в клуб", desc: "Отправить первое сообщение боту", icon: "💬", reward: 50, category: "chat", req_progress: 1 },
+    { id: "chat_warrior", name: "Разговорчивый слейв", desc: "Написать 100+ сообщений в чатах", icon: "🗣️", reward: 200, category: "chat", req_progress: 100 },
+    { id: "night_owl", name: "Ночной качок", desc: "Общаться с ботом после 02:00 ночи (02:00 - 05:00)", icon: "🦉", reward: 100, category: "chat", req_progress: 1 },
+    { id: "chat_veteran", name: "Ветеран качалки", desc: "Написать 500+ сообщений в чатах", icon: "🎖️", reward: 500, category: "chat", req_progress: 500 },
+    { id: "streak_week", name: "Железная дисциплина", desc: "Стрик ежедневного входа 7 дней подряд", icon: "🔥", reward: 300, category: "economy", req_progress: 7 },
+    { id: "first_purchase", name: "Первая примерка кожи", desc: "Купить любой товар в магазине", icon: "🛍️", reward: 100, category: "economy", req_progress: 1 },
+    { id: "big_spender", name: "Three Hundred Bucks", desc: "Потратить суммарно 300+ монет в магазине", icon: "💵", reward: 200, category: "economy", req_progress: 300 },
+    { id: "gold_hoard", name: "Золотой слиток", desc: "Накопить баланс от 1000 монет", icon: "💰", reward: 250, category: "economy", req_progress: 1000 },
+    { id: "lord_of_gym", name: "Boss of this Gym", desc: "Накопить 5000 монет или купить VIP-статус", icon: "👑", reward: 1000, category: "economy", req_progress: 1 },
+    { id: "first_gear", name: "Первый лут", desc: "Получить свой первый предмет в инвентарь", icon: "📦", reward: 50, category: "inventory", req_progress: 1 },
+    { id: "hoarder", name: "Плюшкин подземелья", desc: "Собрать 10 уникальных предметов в инвентаре", icon: "🎒", reward: 200, category: "inventory", req_progress: 10 }
+  ];
+
   async function loadAchievements() {
     const grid = $("#achievements-grid");
     if (!grid) return;
 
     try {
       const data = await request("/api/achievements");
-      state.achievements = Array.isArray(data.achievements) ? data.achievements : [];
+      state.achievements = Array.isArray(data.achievements) && data.achievements.length ? data.achievements : null;
     } catch (e) {
-      console.warn("Achievements fetch failed, using defaults", e);
-      if (!state.achievements || !state.achievements.length) {
-        state.achievements = [];
-      }
+      console.warn("Achievements fetch failed, using fallback list", e);
     }
+
+    if (!state.achievements || !state.achievements.length) {
+      // Собираем локальный прогресс из localStorage для мини-игр
+      const getScore = (key) => parseInt(localStorage.getItem(key) || "0", 10);
+      const towerScore = getScore("tower_stack_best_score");
+      const timberScore = getScore("timberman_best_score");
+      const knifeScore = getScore("knife_best_score");
+      const basketScore = getScore("basketball_best_score");
+      const bricksScore = getScore("brick_breaker_best_score");
+      const colorScore = getScore("colorswitch_best_score");
+      const hockeyScore = getScore("air_hockey_best_score");
+      const whackScore = getScore("whack_mole_best_score");
+      const g2048Score = getScore("game_2048_best");
+
+      state.achievements = DEFAULT_ACHIEVEMENTS.map(ach => {
+        let curr = 0;
+        let unlocked = false;
+        if (ach.id === "tower_master") { curr = towerScore; unlocked = curr >= 20; }
+        else if (ach.id === "timber_beast") { curr = timberScore; unlocked = curr >= 50; }
+        else if (ach.id === "knife_sniper") { curr = knifeScore; unlocked = curr >= 30; }
+        else if (ach.id === "hoop_legend") { curr = basketScore; unlocked = curr >= 15; }
+        else if (ach.id === "brick_breaker") { curr = bricksScore; unlocked = curr >= 500; }
+        else if (ach.id === "color_god") { curr = colorScore; unlocked = curr >= 25; }
+        else if (ach.id === "hockey_pro") { curr = hockeyScore; unlocked = curr >= 7; }
+        else if (ach.id === "mole_hunter") { curr = whackScore; unlocked = curr >= 40; }
+        else if (ach.id === "math_genius") { curr = g2048Score; unlocked = curr >= 2048; }
+        else if (ach.id === "first_words") { curr = 1; unlocked = true; }
+        else if (ach.id === "streak_week") { curr = state.dailyStreak || 1; unlocked = curr >= 7; }
+        else if (ach.id === "gold_hoard") { curr = state.coins || 0; unlocked = curr >= 1000; }
+        else if (ach.id === "lord_of_gym") { curr = (state.coins >= 5000 || (state.activePerks || []).some(p => (p.id || p.perk_id) === "vip_badge")) ? 1 : 0; unlocked = curr >= 1; }
+        else if (ach.id === "first_gear") { curr = state.items?.length ? 1 : 0; unlocked = curr >= 1; }
+        else if (ach.id === "hoarder") { curr = state.items?.length || 0; unlocked = curr >= 10; }
+
+        return {
+          ...ach,
+          current_progress: curr,
+          unlocked: unlocked,
+          claimed: false,
+        };
+      });
+    }
+
     renderAchievements();
   }
 

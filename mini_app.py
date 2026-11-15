@@ -345,16 +345,23 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/achievements":
             try:
-                user = self._user()
-                # Авто-проверяем перед отдачей, чтобы обновить свежие ачивки
+                user_id = 0
                 try:
-                    inventory.check_user_achievements(user["id"])
+                    user = self._user()
+                    user_id = user.get("id", 0)
                 except Exception:
-                    pass
-                achievements = inventory.get_user_achievements(user["id"])
+                    user_id = 0
+
+                if user_id:
+                    try:
+                        inventory.check_user_achievements(user_id)
+                    except Exception:
+                        pass
+                    achievements = inventory.get_user_achievements(user_id)
+                else:
+                    achievements = [dict(a, unlocked=False, claimed=False, current_progress=0) for a in inventory.ACHIEVEMENTS_LIST]
+
                 self._send(200, {"achievements": achievements})
-            except (ValueError, TypeError, json.JSONDecodeError) as error:
-                self._send(401, {"error": str(error)})
             except Exception as error:
                 print(f"Mini App achievements error: {type(error).__name__}: {error}", flush=True)
                 self._send(500, {"error": "Ошибка получения достижений"})
