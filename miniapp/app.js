@@ -1217,7 +1217,28 @@
     { id: "gold_hoard", name: "Золотой слиток", desc: "Накопить баланс от 1000 монет", icon: "💰", reward: 250, category: "economy", req_progress: 1000 },
     { id: "lord_of_gym", name: "Boss of this Gym", desc: "Накопить 5000 монет или купить VIP-статус", icon: "👑", reward: 1000, category: "economy", req_progress: 1 },
     { id: "first_gear", name: "Первый лут", desc: "Получить свой первый предмет в инвентарь", icon: "📦", reward: 50, category: "inventory", req_progress: 1 },
-    { id: "hoarder", name: "Плюшкин подземелья", desc: "Собрать 10 уникальных предметов в инвентаре", icon: "🎒", reward: 200, category: "inventory", req_progress: 10 }
+    { id: "hoarder", name: "Плюшкин подземелья", desc: "Собрать 10 уникальных предметов в инвентаре", icon: "🎒", reward: 200, category: "inventory", req_progress: 10 },
+    // Новые элитные достижения
+    { id: "tower_titan", name: "Титанический жим", desc: "Построить башню от 40 этажей в Tower Stack", icon: "🏛️", reward: 350, category: "minigames", req_progress: 40 },
+    { id: "timber_legend", name: "Реликтовый дровосек", desc: "Набрать 100+ очков в Timberman", icon: "🌲", reward: 350, category: "minigames", req_progress: 100 },
+    { id: "knife_god", name: "Виртуозный спанкинг", desc: "Набрать 60+ очков в Knife Hit", icon: "⚔️", reward: 350, category: "minigames", req_progress: 60 },
+    { id: "hoop_allstar", name: "Слэмданк Чемпион", desc: "Забить 30+ мячей в Баскетболе", icon: "🔥", reward: 350, category: "minigames", req_progress: 30 },
+    { id: "brick_annihilator", name: "Сокрушитель блоков", desc: "Набрать 1500+ очков в Арканоиде", icon: "💥", reward: 350, category: "minigames", req_progress: 1500 },
+    { id: "color_master", name: "Повелитель спектра", desc: "Набрать 50+ очков в Color Switch", icon: "🔮", reward: 350, category: "minigames", req_progress: 50 },
+    { id: "hockey_legend", name: "Ледовый Монарх", desc: "Набрать 15+ очков в Аэрохоккее", icon: "🏆", reward: 350, category: "minigames", req_progress: 15 },
+    { id: "mole_terminator", name: "Гроза всех Джаброни", desc: "Набрать 80+ очков в Whack-a-Mole", icon: "⚡", reward: 350, category: "minigames", req_progress: 80 },
+    { id: "math_emperor", name: "Магистр 4096", desc: "Собрать плитку 4096 в 2048 Gym Power", icon: "♾️", reward: 600, category: "minigames", req_progress: 4096 },
+    { id: "arcade_god", name: "Легенда игровых автоматов", desc: "Сыграть суммарно 100 раз в мини-игры клуба", icon: "👑", reward: 500, category: "minigames", req_progress: 100 },
+    { id: "chat_legend", name: "Голос Подземелья", desc: "Написать 1000+ сообщений в чатах", icon: "📢", reward: 800, category: "chat", req_progress: 1000 },
+    { id: "lethal_gladiator", name: "Смертоносный боец", desc: "Совершить 5 смертельных ударов персонажам в ролевой игре", icon: "💀", reward: 300, category: "chat", req_progress: 5 },
+    { id: "early_bird", name: "Утренняя разминка", desc: "Общаться в чате ранним утром (с 06:00 до 09:00)", icon: "🌅", reward: 150, category: "chat", req_progress: 1 },
+    { id: "story_explorer", name: "Исследователь судеб", desc: "Опробовать 5 различных архетипов персонажей", icon: "🎭", reward: 250, category: "chat", req_progress: 5 },
+    { id: "streak_month", name: "Стальной характер", desc: "Стрик ежедневного входа 30 дней подряд", icon: "💎", reward: 1000, category: "economy", req_progress: 30 },
+    { id: "shopaholic", name: "Постоянный клиент $300 Store", desc: "Купить 5 различных товаров или розыгрышей в магазине", icon: "🛍️", reward: 300, category: "economy", req_progress: 5 },
+    { id: "millionaire_slave", name: "Олигарх Качалки", desc: "Накопить баланс от 3000 монет", icon: "🏦", reward: 500, category: "economy", req_progress: 3000 },
+    { id: "cup_champion", name: "Покоритель Кубка", desc: "Набрать 500+ турнирных очков в еженедельном кубке", icon: "🏆", reward: 500, category: "economy", req_progress: 500 },
+    { id: "leather_collector", name: "Коллекционер кожи", desc: "Собрать 20 уникальных предметов в инвентаре", icon: "🥋", reward: 400, category: "inventory", req_progress: 20 },
+    { id: "generous_master", name: "Щедрый Босс", desc: "Передать предмет другому игроку через команду /giveitem", icon: "🤝", reward: 150, category: "inventory", req_progress: 1 }
   ];
 
   async function loadAchievements() {
@@ -1248,20 +1269,33 @@
         let curr = 0;
         let unlocked = false;
         if (ach.id === "tower_master") { curr = towerScore; unlocked = curr >= 20; }
+        else if (ach.id === "tower_titan") { curr = towerScore; unlocked = curr >= 40; }
         else if (ach.id === "timber_beast") { curr = timberScore; unlocked = curr >= 50; }
+        else if (ach.id === "timber_legend") { curr = timberScore; unlocked = curr >= 100; }
         else if (ach.id === "knife_sniper") { curr = knifeScore; unlocked = curr >= 30; }
+        else if (ach.id === "knife_god") { curr = knifeScore; unlocked = curr >= 60; }
         else if (ach.id === "hoop_legend") { curr = basketScore; unlocked = curr >= 15; }
+        else if (ach.id === "hoop_allstar") { curr = basketScore; unlocked = curr >= 30; }
         else if (ach.id === "brick_breaker") { curr = bricksScore; unlocked = curr >= 500; }
+        else if (ach.id === "brick_annihilator") { curr = bricksScore; unlocked = curr >= 1500; }
         else if (ach.id === "color_god") { curr = colorScore; unlocked = curr >= 25; }
+        else if (ach.id === "color_master") { curr = colorScore; unlocked = curr >= 50; }
         else if (ach.id === "hockey_pro") { curr = hockeyScore; unlocked = curr >= 7; }
+        else if (ach.id === "hockey_legend") { curr = hockeyScore; unlocked = curr >= 15; }
         else if (ach.id === "mole_hunter") { curr = whackScore; unlocked = curr >= 40; }
+        else if (ach.id === "mole_terminator") { curr = whackScore; unlocked = curr >= 80; }
         else if (ach.id === "math_genius") { curr = g2048Score; unlocked = curr >= 2048; }
+        else if (ach.id === "math_emperor") { curr = g2048Score; unlocked = curr >= 4096; }
         else if (ach.id === "first_words") { curr = 1; unlocked = true; }
         else if (ach.id === "streak_week") { curr = state.dailyStreak || 1; unlocked = curr >= 7; }
+        else if (ach.id === "streak_month") { curr = state.dailyStreak || 1; unlocked = curr >= 30; }
         else if (ach.id === "gold_hoard") { curr = state.coins || 0; unlocked = curr >= 1000; }
+        else if (ach.id === "millionaire_slave") { curr = state.coins || 0; unlocked = curr >= 3000; }
         else if (ach.id === "lord_of_gym") { curr = (state.coins >= 5000 || (state.activePerks || []).some(p => (p.id || p.perk_id) === "vip_badge")) ? 1 : 0; unlocked = curr >= 1; }
         else if (ach.id === "first_gear") { curr = state.items?.length ? 1 : 0; unlocked = curr >= 1; }
         else if (ach.id === "hoarder") { curr = state.items?.length || 0; unlocked = curr >= 10; }
+        else if (ach.id === "leather_collector") { curr = state.items?.length || 0; unlocked = curr >= 20; }
+        else if (ach.id === "shopaholic") { curr = (state.activePerks || []).length; unlocked = curr >= 5; }
 
         return {
           ...ach,

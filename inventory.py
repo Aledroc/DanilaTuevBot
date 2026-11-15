@@ -3609,6 +3609,190 @@ ACHIEVEMENTS_LIST = [
         "category": "inventory",
         "req_progress": 10,
     },
+    # --- НОВЫЕ ДОСТИЖЕНИЯ: Мини-игры (Элитные и Мастерские) ---
+    {
+        "id": "tower_titan",
+        "name": "Титанический жим",
+        "desc": "Построить башню от 40 этажей в Tower Stack",
+        "icon": "🏛️",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 40,
+    },
+    {
+        "id": "timber_legend",
+        "name": "Реликтовый дровосек",
+        "desc": "Набрать 100+ очков в Timberman",
+        "icon": "🌲",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 100,
+    },
+    {
+        "id": "knife_god",
+        "name": "Виртуозный спанкинг",
+        "desc": "Набрать 60+ очков в Knife Hit",
+        "icon": "⚔️",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 60,
+    },
+    {
+        "id": "hoop_allstar",
+        "name": "Слэмданк Чемпион",
+        "desc": "Забить 30+ мячей в Баскетболе",
+        "icon": "🔥",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 30,
+    },
+    {
+        "id": "brick_annihilator",
+        "name": "Сокрушитель блоков",
+        "desc": "Набрать 1500+ очков в Арканоиде",
+        "icon": "💥",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 1500,
+    },
+    {
+        "id": "color_master",
+        "name": "Повелитель спектра",
+        "desc": "Набрать 50+ очков в Color Switch",
+        "icon": "🔮",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 50,
+    },
+    {
+        "id": "hockey_legend",
+        "name": "Ледовый Монарх",
+        "desc": "Набрать 15+ очков в Аэрохоккее",
+        "icon": "🏆",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 15,
+    },
+    {
+        "id": "mole_terminator",
+        "name": "Гроза всех Джаброни",
+        "desc": "Набрать 80+ очков в Whack-a-Mole",
+        "icon": "⚡",
+        "reward": 350,
+        "category": "minigames",
+        "req_progress": 80,
+    },
+    {
+        "id": "math_emperor",
+        "name": "Магистр 4096",
+        "desc": "Собрать плитку 4096 в 2048 Gym Power",
+        "icon": "♾️",
+        "reward": 600,
+        "category": "minigames",
+        "req_progress": 4096,
+    },
+    {
+        "id": "arcade_god",
+        "name": "Легенда игровых автоматов",
+        "desc": "Сыграть суммарно 100 раз в мини-игры клуба",
+        "icon": "👑",
+        "reward": 500,
+        "category": "minigames",
+        "req_progress": 100,
+    },
+    # --- НОВЫЕ ДОСТИЖЕНИЯ: Общение и Чат ---
+    {
+        "id": "chat_legend",
+        "name": "Голос Подземелья",
+        "desc": "Написать 1000+ сообщений в чатах",
+        "icon": "📢",
+        "reward": 800,
+        "category": "chat",
+        "req_progress": 1000,
+    },
+    {
+        "id": "lethal_gladiator",
+        "name": "Смертоносный боец",
+        "desc": "Совершить 5 смертельных ударов персонажам в ролевой игре",
+        "icon": "💀",
+        "reward": 300,
+        "category": "chat",
+        "req_progress": 5,
+    },
+    {
+        "id": "early_bird",
+        "name": "Утренняя разминка",
+        "desc": "Общаться в чате ранним утром (с 06:00 до 09:00)",
+        "icon": "🌅",
+        "reward": 150,
+        "category": "chat",
+        "req_progress": 1,
+    },
+    {
+        "id": "story_explorer",
+        "name": "Исследователь судеб",
+        "desc": "Опробовать 5 различных архетипов персонажей",
+        "icon": "🎭",
+        "reward": 250,
+        "category": "chat",
+        "req_progress": 5,
+    },
+    # --- НОВЫЕ ДОСТИЖЕНИЯ: Экономика и Магазин ---
+    {
+        "id": "streak_month",
+        "name": "Стальной характер",
+        "desc": "Стрик ежедневного входа 30 дней подряд",
+        "icon": "💎",
+        "reward": 1000,
+        "category": "economy",
+        "req_progress": 30,
+    },
+    {
+        "id": "shopaholic",
+        "name": "Постоянный клиент $300 Store",
+        "desc": "Купить 5 различных товаров или розыгрышей в магазине",
+        "icon": "🛍️",
+        "reward": 300,
+        "category": "economy",
+        "req_progress": 5,
+    },
+    {
+        "id": "millionaire_slave",
+        "name": "Олигарх Качалки",
+        "desc": "Накопить баланс от 3000 монет",
+        "icon": "🏦",
+        "reward": 500,
+        "category": "economy",
+        "req_progress": 3000,
+    },
+    {
+        "id": "cup_champion",
+        "name": "Покоритель Кубка",
+        "desc": "Набрать 500+ турнирных очков в еженедельном кубке",
+        "icon": "🏆",
+        "reward": 500,
+        "category": "economy",
+        "req_progress": 500,
+    },
+    # --- НОВЫЕ ДОСТИЖЕНИЯ: Инвентарь и Коллекция ---
+    {
+        "id": "leather_collector",
+        "name": "Коллекционер кожи",
+        "desc": "Собрать 20 уникальных предметов в инвентаре",
+        "icon": "🥋",
+        "reward": 400,
+        "category": "inventory",
+        "req_progress": 20,
+    },
+    {
+        "id": "generous_master",
+        "name": "Щедрый Босс",
+        "desc": "Передать предмет другому игроку через команду /giveitem",
+        "icon": "🤝",
+        "reward": 150,
+        "category": "inventory",
+        "req_progress": 1,
+    },
 ]
 
 ACHIEVEMENT_MAP = {ach["id"]: ach for ach in ACHIEVEMENTS_LIST}
@@ -3711,14 +3895,23 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
             ).fetchone()[0]
 
             progress["tower_master"] = game_bests.get("tower_stack", 0)
+            progress["tower_titan"] = game_bests.get("tower_stack", 0)
             progress["timber_beast"] = game_bests.get("timberjack", 0)
+            progress["timber_legend"] = game_bests.get("timberjack", 0)
             progress["knife_sniper"] = game_bests.get("knife_hit", 0)
+            progress["knife_god"] = game_bests.get("knife_hit", 0)
             progress["hoop_legend"] = game_bests.get("swipe_basketball", 0)
+            progress["hoop_allstar"] = game_bests.get("swipe_basketball", 0)
             progress["brick_breaker"] = game_bests.get("brick_breaker", 0)
+            progress["brick_annihilator"] = game_bests.get("brick_breaker", 0)
             progress["color_god"] = game_bests.get("colorswitch", 0)
+            progress["color_master"] = game_bests.get("colorswitch", 0)
             progress["hockey_pro"] = game_bests.get("air_hockey", 0)
+            progress["hockey_legend"] = game_bests.get("air_hockey", 0)
             progress["mole_hunter"] = game_bests.get("whack_mole", 0)
+            progress["mole_terminator"] = game_bests.get("whack_mole", 0)
             progress["math_genius"] = game_bests.get("game_2048", 0)
+            progress["math_emperor"] = game_bests.get("game_2048", 0)
 
             # Универсальный атлет: количество уникальных сыгранных игр из 9
             unique_played = len([k for k in [
@@ -3727,12 +3920,23 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
             ] if k in game_bests])
             progress["all_rounder"] = unique_played
             progress["game_champion"] = total_games_played
+            progress["arcade_god"] = total_games_played
 
             # 2. Активность и чат
             msg_sum = conn.execute(
                 "SELECT COALESCE(SUM(messages_count), 0) FROM chat_stats WHERE user_id = ?",
                 (user_id,),
             ).fetchone()[0]
+            lethal_sum = conn.execute(
+                "SELECT COALESCE(SUM(lethal_strikes), 0) FROM chat_stats WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+            archetypes_tried = conn.execute(
+                "SELECT COUNT(DISTINCT key) FROM chat_archetypes WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+            archetypes_count = (archetypes_tried[0] if archetypes_tried else 0) or 1
+
             econ = conn.execute(
                 "SELECT coins, daily_streak, total_spent, total_messages FROM user_economy WHERE user_id = ?",
                 (user_id,),
@@ -3742,6 +3946,9 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
             progress["first_words"] = 1 if total_msgs >= 1 else 0
             progress["chat_warrior"] = total_msgs
             progress["chat_veteran"] = total_msgs
+            progress["chat_legend"] = total_msgs
+            progress["lethal_gladiator"] = lethal_sum
+            progress["story_explorer"] = archetypes_count
 
             # 3. Экономика
             coins = econ[0] if econ and econ[0] else 0
@@ -3756,11 +3963,23 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
                 (user_id,),
             ).fetchone() is not None
 
+            # Турнирные очки
+            season_meta = _get_current_season_meta()
+            season_pts_row = conn.execute(
+                "SELECT SUM(points) FROM tournament_scores WHERE season_id = ? AND user_id = ?",
+                (season_meta[0], user_id),
+            ).fetchone()
+            season_pts = (season_pts_row[0] if season_pts_row and season_pts_row[0] else 0)
+
             progress["streak_week"] = streak
+            progress["streak_month"] = streak
             progress["first_purchase"] = 1 if purchases_count >= 1 else 0
+            progress["shopaholic"] = purchases_count
             progress["big_spender"] = total_spent
             progress["gold_hoard"] = coins
+            progress["millionaire_slave"] = coins
             progress["lord_of_gym"] = 1 if (coins >= 5000 or has_vip) else 0
+            progress["cup_champion"] = season_pts
 
             # 4. Инвентарь
             inv_count = conn.execute(
@@ -3769,6 +3988,8 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
             ).fetchone()[0]
             progress["first_gear"] = min(1, inv_count)
             progress["hoarder"] = inv_count
+            progress["leather_collector"] = inv_count
+            progress["generous_master"] = 1 if total_spent > 0 or purchases_count > 0 else 0
 
     except Exception:
         pass
@@ -3784,11 +4005,13 @@ def check_user_achievements(user_id: int) -> list[str]:
     progress_map = _calculate_user_achievement_progress(int(user_id))
     unlocked_now = []
 
-    # Специальная проверка ночного времени (02:00 - 05:00)
+    # Специальная проверка ночного времени (02:00 - 05:00) и раннего утра (06:00 - 09:00)
     import datetime
     now_hour = datetime.datetime.now().hour
     if 2 <= now_hour < 5:
         progress_map["night_owl"] = 1
+    if 6 <= now_hour < 9:
+        progress_map["early_bird"] = 1
 
     for ach in ACHIEVEMENTS_LIST:
         ach_id = ach["id"]
