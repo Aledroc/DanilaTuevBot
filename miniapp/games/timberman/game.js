@@ -16,21 +16,64 @@
   const touchLeft = document.getElementById('touch-left');
   const touchRight = document.getElementById('touch-right');
 
-  // Звуки
+  // Аудиосистема с поддержкой Гачимучи звуков и авто-разблокировкой
   let soundEnabled = true;
-  const sounds = {
-    cut: new Audio('assets/sound/cut.mp3'),
-    death: new Audio('assets/sound/death.mp3'),
-    menu: new Audio('assets/sound/menu.mp3'),
+  
+  // Пул реальных аудиофайлов для мгновенного отклика без задержек браузера
+  const gachiAudioPool = {
+    cut: [
+      new Audio('assets/sound/cut.mp3'),
+      new Audio('assets/sound/cut.mp3'),
+      new Audio('assets/sound/cut.mp3'),
+      new Audio('assets/sound/cut.mp3')
+    ],
+    death: [
+      new Audio('assets/sound/death.mp3'),
+      new Audio('../../assets/gachi_audio/fuck_you.mp3'),
+      new Audio('../../assets/gachi_audio/aaaaah.mp3')
+    ],
+    bonus: [
+      new Audio('../../assets/gachi_audio/ass_we_can.mp3'),
+      new Audio('../../assets/gachi_audio/boy_next_door.mp3'),
+      new Audio('../../assets/gachi_audio/fisting_300.mp3'),
+      new Audio('../../assets/gachi_audio/thank_you_sir.mp3'),
+      new Audio('../../assets/gachi_audio/yes_sir.mp3')
+    ]
   };
+  let cutPoolIdx = 0;
+
+  // Разблокировка аудио по первому тапу в окне
+  function unlockAudio() {
+    Object.values(gachiAudioPool).forEach(list => {
+      list.forEach(a => {
+        a.load();
+      });
+    });
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  }
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
 
   function playSfx(name) {
     if (!soundEnabled) return;
     try {
-      const s = sounds[name];
-      if (s) {
-        s.currentTime = 0;
-        s.play().catch(() => {});
+      if (name === 'cut') {
+        const pool = gachiAudioPool.cut;
+        const a = pool[cutPoolIdx % pool.length];
+        cutPoolIdx++;
+        a.currentTime = 0;
+        a.volume = 0.9;
+        const p = a.play();
+        if (p && p.catch) p.catch(() => {});
+
+
+      } else if (name === 'death') {
+        const pool = gachiAudioPool.death;
+        const a = pool[Math.floor(Math.random() * pool.length)];
+        a.currentTime = 0;
+        a.volume = 1.0;
+        a.play().catch(() => {});
       }
     } catch (_) {}
   }
@@ -423,10 +466,7 @@
     if (images.stump) {
       ctx.save();
       ctx.drawImage(images.stump, 352, 1394, 385, 81);
-      // Окантовка пня неоновым кобальтом
-      ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(352, 1394, 385, 81);
+
       ctx.restore();
     }
 
@@ -447,22 +487,9 @@
         const trunkCenter = 540;
         const trunkHalfW = 140;
         
-        // Кожаный ремень
-        ctx.fillStyle = 'rgba(20, 24, 33, 0.85)';
-        ctx.fillRect(trunkCenter - trunkHalfW, y + 110, trunkHalfW * 2, 22);
-        
-        // Неоновая прошивка ремня
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(trunkCenter - trunkHalfW, y + 110, trunkHalfW * 2, 22);
 
-        // Стальные заклепки
-        ctx.fillStyle = '#00e5ff';
-        ctx.beginPath();
-        ctx.arc(trunkCenter - 80, y + 121, 4, 0, Math.PI * 2);
-        ctx.arc(trunkCenter, y + 121, 4, 0, Math.PI * 2);
-        ctx.arc(trunkCenter + 80, y + 121, 4, 0, Math.PI * 2);
-        ctx.fill();
+        
+
 
         ctx.restore();
       }

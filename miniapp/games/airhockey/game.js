@@ -1,3 +1,38 @@
+
+// Gachimuchi Sound FX Engine
+const gachiAudio = {
+  spank: Array.from({ length: 4 }, () => new Audio('../../assets/gachi_audio/spank.mp3')),
+  pass: [new Audio('../../assets/gachi_audio/yes_sir.mp3'), new Audio('../../assets/gachi_audio/ass_we_can.mp3')],
+  death: new Audio('../../assets/gachi_audio/aaaaah.mp3'),
+  boss: new Audio('../../assets/gachi_audio/boss_of_this_gym.mp3'),
+  fisting: new Audio('../../assets/gachi_audio/fisting_300.mp3'),
+  idx: 0
+};
+function playGachiSpank() {
+  try {
+    const a = gachiAudio.spank[gachiAudio.idx % gachiAudio.spank.length];
+    gachiAudio.idx++;
+    a.currentTime = 0; a.volume = 0.85; a.play().catch(()=>{});
+  } catch(_) {}
+}
+function playGachiPass() {
+  try {
+    const a = gachiAudio.pass[Math.floor(Math.random() * gachiAudio.pass.length)];
+    a.currentTime = 0; a.volume = 0.9; a.play().catch(()=>{});
+  } catch(_) {}
+}
+function playGachiGoal() {
+  try { gachiAudio.boss.currentTime = 0; gachiAudio.boss.volume = 0.9; gachiAudio.boss.play().catch(()=>{}); } catch(_) {}
+}
+function playGachiMiss() {
+  try { gachiAudio.death.currentTime = 0; gachiAudio.death.volume = 0.9; gachiAudio.death.play().catch(()=>{}); } catch(_) {}
+}
+function playGachiOver() {
+  try { gachiAudio.death.currentTime = 0; gachiAudio.death.volume = 0.9; gachiAudio.death.play().catch(()=>{}); } catch(_) {}
+}
+function playGachiDeath() {
+  try { gachiAudio.death.currentTime = 0; gachiAudio.death.volume = 0.9; gachiAudio.death.play().catch(()=>{}); } catch(_) {}
+}
 (() => {
   const tg = window.parent?.Telegram?.WebApp || window.Telegram?.WebApp;
   tg?.ready();
@@ -528,7 +563,7 @@
     screenShake = 18;
 
     if (scorer === 'player') {
-      playerScore++;
+      playerScore++; playGachiGoal();
       celebrationBanner = '⚡ ГОЛ В РАЗДЕВАЛКУ!';
       celebrationColor = '#00f0ff';
       playSynthSound('goal', 1.0);
@@ -537,7 +572,7 @@
       addSparks(puck.x, puck.y, '#00f0ff', 40, 1.8);
       addSparks(puck.x, puck.y, '#ffd700', 30, 1.5);
     } else {
-      aiScore++;
+      aiScore++; playGachiMiss();
       celebrationBanner = '💥 НАКАЗАНИЕ В ПАРТЕРЕ!';
       celebrationColor = '#ff2a5f';
       playSynthSound('concede', 1.0);

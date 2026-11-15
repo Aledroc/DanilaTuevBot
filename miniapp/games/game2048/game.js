@@ -1,3 +1,20 @@
+
+// Gachimuchi Sound FX Engine
+const gachiAudio = {
+  merge: Array.from({ length: 4 }, () => new Audio('../../assets/gachi_audio/spank.mp3')),
+  boss: new Audio('../../assets/gachi_audio/boss_of_this_gym.mp3'),
+  idx: 0
+};
+function playMergeSpank() {
+  try {
+    const a = gachiAudio.merge[gachiAudio.idx % gachiAudio.merge.length];
+    gachiAudio.idx++;
+    a.currentTime = 0; a.volume = 0.8; a.play().catch(()=>{});
+  } catch(_) {}
+}
+function playBossSound() {
+  try { gachiAudio.boss.currentTime = 0; gachiAudio.boss.volume = 1.0; gachiAudio.boss.play().catch(()=>{}); } catch(_) {}
+}
 (() => {
   const tg = window.parent?.Telegram?.WebApp || window.Telegram?.WebApp;
   tg?.ready();

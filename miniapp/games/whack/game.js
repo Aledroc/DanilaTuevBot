@@ -1,3 +1,30 @@
+
+  // Gachimuchi SFX System
+  const whackSfx = {
+    spankPool: Array.from({ length: 6 }, () => new Audio('../../assets/gachi_audio/spank.mp3')),
+    goldPool: [
+      new Audio('../../assets/gachi_audio/boy_next_door.mp3'),
+      new Audio('../../assets/gachi_audio/ass_we_can.mp3'),
+      new Audio('../../assets/gachi_audio/yes_sir.mp3')
+    ],
+    overSound: new Audio('../../assets/gachi_audio/boss_of_this_gym.mp3'),
+    idx: 0
+  };
+
+  function playWhackSpank(isGold) {
+    try {
+      if (isGold) {
+        const a = whackSfx.goldPool[Math.floor(Math.random() * whackSfx.goldPool.length)];
+        a.currentTime = 0;
+        a.play().catch(() => {});
+      } else {
+        const a = whackSfx.spankPool[whackSfx.idx % whackSfx.spankPool.length];
+        whackSfx.idx++;
+        a.currentTime = 0;
+        a.play().catch(() => {});
+      }
+    } catch (_) {}
+  }
 (() => {
   const tg = window.parent?.Telegram?.WebApp || window.Telegram?.WebApp;
   tg?.ready();
