@@ -437,6 +437,7 @@
 
   async function load() {
     showStatus("Загрузка профиля…");
+    let stateLoaded = false;
     try {
       state.readOnly = false;
       $("#new-archetype").hidden = false;
@@ -461,15 +462,9 @@
       renderInventory();
       renderArchetypes();
       renderHelp();
-      await loadEconomyProfile();
-      await loadShopItems();
-      await loadAchievements();
-      await loadTournament();
-      await loadHallOfFame();
-      await loadGameLeaderboard();
-      $("#app-status").hidden = true;
+      stateLoaded = true;
     } catch (err) {
-      console.warn("Failed to load full state, falling back to public view", err);
+      console.warn("Failed to load /api/state, falling back to public view", err);
       try {
         const data = await request("/api/public-archetypes");
         state.botUsername = data.bot_username || "";
@@ -478,10 +473,22 @@
         state.selected = "";
         renderArchetypes();
         renderHelp();
-        await loadHallOfFame();
-        await loadTournament();
-        await loadGameLeaderboard();
       } catch (_) {}
+    }
+
+    // Всегда независимо подгружаем вторичные разделы с защитой от сбоя одного из них
+    await Promise.allSettled([
+      loadEconomyProfile(),
+      loadShopItems(),
+      loadAchievements(),
+      loadTournament(),
+      loadHallOfFame(),
+      loadGameLeaderboard()
+    ]);
+
+    if (stateLoaded) {
+      $("#app-status").hidden = true;
+    } else {
       showStatus("Работа в автономном режиме качалки. Все разделы активны!");
       setTimeout(() => { $("#app-status").hidden = true; }, 1500);
     }
