@@ -1659,7 +1659,18 @@
     if (!tabName) return;
     const targetNavBtn = document.querySelector(`.bottom-nav-item[data-tab="${tabName}"]`);
     document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
-    document.querySelectorAll(".bottom-nav-item").forEach((bnav) => bnav.classList.toggle("active", bnav.dataset.tab === tabName));
+    document.querySelectorAll(".bottom-nav-item").forEach((bnav) => {
+      if (bnav.dataset.tab) {
+        bnav.classList.toggle("active", bnav.dataset.tab === tabName);
+      }
+    });
+    // Если выбран раздел из выпадающего меню «Ещё», подсвечиваем кнопку «Ещё»
+    const moreTabs = ["achievements", "fame", "archetypes", "prompt", "help"];
+    const moreBtn = document.getElementById("bottom-nav-more-btn");
+    if (moreBtn) {
+      moreBtn.classList.toggle("active", moreTabs.includes(tabName));
+    }
+
     document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${tabName}-view`));
     
     if (targetNavBtn) {
@@ -1671,9 +1682,43 @@
     switchTab(button.dataset.tab);
   }));
 
-  document.querySelectorAll(".bottom-nav-item").forEach((button) => button.addEventListener("click", () => {
+  document.querySelectorAll(".bottom-nav-item[data-tab]").forEach((button) => button.addEventListener("click", () => {
     switchTab(button.dataset.tab);
   }));
+
+  // Обработка кнопки «Ещё» (☰) и модального меню
+  const moreSheet = document.getElementById("more-menu-sheet");
+  const moreBtn = document.getElementById("bottom-nav-more-btn");
+  const moreSheetClose = document.getElementById("more-sheet-close");
+  const moreSheetBackdrop = document.getElementById("more-sheet-backdrop");
+
+  if (moreBtn && moreSheet) {
+    moreBtn.addEventListener("click", () => {
+      moreSheet.showModal();
+    });
+  }
+
+  if (moreSheetClose && moreSheet) {
+    moreSheetClose.addEventListener("click", () => {
+      moreSheet.close();
+    });
+  }
+
+  if (moreSheetBackdrop && moreSheet) {
+    moreSheetBackdrop.addEventListener("click", () => {
+      moreSheet.close();
+    });
+  }
+
+  document.querySelectorAll(".more-menu-tile").forEach((tile) => {
+    tile.addEventListener("click", () => {
+      const tab = tile.dataset.tab;
+      if (tab) {
+        if (moreSheet) moreSheet.close();
+        switchTab(tab);
+      }
+    });
+  });
   $("#refresh").addEventListener("click", () => load().catch((error) => toast(error.message)));
   $("#inventory-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-use-item]");

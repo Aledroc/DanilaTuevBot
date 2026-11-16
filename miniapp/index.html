@@ -459,7 +459,7 @@
     </div>
   </dialog>
 
-  <!-- Bottom Navigation Bar for mobile & desktop navigation -->
+  <!-- Bottom Navigation Bar: 4 Core Tabs + More Menu -->
   <nav class="bottom-nav" id="bottom-nav" aria-label="Быстрая навигация">
     <button class="bottom-nav-item active" data-tab="games">
       <span class="bnav-icon">🎮</span>
@@ -477,23 +477,50 @@
       <span class="bnav-icon">🎒</span>
       <span class="bnav-label">Склад</span>
     </button>
-    <button class="bottom-nav-item" data-tab="achievements">
-      <span class="bnav-icon">🏅</span>
-      <span class="bnav-label">Ачивки</span>
-    </button>
-    <button class="bottom-nav-item" data-tab="fame">
-      <span class="bnav-icon">👑</span>
-      <span class="bnav-label">Зал Славы</span>
-    </button>
-    <button class="bottom-nav-item" data-tab="archetypes">
-      <span class="bnav-icon">🎭</span>
-      <span class="bnav-label">Каста</span>
-    </button>
-    <button class="bottom-nav-item" data-tab="help">
-      <span class="bnav-icon">📜</span>
-      <span class="bnav-label">Кодекс</span>
+    <button class="bottom-nav-item" id="bottom-nav-more-btn" type="button" aria-label="Ещё разделы" aria-expanded="false">
+      <span class="bnav-icon">☰</span>
+      <span class="bnav-label">Ещё</span>
     </button>
   </nav>
+
+  <!-- Модальное меню «Ещё» (выдвижная шторка снизу) -->
+  <dialog class="modal-dialog more-sheet" id="more-menu-sheet">
+    <div class="more-sheet-backdrop" id="more-sheet-backdrop"></div>
+    <div class="more-sheet-content">
+      <div class="more-sheet-handle"></div>
+      <div class="more-sheet-header">
+        <h3 class="more-sheet-title">⚡ РАЗДЕЛЫ КАЧАЛКИ</h3>
+        <button class="icon-button" id="more-sheet-close" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="more-sheet-grid">
+        <button class="more-menu-tile" data-tab="achievements">
+          <span class="more-tile-icon">🏅</span>
+          <span class="more-tile-label">Достижения</span>
+          <span class="more-tile-desc">Награды и бейджи</span>
+        </button>
+        <button class="more-menu-tile" data-tab="fame">
+          <span class="more-tile-icon">👑</span>
+          <span class="more-tile-label">Зал Качков</span>
+          <span class="more-tile-desc">Masters of the Gym</span>
+        </button>
+        <button class="more-menu-tile" data-tab="archetypes">
+          <span class="more-tile-icon">🎭</span>
+          <span class="more-tile-label">Каста</span>
+          <span class="more-tile-desc">Ролевые образы</span>
+        </button>
+        <button class="more-menu-tile" data-tab="prompt">
+          <span class="more-tile-icon">⚙️</span>
+          <span class="more-tile-label">Промпт</span>
+          <span class="more-tile-desc">Системные правила</span>
+        </button>
+        <button class="more-menu-tile" data-tab="help">
+          <span class="more-tile-icon">📜</span>
+          <span class="more-tile-label">Кодекс</span>
+          <span class="more-tile-desc">Правила раздевалки</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="/app.js"></script>
 </body>
