@@ -1065,7 +1065,7 @@ def add_custom_archetype(user_id: int, user_name: str, title: str, desc: str, ac
     with _connect() as conn:
         conn.execute(
             """
-            INSERT INTO custom_archetypes (key, title, desc, action, created_by_user_id, created_by_name, created_at)
+            INSERT INTO custom_archetypes (`key`, title, `desc`, `action`, created_by_user_id, created_by_name, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (key, title, desc, action, user_id, user_name, now),
@@ -1104,7 +1104,7 @@ def delete_custom_archetype(archetype_key: str, user_id: int | None = None) -> b
     with _connect() as conn:
         # Защита базовых системных архетипов: архетип должен существовать в custom_archetypes
         row = conn.execute(
-            "SELECT created_by_user_id FROM custom_archetypes WHERE key = ?",
+            "SELECT created_by_user_id FROM custom_archetypes WHERE `key` = ?",
             (archetype_key,),
         ).fetchone()
 
@@ -1123,7 +1123,7 @@ def delete_custom_archetype(archetype_key: str, user_id: int | None = None) -> b
         if user_id is not None and int(user_id) != int(creator_id):
             return False
 
-        conn.execute("DELETE FROM custom_archetypes WHERE key = ?", (archetype_key,))
+        conn.execute("DELETE FROM custom_archetypes WHERE `key` = ?", (archetype_key,))
         conn.execute("DELETE FROM user_archetypes WHERE archetype_key = ?", (archetype_key,))
         conn.execute(
             "UPDATE user_preferences SET selected_archetype = '' WHERE selected_archetype = ?",
@@ -1137,7 +1137,7 @@ def get_custom_archetypes() -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             """
-            SELECT id, key, title, desc, action, created_by_user_id, created_by_name, created_at
+            SELECT id, `key`, title, `desc`, `action`, created_by_user_id, created_by_name, created_at
             FROM custom_archetypes
             ORDER BY id DESC
             """
