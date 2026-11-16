@@ -1115,7 +1115,7 @@
       });
 
       // Мгновенное списание баланса
-      const newBalance = res.new_balance != null ? res.new_balance : (state.coins - selectedShopItem.price);
+      const newBalance = res.new_balance != null ? res.new_balance : (res.balance != null ? res.balance : (state.coins - selectedShopItem.price));
       updateBalanceDisplay(newBalance);
 
       // Добавление в активные перки
@@ -1131,13 +1131,13 @@
 
       // Если покупка требует отправки действия в чат (например заказной подкол)
       if ((selectedShopItem.id === "custom_roast" || selectedShopItem.id === "roast_friend") && payload.details.target_user) {
-        openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
+        openMessageDraft(`Билли, подколи @${payload.details.target_user.replace(/^@/, '')} | ${payload.details.roast_topic || "без темы"}`);
       } else if (selectedShopItem.id === "compliment_bomb" && payload.details.target_user) {
-        openMessageDraft(`/compliment ${payload.details.target_user}`);
+        openMessageDraft(`Билли, сделай королевский комплимент @${payload.details.target_user.replace(/^@/, '')}!`);
       } else if (selectedShopItem.id === "fake_ban" && payload.details.target_user) {
-        openMessageDraft(`/fakeban ${payload.details.target_user} | ${payload.details.reason || "пропуск дня ног"}`);
+        openMessageDraft(`Билли, забань молотом @${payload.details.target_user.replace(/^@/, '')} | ${payload.details.reason || "пропуск дня ног"}`);
       } else if (selectedShopItem.id === "slap_friend" && payload.details.target_user) {
-        openMessageDraft(`/slap ${payload.details.target_user} | ${payload.details.reason || "нарушение дисциплины"}`);
+        openMessageDraft(`Билли, отвесь леща @${payload.details.target_user.replace(/^@/, '')} | ${payload.details.reason || "нарушение дисциплины"}`);
       } else if ((selectedShopItem.id === "mood_override" || selectedShopItem.id === "mood_change") && payload.details.vibe) {
         openMessageDraft(`/mood ${payload.details.vibe}`);
       } else if (selectedShopItem.id === "golden_fart") {
@@ -1148,21 +1148,8 @@
         openMessageDraft("/party");
       }
     } catch (err) {
-      // Оптимистичный фоллбэк для демо, если бэкенд эндпоинт вернул ошибку
-      console.warn("Shop buy API call error, applying client-side purchase:", err);
-      updateBalanceDisplay(state.coins - selectedShopItem.price);
-      state.activePerks.push({
-        id: selectedShopItem.id,
-        name: selectedShopItem.name,
-        icon: selectedShopItem.icon
-      });
-      renderActivePerks();
-      $("#shop-dialog").close();
-      toast(`🎉 Успешно куплено: «${selectedShopItem.name}»!`);
-
-      if (selectedShopItem.id === "roast_friend" && payload.details.target_user) {
-        openMessageDraft(`/roast ${payload.details.target_user} | ${payload.details.roast_topic || "без темы"}`);
-      }
+      console.warn("Shop buy error:", err);
+      toast(`❌ Ошибка покупки: ${err.message || "Не удалось совершить покупку"}`);
     } finally {
       if (selectedShopItem) {
         const canAffordNow = state.coins >= selectedShopItem.price;

@@ -2640,6 +2640,10 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
             target_id = int(extra_data.get("target_user_id") or 0)
             target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
             reason = str(extra_data.get("reason") or extra_data.get("slap_reason") or extra_data.get("extra_text") or "").strip()
+        if not target_id and target_name:
+            resolved = resolve_member(chat_id or 0, target_name)
+            if resolved:
+                target_id, target_name = resolved
         if not target_id:
             return {"success": False, "message": "Укажите цель для леща (ответьте на сообщение друга или укажите ник)!"}
         extra_str = f"target:{target_id}:{target_name}"
@@ -2664,8 +2668,12 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
             target_id = int(extra_data.get("target_user_id") or 0)
             target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
             compliment_text = str(extra_data.get("compliment") or extra_data.get("extra_text") or "").strip()
+        if not target_id and target_name:
+            resolved = resolve_member(chat_id or 0, target_name)
+            if resolved:
+                target_id, target_name = resolved
         if not target_id:
-            return {"success": False, "message": "Укажите братана для королевского комплимента (ответьте на его сообщение)!"}
+            return {"success": False, "message": "Укажите братана для королевского комплимента (ответьте на его сообщение или укажите ник)!"}
         extra_str = f"target:{target_id}:{target_name}"
         if chat_id:
             order_pending_prank(chat_id, user_id, target_id, target_name or f"Братан {target_id}", "compliment_bomb", compliment_text)
@@ -2678,8 +2686,12 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
             target_id = int(extra_data.get("target_user_id") or 0)
             target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
             ban_reason = str(extra_data.get("reason") or extra_data.get("ban_reason") or "").strip()
+        if not target_id and target_name:
+            resolved = resolve_member(chat_id or 0, target_name)
+            if resolved:
+                target_id, target_name = resolved
         if not target_id:
-            return {"success": False, "message": "Укажите цель для шуточного бана (ответьте на сообщение друга)!"}
+            return {"success": False, "message": "Укажите цель для шуточного бана (ответьте на сообщение друга или укажите ник)!"}
         extra_str = f"target:{target_id}:{target_name}"
         if chat_id:
             order_pending_prank(chat_id, user_id, target_id, target_name or f"Игрок {target_id}", "fake_ban", ban_reason)
@@ -2692,8 +2704,12 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
             target_id = int(extra_data.get("target_user_id") or 0)
             target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
             hint = str(extra_data.get("roast_topic") or extra_data.get("hint") or "").strip()
+        if not target_id and target_name:
+            resolved = resolve_member(chat_id or 0, target_name)
+            if resolved:
+                target_id, target_name = resolved
         if not target_id:
-            return {"success": False, "message": "Укажите цель для спанкинга (ответьте на сообщение участника)!"}
+            return {"success": False, "message": "Укажите цель для спанкинга (ответьте на сообщение участника или укажите ник)!"}
         if chat_id and target_id:
             order_custom_roast(user_id, chat_id, target_id, target_name or f"Игрок {target_id}", hint)
 
