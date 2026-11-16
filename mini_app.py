@@ -33,7 +33,7 @@ if not BOT_TOKEN:
     BOT_TOKEN = "8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU"
 BOT_USERNAME = os.getenv("MINIAPP_BOT_USERNAME", "").strip().lstrip("@")
 DEV_MODE = os.getenv("MINIAPP_DEV_MODE", "0").lower() in {"1", "true", "yes"}
-PORT = int(os.getenv("MINIAPP_PORT") or os.getenv("PORT") or "13859")
+PORT = int(os.getenv("MINIAPP_PORT") or os.getenv("PORT") or "10178")
 
 
 def _ai_item_ideas(item_name: str) -> list[str]:
