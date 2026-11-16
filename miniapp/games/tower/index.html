@@ -27,7 +27,7 @@
     }
     @font-face {
       font-family: wenxue;
-      src: url(assets/wenxue.woff);
+      src: url('assets/wenxue.woff?v=20261116_v2');
     }
     .font-wenxue {
       font-family: wenxue, -apple-system, sans-serif;
@@ -409,116 +409,15 @@
     </div>
   </div>
 
-  <script src="dist/main.js"></script>
+  <script src="dist/main.js?v=20261116_v2"></script>
   <script>
-    // Dungeon Gym Canvas Styler: заменяет цвета неба и блоков на неоновые металлические блины и темно-кобальтовый зал
+    // Dungeon Gym Canvas Styler: заменяет цвета неба и текста счета на неоновые оттенки темного спортзала
     (() => {
-      // Подменяем метод рендера блоков U и фона L если возможно, либо перехватываем отрисовку через Canvas context proxy
       const origGetContext = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function(type, attribs) {
         const ctx = origGetContext.apply(this, arguments);
         if (type === '2d' && this.id === 'canvas' && !ctx._gymHacked) {
           ctx._gymHacked = true;
-
-          // Перехват drawImage для замены спрайтов блинов (block, block-perfect, hook)
-          const origDrawImage = ctx.drawImage;
-          ctx.drawImage = function(img) {
-            // Проверяем, если отрисовывается блок/блин
-            if (img && img.src) {
-              const src = img.src;
-              if (src.includes('block.png') || src.includes('block-perfect.png')) {
-                // Рисуем стальной блин штанги с неоновой окантовкой
-                const isPerfect = src.includes('block-perfect.png');
-                const x = arguments[1];
-                const y = arguments[2];
-                const w = arguments[3];
-                const h = arguments[4];
-                if (typeof w === 'number' && typeof h === 'number') {
-                  ctx.save();
-                  
-                  // Базовый блин — темная матовая сталь
-                  const grad = ctx.createLinearGradient(x, y, x, y + h);
-                  if (isPerfect) {
-                    grad.addColorStop(0, '#1e293b');
-                    grad.addColorStop(0.3, '#334155');
-                    grad.addColorStop(0.7, '#0f172a');
-                    grad.addColorStop(1, '#020617');
-                  } else {
-                    grad.addColorStop(0, '#1a202c');
-                    grad.addColorStop(0.4, '#2d3748');
-                    grad.addColorStop(0.7, '#171923');
-                    grad.addColorStop(1, '#0a0d14');
-                  }
-
-                  // Закругленные края блина
-                  const radius = Math.min(8, h / 4);
-                  ctx.beginPath();
-                  ctx.roundRect ? ctx.roundRect(x, y, w, h, radius) : ctx.rect(x, y, w, h);
-                  ctx.fillStyle = grad;
-                  ctx.fill();
-
-                  // Неоновая окантовка (Бирюзово-голубая или Золотая при Perfect)
-                  ctx.lineWidth = isPerfect ? 3.5 : 2;
-                  ctx.strokeStyle = isPerfect ? '#fbbf24' : '#00e5ff';
-                  ctx.shadowColor = isPerfect ? '#f59e0b' : '#00e5ff';
-                  ctx.shadowBlur = isPerfect ? 14 : 8;
-                  ctx.stroke();
-
-                  // Внутренняя полоса / обод блина
-                  ctx.beginPath();
-                  ctx.roundRect ? ctx.roundRect(x + 6, y + 4, w - 12, h - 8, 4) : ctx.rect(x + 6, y + 4, w - 12, h - 8);
-                  ctx.lineWidth = 1;
-                  ctx.strokeStyle = isPerfect ? 'rgba(251, 191, 36, 0.4)' : 'rgba(0, 229, 255, 0.35)';
-                  ctx.stroke();
-
-                  
-                  ctx.shadowBlur = 0;
-                  ctx.fillStyle = isPerfect ? '#fef08a' : '#e2e8f0';
-                  ctx.font = `900 ${Math.max(10, Math.floor(h * 0.45))}px sans-serif`;
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'middle';
-                  
-
-                  ctx.restore();
-                  return;
-                }
-              } else if (src.includes('block-rope.png')) {
-                // Рисуем стальной гриф/цепь качалки
-                const x = arguments[1];
-                const y = arguments[2];
-                const w = arguments[3];
-                const h = arguments[4];
-                if (typeof w === 'number' && typeof h === 'number') {
-                  ctx.save();
-                  // Стальной подвес
-                  ctx.fillStyle = '#64748b';
-                  ctx.fillRect(x + w / 2 - 2, y, 4, h);
-                  // Отрисовываем блин на конце
-                  const diskH = h * 0.7;
-                  const diskY = y + h - diskH;
-                  const grad = ctx.createLinearGradient(x, diskY, x, diskY + diskH);
-                  grad.addColorStop(0, '#334155');
-                  grad.addColorStop(0.5, '#475569');
-                  grad.addColorStop(1, '#0f172a');
-                  ctx.fillStyle = grad;
-                  ctx.beginPath();
-                  ctx.roundRect ? ctx.roundRect(x, diskY, w, diskH, 6) : ctx.rect(x, diskY, w, diskH);
-                  ctx.fill();
-                  ctx.strokeStyle = '#00e5ff';
-                  ctx.lineWidth = 2;
-                  ctx.stroke();
-                  ctx.fillStyle = '#38bdf8';
-                  ctx.font = `800 ${Math.max(9, Math.floor(diskH * 0.4))}px sans-serif`;
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'middle';
-                  
-                  ctx.restore();
-                  return;
-                }
-              }
-            }
-            return origDrawImage.apply(this, arguments);
-          };
 
           // Подменяем линейные градиенты неба на глубокий Dungeon Gym (графит, сталь, неоновый синий)
           const origCreateLinearGradient = ctx.createLinearGradient;
@@ -549,7 +448,7 @@
       };
     })();
   </script>
-  <script src="assets/zepto-1.1.6.min.js"></script>
+  <script src="assets/zepto-1.1.6.min.js?v=20261116_v2"></script>
   <script>
     (() => {
       const tg = window.parent?.Telegram?.WebApp || window.Telegram?.WebApp;

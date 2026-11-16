@@ -2362,13 +2362,36 @@ def record_game_score(game_name: str, user_id: int, user_name: str, chat_id: int
 def get_top_game_scores(game_name: str | None = None, chat_id: int | None = None, limit: int = 10) -> list[dict]:
     """Возвращает лучшие результаты по конкретной игре или общий лидерборд по всем играм."""
     limit = max(1, min(int(limit or 10), 50))
+    # Маппинг алиасов ключей игр
+    alias_map = {
+        "tower_stack": ["tower_stack", "tower"],
+        "tower": ["tower_stack", "tower"],
+        "timberjack": ["timberjack", "timberman"],
+        "timberman": ["timberjack", "timberman"],
+        "knife_hit": ["knife_hit", "knife"],
+        "knife": ["knife_hit", "knife"],
+        "swipe_basketball": ["swipe_basketball", "basketball"],
+        "basketball": ["swipe_basketball", "basketball"],
+        "brick_breaker": ["brick_breaker", "bricks"],
+        "bricks": ["brick_breaker", "bricks"],
+        "colorswitch": ["colorswitch"],
+        "air_hockey": ["air_hockey", "airhockey"],
+        "airhockey": ["air_hockey", "airhockey"],
+        "whack_mole": ["whack_mole", "whack"],
+        "whack": ["whack_mole", "whack"],
+        "game_2048": ["game_2048", "game2048", "2048"],
+        "game2048": ["game_2048", "game2048", "2048"],
+    }
     try:
         with _connect() as conn:
             params = []
             where_clauses = []
             if game_name:
-                where_clauses.append("(game_id = ? OR game_name = ?)")
-                params.extend([str(game_name), str(game_name)])
+                aliases = alias_map.get(str(game_name).strip(), [str(game_name).strip()])
+                placeholders = " OR ".join(["game_id = ? OR game_name = ?" for _ in aliases])
+                where_clauses.append(f"({placeholders})")
+                for a in aliases:
+                    params.extend([a, a])
             if chat_id:
                 where_clauses.append("(chat_id = ? OR chat_id IS NULL)")
                 params.append(int(chat_id))
@@ -2379,7 +2402,7 @@ def get_top_game_scores(game_name: str | None = None, chat_id: int | None = None
                 SELECT user_id, user_name, COALESCE(game_name, game_id) as game, MAX(score) as high_score, MAX(COALESCE(created_at, played_at)) as last_play
                 FROM game_scores
                 {where_str}
-                GROUP BY user_id, COALESCE(game_name, game_id)
+                GROUP BY user_id
                 ORDER BY high_score DESC
                 LIMIT ?
             """
@@ -3369,6 +3392,40 @@ def get_tournament_leaderboard(season_id: str | None = None, chat_id: int | None
                     "user_name": r[1] or f"Игрок {r[0]}",
                     "points": r[2] or 0,
                 })
+
+            # Если в турнирной таблице текущей недели пока нет очков,
+            # делаем фолбэк на суммарный рейтинг игроков из game_scores (чтобы лидерборд никогда не пустовал)
+            if not result:
+                if chat_id:
+                    fallback_query = """
+                        SELECT user_id, user_name, SUM(score) as total_pts
+                        FROM game_scores
+                        WHERE (chat_id = ? OR chat_id IS NULL)
+                        GROUP BY user_id
+                        ORDER BY total_pts DESC
+                        LIMIT ?
+                    """
+                    fb_rows = conn.execute(fallback_query, (int(chat_id), limit)).fetchall()
+                else:
+                    fallback_query = """
+                        SELECT user_id, user_name, SUM(score) as total_pts
+                        FROM game_scores
+                        GROUP BY user_id
+                        ORDER BY total_pts DESC
+                        LIMIT ?
+                    """
+                    fb_rows = conn.execute(fallback_query, (limit,)).fetchall()
+
+                for idx, r in enumerate(fb_rows):
+                    badge = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"#{idx+1}"))
+                    result.append({
+                        "rank": idx + 1,
+                        "badge": badge,
+                        "user_id": r[0],
+                        "user_name": r[1] or f"Игрок {r[0]}",
+                        "points": r[2] or 0,
+                    })
+
             return result
     except Exception:
         return []

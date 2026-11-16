@@ -175,24 +175,29 @@
       justify-content: center;
       align-items: center;
       text-align: center;
-      font-weight: 800;
+      font-weight: 900;
       border-radius: 8px;
       transition: transform 100ms ease-in-out, top 100ms ease-in-out, left 100ms ease-in-out;
       will-change: transform, top, left;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
       padding: 2px 4px;
-      line-height: 1.15;
-    }
-    .tile .tile-title {
-      font-size: 13px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
+      line-height: 1;
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
     }
     .tile .tile-num {
-      font-size: 18px;
+      font-size: 28px;
       font-weight: 900;
-      opacity: 0.95;
+      letter-spacing: -0.5px;
+    }
+    .tile-128 .tile-num, .tile-256 .tile-num, .tile-512 .tile-num {
+      font-size: 24px;
+    }
+    .tile-1024 .tile-num, .tile-2048 .tile-num {
+      font-size: 20px;
+    }
+    .tile-super .tile-num {
+      font-size: 18px;
     }
     .tile.tile-appear {
       animation: appear 150ms ease-out forwards;
@@ -210,84 +215,85 @@
       100% { transform: scale(1); }
     }
 
-    /* Ранги качалки Dungeon Gym */
+    /* Стильная палитра Dark Gym / Cyberpunk */
+    /* Малые значения: глубокий графит, титан, матовый металл */
     .tile-2 {
-      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      background: linear-gradient(145deg, #181d27 0%, #252d3d 100%);
       color: #94a3b8;
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 3px 8px rgba(0, 0, 0, 0.5);
     }
     .tile-4 {
-      background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+      background: linear-gradient(145deg, #1e2638 0%, #334155 100%);
       color: #cbd5e1;
-      border: 1px solid rgba(203, 213, 225, 0.35);
+      border: 1px solid rgba(203, 213, 225, 0.3);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 3px 8px rgba(0, 0, 0, 0.5);
     }
     .tile-8 {
-      background: linear-gradient(135deg, #0f4c81 0%, #0284c7 100%);
-      color: #ffffff;
+      background: linear-gradient(145deg, #093b5e 0%, #0284c7 100%);
+      color: #f0f9ff;
       border: 1px solid rgba(56, 189, 248, 0.5);
-      box-shadow: 0 0 12px rgba(2, 132, 199, 0.4);
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.35);
     }
     .tile-16 {
-      background: linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
+      background: linear-gradient(145deg, #025078 0%, #00b4d8 100%);
       color: #ffffff;
-      border: 1px solid rgba(14, 165, 233, 0.6);
-      box-shadow: 0 0 14px rgba(14, 165, 233, 0.45);
+      border: 1px solid rgba(0, 240, 255, 0.55);
+      box-shadow: 0 0 16px rgba(0, 180, 216, 0.4);
     }
     .tile-32 {
-      background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+      background: linear-gradient(145deg, #3730a3 0%, #6366f1 100%);
       color: #ffffff;
       border: 1px solid rgba(99, 102, 241, 0.6);
-      box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 18px rgba(99, 102, 241, 0.45);
     }
     .tile-64 {
-      background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+      background: linear-gradient(145deg, #5b21b6 0%, #8b5cf6 100%);
       color: #ffffff;
       border: 1px solid rgba(139, 92, 246, 0.65);
-      box-shadow: 0 0 18px rgba(139, 92, 246, 0.55);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
     }
     .tile-128 {
-      background: linear-gradient(135deg, #be185d 0%, #ec4899 100%);
+      background: linear-gradient(145deg, #831843 0%, #db2777 100%);
       color: #ffffff;
       border: 1px solid rgba(236, 72, 153, 0.7);
-      box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+      box-shadow: 0 0 22px rgba(219, 39, 119, 0.55);
     }
-    .tile-128 .tile-title { font-size: 11px; }
     .tile-256 {
-      background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
+      background: linear-gradient(145deg, #9a3412 0%, #ea580c 100%);
       color: #ffffff;
       border: 1px solid rgba(249, 115, 22, 0.75);
-      box-shadow: 0 0 22px rgba(249, 115, 22, 0.65);
+      box-shadow: 0 0 24px rgba(234, 88, 12, 0.6);
     }
-    .tile-256 .tile-title { font-size: 11px; }
     .tile-512 {
-      background: linear-gradient(135deg, #0284c7 0%, #00f0ff 100%);
-      color: #060913;
-      border: 2px solid #ffffff;
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.75);
+      background: linear-gradient(145deg, #0e7490 0%, #06b6d4 100%);
+      color: #ffffff;
+      border: 1.5px solid #67e8f9;
+      box-shadow: 0 0 26px rgba(6, 182, 212, 0.7);
     }
-    .tile-512 .tile-title { font-size: 12px; }
     .tile-1024 {
-      background: linear-gradient(135deg, #b45309 0%, #ffd700 100%);
-      color: #000000;
-      border: 2px solid #ffffff;
-      box-shadow: 0 0 28px rgba(255, 215, 0, 0.85);
+      background: linear-gradient(145deg, #854d0e 0%, #eab308 100%);
+      color: #0d1117;
+      border: 2px solid #fef08a;
+      box-shadow: 0 0 30px rgba(234, 179, 8, 0.85);
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
     }
-    .tile-1024 .tile-title { font-size: 11px; }
     .tile-2048 {
-      background: linear-gradient(135deg, #ffd700 0%, #ff0055 100%);
+      background: linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ff0055 100%);
       color: #ffffff;
       border: 2px solid #ffd700;
       box-shadow: 0 0 35px rgba(255, 215, 0, 0.95);
       animation: bossPulse 1.5s infinite alternate;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
     }
-    .tile-2048 .tile-title { font-size: 10px; }
     .tile-super {
-      background: linear-gradient(135deg, #ff0055 0%, #7928ca 100%);
+      background: linear-gradient(135deg, #00f0ff 0%, #7928ca 50%, #ff007f 100%);
       color: #ffffff;
-      border: 2px solid #00f0ff;
-      box-shadow: 0 0 40px rgba(0, 240, 255, 1);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 42px rgba(0, 240, 255, 1);
+      animation: bossPulse 1.2s infinite alternate;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
     }
-    .tile-super .tile-title { font-size: 10px; }
 
     @keyframes bossPulse {
       0% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.7); }
@@ -388,7 +394,7 @@
     <div class="header-row">
       <div class="title-col">
         <h1>2048 GYM</h1>
-        <div class="subtitle">Свайпай слейвов до Босса качалки!</div>
+        <div class="subtitle">Складывай плитки до 2048!</div>
       </div>
       <div class="scores-col">
         <div class="score-box">
@@ -438,6 +444,6 @@
     </div>
   </div>
 
-  <script src="/games/game2048/game.js"></script>
+  <script src="/games/game2048/game.js?v=20261116_v2"></script>
 </body>
 </html>

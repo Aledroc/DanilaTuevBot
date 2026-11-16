@@ -39,24 +39,26 @@
 
   // Баскетбольный щит и кольцо
   let hoopX = CW / 2;
-  const HOOP_Y = 320;
-  const BACKBOARD_WIDTH = 260;
-  const BACKBOARD_HEIGHT = 170;
-  const BACKBOARD_TOP = HOOP_Y - 130;
-  const RIM_WIDTH = 130;
+  const HOOP_Y = 330;
+  const BACKBOARD_WIDTH = 280;
+  const BACKBOARD_HEIGHT = 180;
+  const BACKBOARD_TOP = HOOP_Y - 140;
+  const RIM_WIDTH = 150; // Расширено для честного диаметра корзины
   const RIM_RADIUS = 10;
   const RIM_Y = HOOP_Y;
-  const NET_HEIGHT = 90;
+  const NET_HEIGHT = 95;
 
   // Параметры мяча
-  const BALL_BASE_RADIUS = 56;
+  const BALL_BASE_RADIUS = 52;
   const BALL_START_X = CW / 2;
   const BALL_START_Y = 1060;
 
   // Гравитация и физика
-  const GRAVITY = 0.82;
-  const SCALE_SPEED = 0.012; // уменьшение при удалении к кольцу
-  const TARGET_DEPTH_SCALE = 0.58; // размер мяча на глубине кольца
+  const GRAVITY = 0.72; // Более плавная и предсказуемая баллистическая дуга
+  const TARGET_DEPTH_SCALE = 0.52; // Размер мяча у кольца: r ~ 27px, диаметр ~ 54px vs RIM_WIDTH 150px
+  const SCALE_SPEED = 0.013; // Уменьшение при удалении к кольцу
+  let netSway = 0; // Анимация колыхания сетки при попадании
+  let netSwayVx = 0;
 
   // Состояние игры
   let gameState = 'START'; // 'START' | 'PLAYING' | 'GAMEOVER'
@@ -90,7 +92,8 @@
     passedAboveRim: false,
     scored: false,
     resetProgress: 0,
-    trail: []
+    trail: [],
+    inNetTimer: 0
   };
 
   // Частицы
@@ -170,6 +173,7 @@
     ball.scored = false;
     ball.resetProgress = 0;
     ball.trail = [];
+    ball.inNetTimer = 0;
   }
 
   function startGame() {
@@ -214,18 +218,40 @@
       }
     }
 
+    // Физика сетки
+    if (Math.abs(netSway) > 0.1 || Math.abs(netSwayVx) > 0.1) {
+      netSwayVx += -netSway * 0.12; // пружина
+      netSwayVx *= 0.88; // трение
+      netSway += netSwayVx;
+    } else {
+      netSway = 0;
+      netSwayVx = 0;
+    }
+
     // Физика мяча в полете
     if (ball.state === 'FLIGHT' || ball.state === 'SCORED' || ball.state === 'MISSED') {
       // Обновляем трейл (особенно эффектный при On Fire)
       ball.trail.push({ x: ball.x, y: ball.y, scale: ball.scale, life: 1.0 });
       if (ball.trail.length > (isOnFire ? 18 : 8)) ball.trail.shift();
 
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      ball.vy += GRAVITY;
-      ball.rot += ball.vrot;
+      // Если мяч проваливается сквозь сетку (SCORED)
+      if (ball.state === 'SCORED') {
+        ball.inNetTimer++;
+        // Плавное притяжение к центру кольца и легкое торможение в сетке
+        ball.vx *= 0.82;
+        ball.x += (hoopX - ball.x) * 0.15;
+        ball.vy = Math.min(ball.vy + GRAVITY * 0.7, 10);
+        ball.y += ball.vy;
+        ball.rot += ball.vrot * 0.5;
+      } else {
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+        ball.vy += GRAVITY;
+        ball.rot += ball.vrot;
+      }
 
-      // Перспектива: уменьшение мяча пока летит вверх / до глубины кольца
+      // Перспектива: плавное масштабирование к глубине кольца
+      // Зависит от высоты полета относительно кольца и старта
       if (ball.scale > TARGET_DEPTH_SCALE) {
         ball.scale -= SCALE_SPEED;
         if (ball.scale < TARGET_DEPTH_SCALE) ball.scale = TARGET_DEPTH_SCALE;
@@ -243,36 +269,47 @@
       const boardRight = hoopX + BACKBOARD_WIDTH / 2;
       const boardBottom = BACKBOARD_TOP + BACKBOARD_HEIGHT;
 
-      // Коллизия с щитом (срабатывает, когда мяч на нужной глубине около кольца)
-      if (ball.scale <= TARGET_DEPTH_SCALE + 0.1 && ball.scale >= TARGET_DEPTH_SCALE - 0.05) {
+      // Коллизия с щитом (срабатывает около кольца и выше обода)
+      if (ball.state !== 'SCORED' && ball.scale <= TARGET_DEPTH_SCALE + 0.15) {
         if (ball.x >= boardLeft && ball.x <= boardRight && ball.y >= BACKBOARD_TOP && ball.y <= boardBottom) {
-          // Если летит назад в глубь/вверх, отскакивает вперед
-          if (ball.vy < 0 || Math.abs(ball.y - (boardBottom - 20)) < 30) {
-            ball.vy = Math.abs(ball.vy) * 0.45;
-            ball.vx = (ball.x - hoopX) * 0.04;
+          // Если летит вверх или горизонтально в щит, отскок вниз и в сторону кольца
+          if (ball.vy < 2 || (ball.y < rimY && ball.vy < 8)) {
+            ball.vy = Math.abs(ball.vy) * 0.5 + 2.5;
+            // Мягкий отскок от щита в сторону корзины
+            ball.vx = (hoopX - ball.x) * 0.08 + (ball.vx * -0.3);
             playSfx('backboard');
             screenShake = Math.max(screenShake, 4);
           }
         }
       }
 
-      // Отслеживание прохождения над кольцом
-      if (ball.y < rimY - curRadius * 0.4) {
+      // Отслеживание прохождения над кольцом (или на уровне обода)
+      if (ball.y < rimY + 10) {
         ball.passedAboveRim = true;
       }
+
+      // Входное окно кольца (щедрое и честное)
+      // Допуск к центру: при RIM_WIDTH=150, радиус ~75.
+      // Мяч r~27. Внутренний проём ~96px.
+      // Добавляем допуск магнетизма: если мяч падает вниз через створ кольца
+      const distToHoopCenter = Math.abs(ball.x - hoopX);
+      const isOverHoopOpening = distToHoopCenter < (RIM_WIDTH / 2 - 8);
 
       // Проверка попадания в корзину (через дужку вниз)
       if (
         !ball.scored &&
         ball.passedAboveRim &&
         ball.vy > 0 &&
-        ball.y >= rimY - 10 &&
-        ball.y <= rimY + 40 &&
-        ball.x > rimLeftX + 18 &&
-        ball.x < rimRightX - 18
+        ball.y >= rimY - 8 &&
+        ball.y <= rimY + 50 &&
+        isOverHoopOpening
       ) {
         ball.scored = true;
         ball.state = 'SCORED';
+
+        // Эффект колыхания сетки
+        netSwayVx = (ball.vx || (Math.random() - 0.5) * 6) * 1.5;
+        netSway = (ball.x - hoopX) * 0.4;
 
         const isSwish = !ball.touchedRim;
         streak++;
@@ -307,9 +344,11 @@
         createGoalParticles(hoopX, rimY + 30, isOnFire);
       }
 
-      // Коллизии с левой и правой дужкой кольца
-      checkRimCollision(rimLeftX, rimY, curRadius);
-      checkRimCollision(rimRightX, rimY, curRadius);
+      // Коллизии с левой и правой дужкой кольца (только если не забили)
+      if (!ball.scored) {
+        checkRimCollision(rimLeftX, rimY, curRadius, -1);
+        checkRimCollision(rimRightX, rimY, curRadius, 1);
+      }
 
       // Проверка падения за пределы экрана
       if (ball.y > CH + 150 || ball.x < -150 || ball.x > CW + 150) {
@@ -355,30 +394,42 @@
     }
   }
 
-  function checkRimCollision(rx, ry, radius) {
-    if (ball.scale > TARGET_DEPTH_SCALE + 0.16 || ball.scale < TARGET_DEPTH_SCALE - 0.08) return;
+  function checkRimCollision(rx, ry, radius, rimSide) {
+    // Проверяем коллизию только когда мяч на нужной глубине
+    if (ball.scale > TARGET_DEPTH_SCALE + 0.15 || ball.scale < TARGET_DEPTH_SCALE - 0.08) return;
 
     const dx = ball.x - rx;
     const dy = ball.y - ry;
     const dist = Math.hypot(dx, dy);
 
+    // Коллизия с дужкой
     if (dist < radius + RIM_RADIUS) {
       ball.touchedRim = true;
       playSfx('rim');
       screenShake = Math.max(screenShake, 3);
 
-      // Нормаль отскока
+      // Вектор от центра дужки к центру мяча
       const nx = dx / (dist || 1);
       const ny = dy / (dist || 1);
 
-      // Отражение вектора скорости
-      const dot = ball.vx * nx + ball.vy * ny;
-      if (dot < 0) {
-        ball.vx = (ball.vx - 1.7 * dot * nx) * 0.7;
-        ball.vy = (ball.vy - 1.7 * dot * ny) * 0.7;
-        // Легкое выталкивание наружу
-        ball.x = rx + nx * (radius + RIM_RADIUS + 1);
-        ball.y = ry + ny * (radius + RIM_RADIUS + 1);
+      // Если мяч падает сверху и находится ближе к внутренней части корзины
+      // Даем мягкий «закрут» / воронку внутрь (мягкий отскок в сторону центра)
+      const isInnerSide = (rimSide < 0 && dx > 0) || (rimSide > 0 && dx < 0);
+      if (ball.vy > 0 && isInnerSide && Math.abs(dx) < radius * 0.9) {
+        // Мяч соскальзывает внутрь кольца
+        ball.vx += rimSide < 0 ? 1.5 : -1.5;
+        ball.vy *= 0.75;
+        // Легкое покачивание сетки
+        netSwayVx += (rimSide < 0 ? 1.8 : -1.8);
+      } else {
+        // Отражение вектора скорости с упругостью (bounciness 0.6)
+        const dot = ball.vx * nx + ball.vy * ny;
+        if (dot < 0) {
+          ball.vx = (ball.vx - 1.5 * dot * nx) * 0.65;
+          ball.vy = (ball.vy - 1.5 * dot * ny) * 0.65;
+          ball.x = rx + nx * (radius + RIM_RADIUS + 1);
+          ball.y = ry + ny * (radius + RIM_RADIUS + 1);
+        }
       }
     }
   }
@@ -571,14 +622,15 @@
     const rimLeftX = hoopX - RIM_WIDTH / 2;
     const netBottomY = RIM_Y + NET_HEIGHT;
     const netBottomW = RIM_WIDTH * 0.55;
-    const netBL = hoopX - netBottomW / 2;
+    const swayOffset = netSway;
+    const netBL = hoopX - netBottomW / 2 + swayOffset;
 
     for (let i = 0; i <= 6; i++) {
       const topX = rimLeftX + (RIM_WIDTH / 6) * i;
       const botX = netBL + (netBottomW / 6) * i;
       ctx.beginPath();
       ctx.moveTo(topX, RIM_Y);
-      ctx.lineTo(botX, netBottomY);
+      ctx.quadraticCurveTo(topX + swayOffset * 0.4, RIM_Y + NET_HEIGHT * 0.5, botX, netBottomY);
       ctx.stroke();
     }
     ctx.restore();
@@ -590,8 +642,9 @@
     const rimRightX = hoopX + RIM_WIDTH / 2;
     const netBottomY = RIM_Y + NET_HEIGHT;
     const netBottomW = RIM_WIDTH * 0.55;
-    const netBL = hoopX - netBottomW / 2;
-    const netBR = hoopX + netBottomW / 2;
+    const swayOffset = netSway;
+    const netBL = hoopX - netBottomW / 2 + swayOffset;
+    const netBR = hoopX + netBottomW / 2 + swayOffset;
 
     // Неоновая сетка спереди (перекрестные неоновые нити)
     ctx.shadowColor = '#00f0ff';
@@ -604,13 +657,28 @@
       const oppBotX = netBR - (netBottomW / 6) * i;
       ctx.beginPath();
       ctx.moveTo(topX, RIM_Y);
-      ctx.lineTo(oppBotX, netBottomY);
+      ctx.quadraticCurveTo(topX + swayOffset * 0.4, RIM_Y + NET_HEIGHT * 0.5, oppBotX, netBottomY);
+      ctx.stroke();
+    }
+
+    // Горизонтальные поддерживающие нити сетки (реалистичный рельеф сетки)
+    ctx.strokeStyle = 'rgba(120, 245, 255, 0.5)';
+    ctx.lineWidth = 1.6;
+    for (let row = 1; row <= 3; row++) {
+      const frac = row / 4;
+      const rowY = RIM_Y + NET_HEIGHT * frac;
+      const curW = RIM_WIDTH - (RIM_WIDTH - netBottomW) * frac;
+      const curX = hoopX + swayOffset * frac;
+      ctx.beginPath();
+      ctx.ellipse(curX, rowY, curW / 2, 7 * (1 - frac * 0.2), 0, 0, Math.PI * 2);
       ctx.stroke();
     }
 
     // Нижнее кольцо неоновой сетки
+    ctx.strokeStyle = 'rgba(120, 245, 255, 0.9)';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(hoopX, netBottomY, netBottomW / 2, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(hoopX + swayOffset, netBottomY, netBottomW / 2, 8, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     // Золотой обод кольца (Heavy Duty Dungeon Gold)
@@ -962,29 +1030,58 @@
       endY = pos.y;
     }
 
-    const dt = Math.max(16, performance.now() - touchStartTime);
+    const dt = Math.max(30, Math.min(600, performance.now() - touchStartTime));
     const dx = endX - touchStartX;
     const dy = endY - touchStartY;
 
     // Свайп должен быть направлен вверх (dy < 0) и иметь достаточную амплитуду
-    if (dy < -40) {
-      // Расчет начальной скорости броска
-      const speedY = (dy / dt) * 16.5;
-      const speedX = (dx / dt) * 16.5;
+    if (dy < -35) {
+      // Комбинированный расчет:
+      // Скорость свайпа (dx/dt) + доля от пройденного расстояния dy (интуитивное ощущение силы броска)
+      const flickSpeed = Math.abs(dy) / dt; // обычно от 0.4 до 3.5 px/ms
+      // Базовая вертикальная скорость броска
+      // Идеальная вертикальная скорость для попадания в кольцо (y=330 c y=1060 при GRAVITY 0.72) составляет ~ -32..-35
+      let vy = -22 - flickSpeed * 4.2 - (Math.abs(dy) / 45);
+      vy = Math.max(-38, Math.min(-24, vy));
 
-      ball.vx = Math.max(-18, Math.min(18, speedX * 0.95));
-      ball.vy = Math.max(-32, Math.min(-18, speedY * 0.95));
-      ball.vrot = ball.vx * 0.02;
+      // Горизонтальная скорость свайпа: пропорциональна смещению dx и скорости свайпа
+      let vx = (dx / dt) * 12.0 + (dx / 40);
+      vx = Math.max(-20, Math.min(20, vx));
+
+      // Небольшая помощь прицеливания (aim assist): если бросок почти ровно направлен в кольцо,
+      // слегка сглаживаем микро-дрожание пальца на мобильном экране
+      const targetDirX = (hoopX - ball.x);
+      if (Math.abs(vx) < 1.8 && Math.abs(targetDirX) < 30) {
+        vx *= 0.5;
+      }
+
+      ball.vx = vx;
+      ball.vy = vy;
+      ball.vrot = ball.vx * 0.03 + (Math.random() - 0.5) * 0.02;
       ball.state = 'FLIGHT';
       playSfx('swipe');
     }
   }
 
   const container = document.getElementById('game-container');
-  container.addEventListener('touchstart', handleStart, { passive: false });
-  container.addEventListener('touchend', handleEnd, { passive: false });
-  container.addEventListener('pointerdown', handleStart);
-  container.addEventListener('pointerup', handleEnd);
+  // Используем pointer events для мыши и тач-события для мобилок без дублирования
+  let hasTouch = false;
+  container.addEventListener('touchstart', (e) => {
+    hasTouch = true;
+    handleStart(e);
+  }, { passive: false });
+  container.addEventListener('touchend', (e) => {
+    handleEnd(e);
+  }, { passive: false });
+
+  container.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return; // предотвращаем дублирование
+    handleStart(e);
+  });
+  container.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') return;
+    handleEnd(e);
+  });
 
   // Кнопки верхней панели
   document.getElementById('btn-back')?.addEventListener('click', () => {

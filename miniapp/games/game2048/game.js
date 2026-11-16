@@ -215,11 +215,8 @@ function playBossSound() {
         tileEl.style.top = `${r * (cellSize + gap)}px`;
         tileEl.style.left = `${c * (cellSize + gap)}px`;
 
-        const rankName = GACHI_RANKS[tile.value] || (tile.value >= 4096 ? '⚡ TITAN OF 300 BUCKS' : `Rank ${tile.value}`);
-        tileEl.innerHTML = `
-          <div class="tile-title">${rankName}</div>
-          <div class="tile-num">(${tile.value})</div>
-        `;
+        // Только чистое числовое значение
+        tileEl.innerHTML = `<span class="tile-num">${tile.value}</span>`;
 
         tilesLayer.appendChild(tileEl);
       }

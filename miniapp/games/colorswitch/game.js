@@ -180,13 +180,14 @@ function playGachiDeath() {
   let targetCameraY = 0;
 
   // Игрок (шарик)
+  // Сбалансированная физика: комфортная гравитация и прыжок, достаточный зазор для тайминга
   const player = {
     x: CW / 2,
     y: CH * 0.75,
-    radius: 17,
+    radius: 14,
     vy: 0,
-    gravity: 0.58,
-    jumpForce: -11.5,
+    gravity: 0.38,
+    jumpForce: -8.8,
     colorIndex: 0,
     color: COLOR_KEYS[0],
     trail: [],
@@ -234,15 +235,16 @@ function playGachiDeath() {
   function spawnObstacleSequence(y) {
     const typeIndex = Math.floor(Math.random() * OBS_TYPES.length);
     const type = OBS_TYPES[typeIndex];
-    const speed = (Math.random() > 0.5 ? 1 : -1) * (0.022 + Math.random() * 0.015);
+    // Сбалансированная плавная скорость вращения (чтобы игрок мог спокойно таймить проход)
+    const speed = (Math.random() > 0.5 ? 1 : -1) * (0.013 + Math.random() * 0.007);
 
     if (type === 'CIRCLE') {
       obstacles.push({
         type: 'CIRCLE',
         x: CW / 2,
         y: y,
-        radius: 110,
-        thickness: 22,
+        radius: 125,
+        thickness: 18,
         angle: Math.random() * Math.PI * 2,
         speed: speed,
       });
@@ -252,8 +254,8 @@ function playGachiDeath() {
         type: 'CIRCLE',
         x: CW / 2,
         y: y,
-        radius: 135,
-        thickness: 20,
+        radius: 145,
+        thickness: 16,
         angle: Math.random() * Math.PI * 2,
         speed: speed,
       });
@@ -261,10 +263,10 @@ function playGachiDeath() {
         type: 'CIRCLE',
         x: CW / 2,
         y: y,
-        radius: 95,
-        thickness: 20,
+        radius: 100,
+        thickness: 16,
         angle: Math.random() * Math.PI * 2,
-        speed: -speed * 1.15,
+        speed: -speed * 1.05,
       });
       stars.push({ x: CW / 2, y: y, size: 20, collected: false, rot: 0 });
     } else if (type === 'SQUARE') {
@@ -272,10 +274,10 @@ function playGachiDeath() {
         type: 'SQUARE',
         x: CW / 2,
         y: y,
-        size: 190,
-        thickness: 22,
+        size: 210,
+        thickness: 18,
         angle: Math.random() * Math.PI * 2,
-        speed: speed * 0.9,
+        speed: speed * 0.85,
       });
       stars.push({ x: CW / 2, y: y, size: 20, collected: false, rot: 0 });
     } else if (type === 'CROSS') {
@@ -283,20 +285,20 @@ function playGachiDeath() {
         type: 'CROSS',
         x: CW / 2,
         y: y,
-        armLength: 105,
-        thickness: 22,
+        armLength: 100,
+        thickness: 18,
         angle: Math.random() * Math.PI * 2,
-        speed: speed * 1.1,
+        speed: speed * 0.9,
       });
       stars.push({ x: CW / 2, y: y - 130, size: 20, collected: false, rot: 0 });
     } else if (type === 'COLOR_BARS') {
       obstacles.push({
         type: 'COLOR_BARS',
         y: y,
-        barWidth: 160,
-        height: 22,
+        barWidth: 180,
+        height: 18,
         offset: Math.random() * CW,
-        speed: speed > 0 ? 2.5 : -2.5,
+        speed: speed > 0 ? 1.6 : -1.6,
       });
       stars.push({ x: CW / 2, y: y - 80, size: 20, collected: false, rot: 0 });
     }
@@ -408,11 +410,12 @@ function playGachiDeath() {
     return res;
   }
 
-  // Проверка столкновения точки шарика с цветным сегментом
+  // Проверка столкновения точки шарика с цветным сегментом с честным снисходительным буфером
   function checkCollision() {
     const px = player.x;
     const py = player.y;
-    const pr = player.radius;
+    // Снисходительный хитбокс (эффективный радиус на 4px меньше визуального, чтобы не наказывать за малейшее касание края)
+    const pr = Math.max(8, player.radius - 4);
     const myColor = player.color;
 
     for (const obs of obstacles) {
@@ -423,10 +426,10 @@ function playGachiDeath() {
         const innerR = obs.radius - obs.thickness / 2;
         const outerR = obs.radius + obs.thickness / 2;
 
-        // Если шарик пересекает кольцо
+        // Если шарик пересекает кольцо (с буфером)
         if (dist + pr >= innerR && dist - pr <= outerR) {
-          // Точки соприкосновения: верхняя и нижняя кромки шарика
-          const testYPoints = [py - pr + 4, py + pr - 4, py];
+          // Точки соприкосновения шарика: центр, а также верх и низ с отступом
+          const testYPoints = [py - pr + 2, py + pr - 2, py];
           for (const ty of testYPoints) {
             const tdx = px - obs.x;
             const tdy = ty - obs.y;
@@ -468,7 +471,7 @@ function playGachiDeath() {
 
           // Расстояние от точки шарика до отрезка (p1 -> p2)
           const segDist = distToSegment(px, py, p1.x, p1.y, p2.x, p2.y);
-          if (segDist <= pr + obs.thickness / 2 - 2) {
+          if (segDist <= pr + (obs.thickness / 2) - 4) {
             return true;
           }
         }
@@ -486,13 +489,13 @@ function playGachiDeath() {
           };
 
           const segDist = distToSegment(px, py, p1.x, p1.y, p2.x, p2.y);
-          if (segDist <= pr + obs.thickness / 2 - 3) {
+          if (segDist <= pr + (obs.thickness / 2) - 5) {
             return true;
           }
         }
       } else if (obs.type === 'COLOR_BARS') {
         // Горизонтальные цветные полосы, циклически двигающиеся
-        if (py + pr >= obs.y - obs.height / 2 && py - pr <= obs.y + obs.height / 2) {
+        if (py + pr >= obs.y - (obs.height / 2) + 2 && py - pr <= obs.y + (obs.height / 2) - 2) {
           // Определяем, над каким цветным блоком находится x
           let rx = (px - obs.offset) % (obs.barWidth * 4);
           if (rx < 0) rx += obs.barWidth * 4;

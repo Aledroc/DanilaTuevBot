@@ -126,18 +126,21 @@ def remember_command_member(message):
             # when the Mini App has to open in a private chat.
             start_arg = message.text.split(maxsplit=1)[1].strip() if message.text and len(message.text.split(maxsplit=1)) > 1 else ''
             group_match = re.fullmatch(r'app_(-\d{1,15})(?:_([A-Za-z0-9_]{1,32}))?', start_arg)
+            context = {}
             if group_match:
-                context = {'chat_id': group_match.group(1)}
+                context['chat_id'] = group_match.group(1)
                 if group_match.group(2):
                     context['chat_username'] = group_match.group(2)
                 if user:
-                    # The user came here from the friends' group: remember it so
-                    # the Mini App drafts /use back into that group.
                     inventory_store.remember_chat(
                         int(group_match.group(1)), user.id, "", group_match.group(2) or "",
                     )
-                separator = '&' if '?' in app_url else '?'
-                app_url = f'{app_url}{separator}{urllib.parse.urlencode(context)}'
+            if user:
+                context['user_id'] = user.id
+                context['username'] = getattr(user, 'username', '') or ''
+                context['first_name'] = getattr(user, 'first_name', '') or ''
+            separator = '&' if '?' in app_url else '?'
+            app_url = f'{app_url}{separator}{urllib.parse.urlencode(context)}'
 
             if message.chat.type in {'group', 'supergroup'}:
                 # Telegram only allows Web App buttons in a private chat with the bot.

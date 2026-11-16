@@ -16,38 +16,24 @@
   const touchLeft = document.getElementById('touch-left');
   const touchRight = document.getElementById('touch-right');
 
-  // Аудиосистема с поддержкой Гачимучи звуков и авто-разблокировкой
+  // Аудиосистема: ТОЛЬКО шлепок (Slap) с кулдауном/троттлингом и авто-разблокировкой
   let soundEnabled = true;
   
-  // Пул реальных аудиофайлов для мгновенного отклика без задержек браузера
-  const gachiAudioPool = {
-    cut: [
-      new Audio('assets/sound/cut.mp3'),
-      new Audio('assets/sound/cut.mp3'),
-      new Audio('assets/sound/cut.mp3'),
-      new Audio('assets/sound/cut.mp3')
-    ],
-    death: [
-      new Audio('assets/sound/death.mp3'),
-      new Audio('../../assets/gachi_audio/fuck_you.mp3'),
-      new Audio('../../assets/gachi_audio/aaaaah.mp3')
-    ],
-    bonus: [
-      new Audio('../../assets/gachi_audio/ass_we_can.mp3'),
-      new Audio('../../assets/gachi_audio/boy_next_door.mp3'),
-      new Audio('../../assets/gachi_audio/fisting_300.mp3'),
-      new Audio('../../assets/gachi_audio/thank_you_sir.mp3'),
-      new Audio('../../assets/gachi_audio/yes_sir.mp3')
-    ]
-  };
-  let cutPoolIdx = 0;
+  // Пул реальных аудиофайлов шлепка для мгновенного отклика без задержек браузера
+  const slapAudioPool = [
+    new Audio('assets/sound/cut.mp3'),
+    new Audio('assets/sound/cut.mp3'),
+    new Audio('assets/sound/cut.mp3'),
+    new Audio('assets/sound/cut.mp3')
+  ];
+  let slapPoolIdx = 0;
+  let lastSlapTime = 0;
+  const SLAP_COOLDOWN_MS = 220; // Троттлинг шлепка: не чаще одного раза в 220мс
 
   // Разблокировка аудио по первому тапу в окне
   function unlockAudio() {
-    Object.values(gachiAudioPool).forEach(list => {
-      list.forEach(a => {
-        a.load();
-      });
+    slapAudioPool.forEach(a => {
+      a.load();
     });
     window.removeEventListener('pointerdown', unlockAudio);
     window.removeEventListener('keydown', unlockAudio);
@@ -59,21 +45,27 @@
     if (!soundEnabled) return;
     try {
       if (name === 'cut') {
-        const pool = gachiAudioPool.cut;
-        const a = pool[cutPoolIdx % pool.length];
-        cutPoolIdx++;
+        const now = performance.now();
+        // Троттлинг: шлепок звучит четко и раздельно, без пулеметного спама
+        if (now - lastSlapTime < SLAP_COOLDOWN_MS) {
+          return;
+        }
+        lastSlapTime = now;
+
+        const a = slapAudioPool[slapPoolIdx % slapAudioPool.length];
+        slapPoolIdx++;
         a.currentTime = 0;
-        a.volume = 0.9;
+        a.volume = 0.85;
         const p = a.play();
         if (p && p.catch) p.catch(() => {});
-
-
       } else if (name === 'death') {
-        const pool = gachiAudioPool.death;
-        const a = pool[Math.floor(Math.random() * pool.length)];
+        // При поражении - только чистый финальный шлепок (без криков)
+        const a = slapAudioPool[slapPoolIdx % slapAudioPool.length];
+        slapPoolIdx++;
         a.currentTime = 0;
         a.volume = 1.0;
-        a.play().catch(() => {});
+        const p = a.play();
+        if (p && p.catch) p.catch(() => {});
       }
     } catch (_) {}
   }
