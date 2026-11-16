@@ -1547,13 +1547,45 @@
     const closeBtn = $("#close-game-modal");
     const modalTitle = $(".game-modal-title");
 
+    function closeActiveGame() {
+      if (!modal) return;
+      const overOverlay = $("#game-over-overlay");
+      if (overOverlay) overOverlay.style.display = "none";
+      if (iframe) {
+        iframe.src = "about:blank";
+      }
+      try {
+        if (modal.open) {
+          modal.close();
+        }
+      } catch (_) {}
+      try {
+        tg?.BackButton?.hide();
+      } catch (_) {}
+      loadGameLeaderboard().catch(() => {});
+      // Фокус на карточке игры
+      const card = document.querySelector(`.game-hub-card[data-game="${selectedGame}"]`);
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
     function openGame(gameKey, title, path) {
       if (!modal || !iframe) return;
       selectedGame = gameKey;
       const query = state.chatId ? `?chat_id=${encodeURIComponent(state.chatId)}` : "";
       if (modalTitle) modalTitle.textContent = title;
       iframe.src = `${path}${query}`;
-      modal.showModal();
+      try {
+        modal.showModal();
+      } catch (_) {
+        modal.style.display = "block";
+      }
+      try {
+        if (tg?.BackButton) {
+          tg.BackButton.show();
+          tg.BackButton.offClick(closeActiveGame);
+          tg.BackButton.onClick(closeActiveGame);
+        }
+      } catch (_) {}
     }
 
     // Слушатели кнопок запуска игр
@@ -1638,21 +1670,24 @@
     });
 
     $("#game-over-close")?.addEventListener("click", () => {
-      const overOverlay = $("#game-over-overlay");
-      if (overOverlay) overOverlay.style.display = "none";
-      if (closeBtn) closeBtn.click();
+      closeActiveGame();
     });
 
-    if (closeBtn && modal && iframe) {
+    if (closeBtn) {
       closeBtn.addEventListener("click", () => {
-        const overOverlay = $("#game-over-overlay");
-        if (overOverlay) overOverlay.style.display = "none";
-        iframe.src = "about:blank";
-        modal.close();
-        loadGameLeaderboard().catch(() => {});
-        // Фокус на карточке игры
-        const card = document.querySelector(`.game-hub-card[data-game="${selectedGame}"]`);
-        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+        closeActiveGame();
+      });
+    }
+
+    if (modal) {
+      modal.addEventListener("close", () => {
+        try {
+          tg?.BackButton?.hide();
+        } catch (_) {}
+      });
+      modal.addEventListener("cancel", (e) => {
+        e.preventDefault();
+        closeActiveGame();
       });
     }
 
@@ -1661,7 +1696,7 @@
       const d = event.data;
       if (!d) return;
       if (d.type === "CLOSE_GAME") {
-        if (closeBtn) closeBtn.click();
+        closeActiveGame();
       } else if (d.type === "GAME_OVER" || d.type === "SUBMIT_SCORE") {
         const gameKey = d.game || selectedGame;
         const score = d.score;

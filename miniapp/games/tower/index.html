@@ -589,6 +589,7 @@
 
       function closeToAppGames() {
         if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'CLOSE_GAME' }, '*');
           const closeBtn = window.parent.document.querySelector('#close-game-modal');
           if (closeBtn) {
             closeBtn.click();

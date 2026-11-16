@@ -503,6 +503,14 @@ function playBossSound() {
     if (score > 0) {
       submitScoreToServer(score);
     }
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'CLOSE_GAME' }, '*');
+      const closeBtn = window.parent.document?.getElementById('close-game-modal');
+      if (closeBtn) {
+        closeBtn.click();
+        return;
+      }
+    }
     const modal = window.parent?.document?.getElementById('game-modal');
     if (modal && typeof modal.close === 'function') {
       modal.close();

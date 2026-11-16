@@ -365,6 +365,12 @@
     // Верхние кнопки
     document.getElementById('btn-back').addEventListener('click', () => {
       if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'CLOSE_GAME' }, '*');
+        const closeBtn = window.parent.document?.getElementById('close-game-modal');
+        if (closeBtn) {
+          closeBtn.click();
+          return;
+        }
         window.parent.location.hash = '#games';
         const gamesTab = window.parent.document.querySelector('[data-tab="games"]');
         if (gamesTab) gamesTab.click();
