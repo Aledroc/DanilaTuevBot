@@ -566,6 +566,8 @@ if __name__ == '__main__':
 
     while True:
         try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.CRITICAL)
-        except Exception:
-            time.sleep(3)
+            # interval=1 задает паузу между запросами к Telegram, исключая tight loop и 100% CPU spike при разрывах связи
+            bot.infinity_polling(timeout=30, long_polling_timeout=30, interval=1, logger_level=logging.ERROR)
+        except Exception as poll_err:
+            logging.error("Telegram polling error: %s", poll_err)
+            time.sleep(5)

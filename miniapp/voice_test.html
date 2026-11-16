@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пример голоса Данилы Туева</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; }
+        h1 { font-size: 20px; margin-bottom: 8px; color: #38bdf8; }
+        p { font-size: 14px; color: #94a3b8; line-height: 1.5; margin-bottom: 20px; }
+        .quote { background: #0f172a; border-left: 4px solid #38bdf8; padding: 12px; border-radius: 8px; font-style: italic; color: #e2e8f0; margin-bottom: 20px; text-align: left; }
+        audio { width: 100%; outline: none; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔊 Пример синтеза: Данила Туев</h1>
+        <p>Клонирование голоса через модель <b>s2.1-pro-free</b> на основе эталонного образца <code>voices/danila.ogg</code></p>
+        <div class="quote">
+            «Здорово пацаны! С вами Данила Туев. Клава реально классная, свичи и кейкапы всё меняется, полтора килограмма весит!»
+        </div>
+        <audio controls autoplay src="/danila_sample.mp3"></audio>
+    </div>
+</body>
+</html>
