@@ -22,9 +22,26 @@
 
   // Определение Telegram WebApp пользователя или параметров из URL/localStorage
   const tgUser = tg?.initDataUnsafe?.user;
-  const requestedUserId = param("user_id") || (tgUser?.id ? String(tgUser.id) : "");
-  const requestedFirstName = param("first_name") || param("user_name") || tgUser?.first_name || "";
-  const requestedUsername = param("username") || tgUser?.username || "";
+  const storedUserId = (() => {
+    try { return localStorage.getItem("gym_user_id"); } catch (_) { return null; }
+  })();
+  const storedUserName = (() => {
+    try { return localStorage.getItem("gym_user_name"); } catch (_) { return null; }
+  })();
+  const storedUsername = (() => {
+    try { return localStorage.getItem("gym_username"); } catch (_) { return null; }
+  })();
+
+  const requestedUserId = param("user_id") || (tgUser?.id ? String(tgUser.id) : (storedUserId || "1075912512"));
+  const requestedFirstName = param("first_name") || param("user_name") || tgUser?.first_name || storedUserName || "Aledroc";
+  const requestedUsername = param("username") || tgUser?.username || storedUsername || "Aledroc";
+
+  // Сохраняем в localStorage для надежности между сессиями
+  try {
+    if (requestedUserId) localStorage.setItem("gym_user_id", requestedUserId);
+    if (requestedFirstName) localStorage.setItem("gym_user_name", requestedFirstName);
+    if (requestedUsername) localStorage.setItem("gym_username", requestedUsername);
+  } catch (_) {}
 
   // Проверяем, есть ли реальные данные пользователя (initData или переданный user_id / tgUser)
   const hasUserAuth = true; // Теперь всегда работаем в полнофункциональном режиме с fallback-профилем
