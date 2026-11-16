@@ -501,15 +501,6 @@
     game_2048: { title: "Лидеры 2048 Gym Power • Сила трех сотен баксов", icon: "🔢", empty: "Рекордов в 2048 Gym Power пока нет. Собери плитку 2048 и стань Boss of this Gym!" }
   };
 
-  // Мок-лидеры качалки для идеального фолбэка при пустой базе
-  const MOCK_LEADERS = [
-    { rank: 1, user_id: 111, user_name: "Billy Herrington 👑 (Boss)", score: 2500 },
-    { rank: 2, user_id: 222, user_name: "Van Darkholme ♂ (Artist)", score: 1800 },
-    { rank: 3, user_id: 333, user_name: "Steve Rambo ♂ (Master)", score: 1200 },
-    { rank: 4, user_id: 444, user_name: "Danny Lee ♂ (Superstar)", score: 850 },
-    { rank: 5, user_id: 555, user_name: "Mark Wolff ♂ (Jabroni Hunter)", score: 600 }
-  ];
-
   async function loadGameLeaderboard(targetGameKey) {
     const gameKey = targetGameKey || selectedGame;
     selectedGame = gameKey;
@@ -607,7 +598,7 @@
       const data = await request(`/api/game/leaderboard${query}`);
       let leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
 
-      // Если в базе для игры нет рекордов, формируем мок-таблицу с известными боссами качалки и текущим игроком
+      // Если в базе нет записей, но у текущего игрока есть локальный рекорд в этой игре
       if (!leaders.length) {
         let myScore = 0;
         try {
@@ -626,15 +617,11 @@
           if (key) myScore = parseInt(localStorage.getItem(key) || "0", 10);
         } catch (_) {}
 
-        leaders = [
-          { rank: 1, user_id: 111, user_name: "Billy Herrington 👑", score: 250 },
-          { rank: 2, user_id: 222, user_name: "Van Darkholme ♂", score: 180 },
-          { rank: 3, user_id: 333, user_name: "Steve Rambo ♂", score: 120 },
-          { rank: 4, user_id: 444, user_name: "Danny Lee ♂", score: 85 },
-          { rank: 5, user_id: state.userId || 1075912512, user_name: `${state.userName || "Вы"} (Твой рекорд)`, score: myScore || 15 }
-        ];
-        leaders.sort((a, b) => b.score - a.score);
-        leaders.forEach((it, idx) => { it.rank = idx + 1; });
+        if (myScore > 0) {
+          leaders = [
+            { rank: 1, user_id: state.userId || 1075912512, user_name: `${state.userName || "Вы"} (Твой рекорд)`, score: myScore }
+          ];
+        }
       }
 
       const renderHtml = (items) => {
@@ -668,7 +655,7 @@
       return leaders;
     } catch (e) {
       console.warn("loadGameLeaderboard failed, showing local fallback", e);
-      let myScore = 0;
+      let fallbackLeaders = [];
       try {
         const scoreMap = {
           tower_stack: "tower_stack_best_score",
@@ -682,18 +669,13 @@
           game_2048: "game_2048_best"
         };
         const key = scoreMap[gameKey];
-        if (key) myScore = parseInt(localStorage.getItem(key) || "0", 10);
+        const myScore = key ? parseInt(localStorage.getItem(key) || "0", 10) : 0;
+        if (myScore > 0) {
+          fallbackLeaders = [
+            { rank: 1, user_id: state.userId || 1075912512, user_name: `${state.userName || "Вы"} (Твой рекорд)`, score: myScore }
+          ];
+        }
       } catch (_) {}
-
-      const fallbackLeaders = [
-        { rank: 1, user_id: 111, user_name: "Billy Herrington 👑", score: 250 },
-        { rank: 2, user_id: 222, user_name: "Van Darkholme ♂", score: 180 },
-        { rank: 3, user_id: 333, user_name: "Steve Rambo ♂", score: 120 },
-        { rank: 4, user_id: 444, user_name: "Danny Lee ♂", score: 85 },
-        { rank: 5, user_id: state.userId || 1075912512, user_name: `${state.userName || "Вы"} (Твой рекорд)`, score: myScore || 15 }
-      ];
-      fallbackLeaders.sort((a, b) => b.score - a.score);
-      fallbackLeaders.forEach((it, idx) => { it.rank = idx + 1; });
 
       const renderHtml = (items) => items.map((item, index) => `
         <article class="leader-row rank-${index + 1}">
@@ -1249,21 +1231,13 @@
       startTournamentTimer(endTimestamp);
 
       let leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+
       if (!leaders.length) {
-        // Если база пустая или в текущей неделе еще нет записей, формируем турнирную таблицу с боссами качалки
-        leaders = [
-          { rank: 1, user_id: 111, user_name: "Billy Herrington 👑 (Boss)", points: 3450 },
-          { rank: 2, user_id: 222, user_name: "Van Darkholme ♂ (Artist)", points: 2890 },
-          { rank: 3, user_id: 333, user_name: "Steve Rambo ♂ (Master)", points: 2150 },
-          { rank: 4, user_id: 444, user_name: "Danny Lee ♂ (Superstar)", points: 1620 },
-          { rank: 5, user_id: state.userId || 1075912512, user_name: `${state.userName || "Вы"} (Твой ранг)`, points: (state.coins ? state.coins * 5 : 450) }
-        ];
-        leaders.sort((a, b) => (b.points || b.score || 0) - (a.points || a.score || 0));
-        leaders.forEach((it, idx) => { it.rank = idx + 1; });
+        list.innerHTML = '<p class="empty-state">В кубке этой недели еще никто не набрал очков. Играйте в мини-игры, чтобы попасть в турнирную таблицу!</p>';
+        return;
       }
 
       list.innerHTML = leaders.map((item, index) => {
-        const rank = item.rank || index + 1;
         const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
         const bonusPrize = rank === 1 ? " • 👑 +500 🪙" : rank === 2 ? " • 🥈 +250 🪙" : rank === 3 ? " • 🥉 +100 🪙" : "";
         const scoreVal = item.total_score != null ? item.total_score : (item.points != null ? item.points : (item.score != null ? item.score : 0));

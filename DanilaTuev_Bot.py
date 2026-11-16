@@ -532,6 +532,7 @@ if __name__ == '__main__':
             BotCommand("shop", "🏪 Leather Shop ($300 Store)"),
             BotCommand("achievements", "🏅 Достижения и награды"),
             BotCommand("cup", "🏆 Еженедельный кубок качалки"),
+            BotCommand("records", "🕹 Рекорды мини-игр"),
             BotCommand("who", "🎭 Кто ты? Текущий образ и статус"),
             BotCommand("inv", "🎒 Посмотреть кожаный инвентарь"),
             BotCommand("reset", "🔄 Начать нового персонажа с нуля"),

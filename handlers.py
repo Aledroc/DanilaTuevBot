@@ -1153,4 +1153,39 @@ def achievements_cmd(message):
     bot.reply_to(message, "\n".join(text_parts), parse_mode='HTML')
 
 
+@bot.message_handler(commands=['records', 'game_top', 'scores'])
+def game_records_cmd(message):
+    """Показать рекорды по мини-играм чата."""
+    parts = (message.text or "").split(maxsplit=1)
+    game_arg = parts[1].strip().lower() if len(parts) > 1 else ""
+    game_map = {
+        "tower": "tower_stack", "башня": "tower_stack", "башенка": "tower_stack", "стек": "tower_stack",
+        "timber": "timberjack", "лесоруб": "timberjack", "дерево": "timberjack",
+        "knife": "knife_hit", "нож": "knife_hit", "тир": "knife_hit",
+        "basketball": "swipe_basketball", "баскетбол": "swipe_basketball", "кольцо": "swipe_basketball",
+        "bricks": "brick_breaker", "дробилка": "brick_breaker", "арканоид": "brick_breaker", "кирпичи": "brick_breaker",
+        "colorswitch": "colorswitch", "флекс": "colorswitch", "цвет": "colorswitch",
+        "airhockey": "air_hockey", "хоккей": "air_hockey",
+        "whack": "whack_mole", "крот": "whack_mole",
+        "2048": "game_2048",
+    }
+    target_game = game_map.get(game_arg, game_arg or None)
+    scores = inventory_store.get_top_game_scores(game_name=target_game, chat_id=None, limit=10)
+
+    if not scores:
+        bot.reply_to(message, "🕹 В мини-играх пока нет зарегистрированных рекордов. Сыграйте через /app!")
+        return
+
+    medals = ["🥇", "🥈", "🥉"]
+    lines = [f"🕹 <b>Таблица рекордов в мини-играх{' (' + target_game + ')' if target_game else ''}:</b>\n"]
+    for i, s in enumerate(scores, start=1):
+        medal = medals[i - 1] if i <= 3 else f"<b>{i}.</b>"
+        uname = html.escape(s.get("user_name") or f"Игрок {s.get('user_id')}")
+        gname = html.escape(s.get("game_name") or "")
+        lines.append(f"{medal} <b>{uname}</b> — <code>{s.get('score')}</code> очков ({gname})")
+
+    lines.append("\n💡 Полные таблицы и личные рекорды смотри в /app во вкладке «🎮 Игры»!")
+    bot.reply_to(message, "\n".join(lines), parse_mode='HTML')
+
+
 

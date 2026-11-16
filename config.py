@@ -119,15 +119,9 @@ apihelper.READ_TIMEOUT = 90
 telebot.logger.setLevel(logging.CRITICAL)
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-try:
-    BOT_INFO = bot.get_me()
-    BOT_ID = BOT_INFO.id
-    BOT_USERNAME = BOT_INFO.username
-except Exception as _e:
-    logging.warning("Could not fetch bot info from Telegram at import: %s", _e)
-    BOT_INFO = None
-    BOT_ID = 8849496078
-    BOT_USERNAME = "DanilaTuev_Bot"
+BOT_INFO = None
+BOT_ID = 8849496078
+BOT_USERNAME = "DanilaTuev_Bot"
 
 chat_states: dict = {}
 chat_histories: dict = {}
