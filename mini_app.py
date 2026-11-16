@@ -576,6 +576,20 @@ class Handler(BaseHTTPRequestHandler):
                 if not result.get("success"):
                     self._send(400, {"error": result.get("message", "Ошибка покупки товара")})
                     return
+
+                # Мгновенная активация в группе, если товар является интерактивом
+                if chat_id and item_id in {"compliment_bomb", "slap_friend", "fake_ban", "custom_roast", "golden_fart"}:
+                    try:
+                        import threading
+                        import chat_manager as cm
+                        buyer_name = user.get("first_name") or "Aledroc"
+                        threading.Thread(
+                            target=cm.execute_shop_action_instantly,
+                            args=(chat_id, user["id"], buyer_name, item_id, extra_data),
+                            daemon=True
+                        ).start()
+                    except Exception as act_err:
+                        print(f"Failed to trigger instant shop action: {act_err}", flush=True)
             elif route in {"/api/archetypes/custom", "/api/archetypes"}:
                 u_id = data.get("user_id") or user["id"]
                 u_name = data.get("user_name") or user.get("first_name", "")

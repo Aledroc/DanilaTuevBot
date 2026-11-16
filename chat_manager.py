@@ -1398,3 +1398,78 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
             f"Трейс: {config.LAST_AI_TRACE}"
         )
     return True if spontaneous else False
+
+
+def execute_shop_action_instantly(chat_id: int, buyer_id: int, buyer_name: str, item_id: str, extra_data: dict) -> bool:
+    """Мгновенно активирует купленный товар в чате группы без ожидания реплик."""
+    try:
+        init_chat_state(chat_id)
+        state, goal = _prepare_turn(chat_id)
+        
+        target_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "Кирилл").strip()
+        target_id = extra_data.get("target_user_id")
+        if not target_id and target_name:
+            resolved = inventory_store.resolve_member(chat_id, target_name)
+            if resolved:
+                target_id, target_name = resolved
+                
+        system_prompt = get_system_prompt(state, goal, get_story_phase(state.get('story_turn', 0)), buyer_name)
+        action_desc = ""
+        
+        if item_id == "compliment_bomb":
+            extra_compliment = str(extra_data.get("compliment") or extra_data.get("extra_text") or "").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — КОРОЛЕВСКИЙ РЕСПЕКТ: Участник {buyer_name} только что оплатил королевский респект "
+                f"для братана {target_name}! Прямо сейчас громогласно и со всем жаром обратись к {target_name}! "
+                f"Осыпь его роскошными, эпичными эпитетами о его нечеловеческой мощи, титанических бицепсах, стальном прессе "
+                f"и харизме истинного Dungeon Master качалки! {extra_compliment}"
+            )
+        elif item_id == "slap_friend":
+            reason = str(extra_data.get("reason") or extra_data.get("slap_reason") or extra_data.get("extra_text") or "для бодрости").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ДРУЖЕСКИЙ ЛЕЩ: Участник {buyer_name} заказал дружеского леща для {target_name}! "
+                f"Со смачным звоном отвесь {target_name} звонкого дружеского леща или шлёпни мокрым полотенцем (*...*), "
+                f"сопроводив это едким, угарным и бодрящим комментарием! Повод: {reason}."
+            )
+        elif item_id == "fake_ban":
+            ban_reason = str(extra_data.get("reason") or extra_data.get("ban_reason") or "пропуск тренировки").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ШУТОЧНЫЙ БАН МОЛОТОМ: Участник {buyer_name} заказал шуточный бан для {target_name}! "
+                f"Громогласно и драматично замахнись молотом и объяви шуточный бан {target_name} с обратным отсчетом "
+                f"за «{ban_reason}» в самом колоритном стиле своего архетипа!"
+            )
+        elif item_id in {"custom_roast", "roast_friend"}:
+            hint = str(extra_data.get("roast_topic") or extra_data.get("hint") or "").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — СПАНКИНГ / ЗАКАЗНОЙ ПОДКОЛ: Участник {buyer_name} заказал спанкинг-подкол для {target_name}! "
+                f"Отвесь дерзкий, смешной и едкий, но дружеский подкол в адрес {target_name}! Тема: {hint or 'форма и дисциплина в раздевалке'}."
+            )
+        elif item_id == "golden_fart":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ЗОЛОТОЙ ЗАЛП: Участник {buyer_name} активировал фирменный залп! "
+                "Выдай смачный, громогласный звуковой эффект со звонким хлопком и прокомментируй мощь раздевалки!"
+            )
+            
+        system_prompt += action_desc
+        
+        simulated_msg = {
+            "role": "user",
+            "content": f"[{buyer_name}]: *активирует в качалке {item_id} на {target_name}*"
+        }
+        msgs = list(chat_histories.get(chat_id) or []) + [simulated_msg]
+        
+        bot.send_chat_action(chat_id, 'typing')
+        return _generate_and_send(
+            chat_id,
+            system_prompt,
+            msgs,
+            state=state,
+            spontaneous=False,
+            inventory_user_id=buyer_id,
+            inventory_user_name=buyer_name,
+            inventory_target_user_id=target_id,
+            inventory_target_user_name=target_name
+        )
+    except Exception as exc:
+        logging.exception("Failed to execute instant shop prank in chat %s: %s", chat_id, exc)
+        return False
