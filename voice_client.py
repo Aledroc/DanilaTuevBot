@@ -161,7 +161,7 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
     try:
         _throttle_tts()
         if raw_audio_bytes and msgpack is not None:
-            # Zero-shot voice cloning с бинарным образцом через msgpack
+            # Zero-shot voice cloning с бинарным образцом через msgpack в полном соответствии с docs.fish.audio
             headers["Content-Type"] = "application/msgpack"
             ref_item = {"audio": raw_audio_bytes}
             if ref_transcript:
@@ -171,6 +171,11 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                 "text": text[:1500],
                 "format": "opus",
                 "references": [ref_item],
+                "temperature": 0.65,
+                "top_p": 0.8,
+                "latency": "normal",
+                "normalize": True,
+                "chunk_length": 250,
             }
             if reference_id:
                 payload["reference_id"] = reference_id
