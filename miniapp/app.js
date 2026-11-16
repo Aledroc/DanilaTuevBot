@@ -958,7 +958,13 @@
       const activeChatId = state.chatId || state.chatTarget?.chat_id || "";
       const query = activeChatId ? `?chat_id=${encodeURIComponent(activeChatId)}` : "";
       const data = await request(`/api/shop/items${query}`);
-      state.shopItems = Array.isArray(data.items) && data.items.length ? data.items : DEFAULT_SHOP_ITEMS;
+      state.shopItems = Array.isArray(data.items) && data.items.length
+        ? data.items.map((it) => ({
+            ...it,
+            id: it.id || it.item_id,
+            fields: it.fields || DEFAULT_SHOP_ITEMS.find((d) => d.id === (it.id || it.item_id))?.fields || [],
+          }))
+        : DEFAULT_SHOP_ITEMS;
     } catch (e) {
       console.warn("Shop items fetch failed, using default items", e);
       state.shopItems = DEFAULT_SHOP_ITEMS;
@@ -971,6 +977,7 @@
     if (!catalog) return;
 
     catalog.innerHTML = state.shopItems.map((item) => {
+      const itemId = item.id || item.item_id;
       const isAffordable = state.coins >= item.price;
       const diff = item.price - state.coins;
       const btnText = isAffordable ? "Купить" : `Не хватает ${diff} 🪙`;
@@ -978,7 +985,7 @@
       const btnTitle = isAffordable ? "Купить предмет" : `Недостаточно средств: нужно ещё ${diff} 🪙`;
 
       return `
-        <article class="shop-card ${isAffordable ? "" : "card-disabled"}" data-item-id="${escapeHtml(item.id)}">
+        <article class="shop-card ${isAffordable ? "" : "card-disabled"}" data-item-id="${escapeHtml(itemId)}">
           <div class="shop-card-top">
             <div class="shop-card-icon">${item.icon || "🎁"}</div>
             <div class="shop-card-info">
@@ -991,7 +998,7 @@
               <span>🪙 ${escapeHtml(item.price)}</span>
               <span class="shop-card-price-label">монет</span>
             </div>
-            <button class="${btnClass}" data-buy-item="${escapeHtml(item.id)}" title="${btnTitle}" ${state.readOnly ? "disabled" : ""}>
+            <button class="${btnClass}" data-buy-item="${escapeHtml(itemId)}" title="${btnTitle}" ${state.readOnly ? "disabled" : ""}>
               ${btnText}
             </button>
           </div>
@@ -1003,9 +1010,9 @@
   let selectedShopItem = null;
 
   function openShopDialog(itemId) {
-    const item = state.shopItems.find((i) => i.id === itemId) || DEFAULT_SHOP_ITEMS.find((i) => i.id === itemId);
+    const item = state.shopItems.find((i) => (i.id || i.item_id) === itemId) || DEFAULT_SHOP_ITEMS.find((i) => (i.id || i.item_id) === itemId);
     if (!item) return;
-    selectedShopItem = item;
+    selectedShopItem = { ...item, id: item.id || item.item_id };
 
     const isAffordable = state.coins >= item.price;
     const diff = item.price - state.coins;
