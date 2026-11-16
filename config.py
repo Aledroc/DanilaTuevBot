@@ -34,7 +34,10 @@ XKIRO_API_KEY = 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec'
 FISH_AUDIO_API_KEY = os.getenv('FISH_AUDIO_API_KEY', 'sk-fish-9Gk1DW-UdDIzRRE7dL0GTyXpJpUdIKG270r4zIDNGS4').strip()
 FISH_AUDIO_TTS_URL = os.getenv('FISH_AUDIO_TTS_URL', 'https://api.fish.audio/v1/tts')
 # Fallback OpenRouter TTS credentials
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '').strip()
+OPENROUTER_API_KEY = os.getenv(
+    'OPENROUTER_API_KEY',
+    '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',
+).strip()
 VOICE_ID = os.getenv('OPENROUTER_VOICE_ID', 'alloy')
 # NordRouter multimodal audio input for transcription. Its documented API uses
 # chat completions with input_audio; it does not document /audio/transcriptions.

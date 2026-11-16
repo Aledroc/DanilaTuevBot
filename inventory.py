@@ -836,6 +836,12 @@ def give_item(chat_id: int, sender_id: int, recipient_id: int, name: str) -> str
                 (int(chat_id), int(recipient_id), item[0]),
             )
         _trim_item_copies(conn, sender_id, item[0], logical_quantity - 1)
+    try:
+        increment_stat(chat_id, sender_id, "items_given", 1)
+        check_user_achievements(int(sender_id))
+        check_user_achievements(int(recipient_id))
+    except Exception:
+        pass
     return item[0]
 
 
@@ -1155,6 +1161,20 @@ def _connect():
             conn.execute("ALTER TABLE chat_stats ADD COLUMN game_wins INTEGER DEFAULT 0")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE chat_stats ADD COLUMN items_given INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_archetype_history (
+                user_id INTEGER NOT NULL,
+                archetype_key TEXT NOT NULL,
+                used_at INTEGER NOT NULL,
+                PRIMARY KEY (user_id, archetype_key)
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS game_scores (
@@ -1553,6 +1573,26 @@ def get_selected_archetype(user_id: int) -> str:
     return row[0] if row else ""
 
 
+def record_archetype_use(user_id: int, key: str) -> None:
+    """Регистрирует использование/выбор архетипа пользователем для достижений."""
+    if not user_id or not key:
+        return
+    now = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_archetype_history (user_id, archetype_key, used_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, archetype_key) DO UPDATE SET used_at = excluded.used_at
+                """,
+                (int(user_id), str(key).strip().lower(), now),
+            )
+        check_user_achievements(int(user_id))
+    except Exception:
+        pass
+
+
 def select_user_archetype(user_id: int, key: str) -> dict:
     archetype = get_user_archetype(user_id, key)
     if not archetype:
@@ -1563,6 +1603,10 @@ def select_user_archetype(user_id: int, key: str) -> dict:
             "ON CONFLICT(user_id) DO UPDATE SET selected_archetype = excluded.selected_archetype",
             (int(user_id), str(key)),
         )
+    try:
+        record_archetype_use(user_id, key)
+    except Exception:
+        pass
     return archetype
 
 
@@ -2205,12 +2249,13 @@ def get_user_title(chat_id: int, user_id: int) -> str:
 
 
 def increment_stat(chat_id: int, user_id: int, stat_type: str, amount: int = 1) -> None:
-    """Увеличивает счётчик статистики участника: messages_count, items_collected, lethal_strikes, game_wins."""
+    """Увеличивает счётчик статистики участника: messages_count, items_collected, lethal_strikes, game_wins, items_given."""
     allowed = {
         "messages_count": "messages_count",
         "items_collected": "items_collected",
         "lethal_strikes": "lethal_strikes",
         "game_wins": "game_wins",
+        "items_given": "items_given",
     }
     col = allowed.get(stat_type)
     if not col or not user_id:
@@ -2225,6 +2270,7 @@ def increment_stat(chat_id: int, user_id: int, stat_type: str, amount: int = 1) 
                 f"ON CONFLICT(chat_id, user_id) DO UPDATE SET {col} = chat_stats.{col} + ?",
                 (int(chat_id), int(user_id), amt, amt),
             )
+        check_user_achievements(int(user_id))
     except Exception:
         pass
 
@@ -3989,10 +4035,18 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
                 (user_id,),
             ).fetchone()[0]
             archetypes_tried = conn.execute(
-                "SELECT COUNT(DISTINCT key) FROM chat_archetypes WHERE user_id = ?",
-                (user_id,),
+                """
+                SELECT COUNT(DISTINCT archetype_key) FROM (
+                    SELECT archetype_key FROM user_archetype_history WHERE user_id = ?
+                    UNION
+                    SELECT archetype_key FROM user_archetypes WHERE user_id = ?
+                    UNION
+                    SELECT selected_archetype as archetype_key FROM user_preferences WHERE user_id = ? AND selected_archetype != ''
+                )
+                """,
+                (user_id, user_id, user_id),
             ).fetchone()
-            archetypes_count = (archetypes_tried[0] if archetypes_tried else 0) or 1
+            archetypes_count = max(1, (archetypes_tried[0] if archetypes_tried else 0))
 
             econ = conn.execute(
                 "SELECT coins, daily_streak, total_spent, total_messages FROM user_economy WHERE user_id = ?",
@@ -4043,10 +4097,14 @@ def _calculate_user_achievement_progress(user_id: int) -> dict:
                 "SELECT COUNT(DISTINCT item_name) FROM inventory WHERE user_id = ?",
                 (user_id,),
             ).fetchone()[0]
+            items_given_sum = conn.execute(
+                "SELECT COALESCE(SUM(items_given), 0) FROM chat_stats WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
             progress["first_gear"] = min(1, inv_count)
             progress["hoarder"] = inv_count
             progress["leather_collector"] = inv_count
-            progress["generous_master"] = 1 if total_spent > 0 or purchases_count > 0 else 0
+            progress["generous_master"] = 1 if items_given_sum > 0 else 0
 
     except Exception:
         pass
@@ -4125,5 +4183,53 @@ def claim_achievement_reward(user_id: int, achievement_id: str) -> dict:
         }
     except Exception as e:
         return {"success": False, "message": f"Ошибка клейма: {e}"}
+
+
+def claim_all_achievement_rewards(user_id: int) -> dict:
+    """Забирает награды за все выполненные, но еще не забранные достижения пользователя."""
+    if not user_id:
+        return {"success": False, "claimed_count": 0, "total_reward": 0, "message": "Не указан пользователь"}
+    # Сначала обновляем прогресс
+    try:
+        check_user_achievements(int(user_id))
+    except Exception:
+        pass
+
+    claimed_list = []
+    total_reward = 0
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT achievement_id FROM user_achievements WHERE user_id = ? AND claimed = 0",
+                (int(user_id),),
+            ).fetchall()
+            unclaimed_ids = [r[0] for r in rows]
+
+        for ach_id in unclaimed_ids:
+            res = claim_achievement_reward(user_id, ach_id)
+            if res.get("success"):
+                claimed_list.append(ach_id)
+                total_reward += res.get("reward", 0)
+
+        balance = get_user_coins(user_id)
+        if not claimed_list:
+            return {
+                "success": False,
+                "claimed_count": 0,
+                "total_reward": 0,
+                "balance": balance,
+                "message": "Нет доступных наград для забора.",
+            }
+
+        return {
+            "success": True,
+            "claimed_count": len(claimed_list),
+            "claimed_ids": claimed_list,
+            "total_reward": total_reward,
+            "balance": balance,
+            "message": f"🎉 Успешно забрано наград: {len(claimed_list)} на сумму +{total_reward} 🪙!",
+        }
+    except Exception as e:
+        return {"success": False, "claimed_count": 0, "total_reward": 0, "message": f"Ошибка: {e}"}
 
 

@@ -590,6 +590,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not result.get("success"):
                     self._send(400, {"error": result.get("message", "Ошибка получения награды")})
                     return
+            elif route == "/api/achievements/claim_all":
+                result = inventory.claim_all_achievement_rewards(user_id=user["id"])
+                if not result.get("success"):
+                    self._send(400, {"error": result.get("message", "Нет доступных наград")})
+                    return
             elif route == "/api/archetypes/custom/delete":
                 key = str(data.get("key") or data.get("archetype_key") or "").strip()
                 if not key:

@@ -488,6 +488,11 @@ def set_theme(message):
         custom_prompts.pop(cid, None)
         _, desc = ARCHETYPES[key]
         reset_chat_state(cid, desc)
+        if message.from_user:
+            try:
+                inventory_store.record_archetype_use(message.from_user.id, key)
+            except Exception:
+                pass
         bot.send_message(
             cid,
             f"🎭 Архетип принят. Теперь я <b>{chat_states[cid]['full_name']}</b>.",
@@ -502,6 +507,11 @@ def set_theme(message):
         custom_prompts.pop(cid, None)
         desc = found_custom["prompt"]
         reset_chat_state(cid, desc)
+        if message.from_user:
+            try:
+                inventory_store.record_archetype_use(message.from_user.id, key)
+            except Exception:
+                pass
         author = f" от <i>{html.escape(found_custom.get('created_by_name') or 'Игрока')}</i>" if found_custom.get('created_by_name') else ""
         bot.send_message(
             cid,
@@ -564,6 +574,10 @@ def add_archetype_cmd(message):
             desc=desc,
             action=action,
         )
+        try:
+            inventory_store.record_archetype_use(user.id, archetype["key"])
+        except Exception:
+            pass
         bot.send_message(
             cid,
             f"✅ <b>Пользовательский архетип успешно создан!</b>\n\n"
@@ -1146,11 +1160,32 @@ def achievements_cmd(message):
         text_parts.append("")
 
     if unclaimed:
-        text_parts.append(f"🎉 <b>У тебя есть {len(unclaimed)} незабранных наград!</b> Открой /app вкладку «Достижения», чтобы забрать монеты 🪙")
+        text_parts.append(
+            f"🎉 <b>У тебя есть {len(unclaimed)} незабранных наград!</b>\n"
+            f"Забери их прямо сейчас: <code>/claimach</code> или в /app (вкладка «Достижения»)"
+        )
     else:
         text_parts.append("💡 Полный список достижений и фильтры доступны в <b>/app</b> во вкладке «🏅 Достижения».")
 
     bot.reply_to(message, "\n".join(text_parts), parse_mode='HTML')
+
+
+@bot.message_handler(commands=['claimach', 'claimachievements', 'claim_ach'])
+def claim_achievements_cmd(message):
+    """Забрать все доступные награды за разблокированные достижения."""
+    user = message.from_user
+    if not user:
+        return
+    res = inventory_store.claim_all_achievement_rewards(user.id)
+    if not res.get("success"):
+        bot.reply_to(message, f"ℹ️ {res.get('message', 'Нет доступных наград.')}")
+        return
+
+    bot.reply_to(
+        message,
+        f"{res.get('message')}\n💰 Текущий баланс: <b>{res.get('balance', 0)}</b> 🪙",
+        parse_mode='HTML'
+    )
 
 
 @bot.message_handler(commands=['records', 'game_top', 'scores'])

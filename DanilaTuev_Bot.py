@@ -29,6 +29,35 @@ BOT_BUILD = "2026-11-13-proactive"
 _IMAGE_MODEL_CHAIN = ("seedream5", "zimage", "nanobanana", "flux")
 
 
+def _track_incoming_message_activity(message):
+    """Регистрирует активность пользователя по любому входящему сообщению (включая команды)
+    и проверяет выполнение достижений.
+    """
+    if not message or not getattr(message, 'from_user', None):
+        return
+    user = message.from_user
+    cid = message.chat.id
+    try:
+        inventory_store.remember_member(
+            cid, user.id, user.first_name,
+            getattr(user, 'username', None),
+            chat_title=getattr(message.chat, 'title', None),
+            chat_username=getattr(message.chat, 'username', None),
+            is_private=message.chat.type == 'private',
+        )
+    except Exception:
+        pass
+
+    try:
+        inventory_store.increment_stat(cid, user.id, "messages_count")
+        inventory_store.record_chat_message_activity(cid, user.id)
+    except Exception:
+        pass
+
+
+bot.set_update_listener(lambda messages: [_track_incoming_message_activity(m) for m in messages if m])
+
+
 def _generate_image(prompt_en: str) -> bytes | None:
     encoded = urllib.parse.quote(prompt_en)
     seed = random.randint(1, 1_000_000)
@@ -385,13 +414,6 @@ def handle_text(message):
     if text.startswith('/'):
         return
 
-    if message.from_user:
-        try:
-            inventory_store.increment_stat(cid, message.from_user.id, "messages_count")
-            inventory_store.record_chat_message_activity(cid, message.from_user.id)
-        except Exception:
-            pass
-
     init_chat_state(cid)
     record_message(cid)
     state = chat_states[cid]
@@ -531,6 +553,7 @@ if __name__ == '__main__':
             BotCommand("coins", "🪙 Монеты и стрик посещений"),
             BotCommand("shop", "🏪 Leather Shop ($300 Store)"),
             BotCommand("achievements", "🏅 Достижения и награды"),
+            BotCommand("claimach", "🎁 Забрать все награды за ачивки"),
             BotCommand("cup", "🏆 Еженедельный кубок качалки"),
             BotCommand("records", "🕹 Рекорды мини-игр"),
             BotCommand("who", "🎭 Кто ты? Текущий образ и статус"),
