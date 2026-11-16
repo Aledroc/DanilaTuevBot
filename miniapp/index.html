@@ -32,21 +32,7 @@
     </header>
     <p id="app-status" class="status-message" role="status" aria-live="polite">Загрузка профиля…</p>
 
-    <div class="tabs-wrapper">
-      <button class="tabs-scroll-btn tabs-scroll-prev" id="tabs-scroll-prev" type="button" aria-label="Прокрутить вкладки назад" hidden>‹</button>
-      <nav class="tabs" id="tabs-nav" aria-label="Разделы">
-        <button class="tab active" data-tab="games"><span class="tab-icon">🎮</span> Dungeon Games</button>
-        <button class="tab" data-tab="inventory"><span class="tab-icon">🎒</span> Снаряга Слейва</button>
-        <button class="tab" data-tab="shop"><span class="tab-icon">🏪</span> Leather Shop ($300 Store)</button>
-        <button class="tab" data-tab="tournament"><span class="tab-icon">🏆</span> Турнир Качалки (Boss Cup)</button>
-        <button class="tab" data-tab="achievements"><span class="tab-icon">🏅</span> Достижения</button>
-        <button class="tab" data-tab="fame"><span class="tab-icon">👑</span> Зал Качков (Masters)</button>
-        <button class="tab" data-tab="archetypes"><span class="tab-icon">🎭</span> Каста Подземелья</button>
-        <button class="tab" data-tab="prompt"><span class="tab-icon">⚙️</span> Промпт</button>
-        <button class="tab" data-tab="help"><span class="tab-icon">📜</span> Кодекс Раздевалки</button>
-      </nav>
-      <button class="tabs-scroll-btn tabs-scroll-next" id="tabs-scroll-next" type="button" aria-label="Прокрутить вкладки вперед">›</button>
-    </div>
+
 
     <section class="view" id="inventory-view">
       <div class="section-heading"><div><p class="eyebrow">DUNGEON GEAR • СНАРЯЖЕНИЕ СЛЕЙВА</p><h2>Снаряга Слейва</h2></div><span class="count" id="item-count">0</span></div>
@@ -473,7 +459,7 @@
     </div>
   </dialog>
 
-  <!-- Bottom Navigation Bar for quick mobile access -->
+  <!-- Bottom Navigation Bar for mobile & desktop navigation -->
   <nav class="bottom-nav" id="bottom-nav" aria-label="Быстрая навигация">
     <button class="bottom-nav-item active" data-tab="games">
       <span class="bnav-icon">🎮</span>
@@ -491,9 +477,21 @@
       <span class="bnav-icon">🎒</span>
       <span class="bnav-label">Склад</span>
     </button>
+    <button class="bottom-nav-item" data-tab="achievements">
+      <span class="bnav-icon">🏅</span>
+      <span class="bnav-label">Ачивки</span>
+    </button>
     <button class="bottom-nav-item" data-tab="fame">
       <span class="bnav-icon">👑</span>
       <span class="bnav-label">Зал Славы</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="archetypes">
+      <span class="bnav-icon">🎭</span>
+      <span class="bnav-label">Каста</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="help">
+      <span class="bnav-icon">📜</span>
+      <span class="bnav-label">Кодекс</span>
     </button>
   </nav>
 

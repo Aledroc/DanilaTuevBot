@@ -1657,36 +1657,14 @@
 
   function switchTab(tabName) {
     if (!tabName) return;
-    const targetTabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+    const targetNavBtn = document.querySelector(`.bottom-nav-item[data-tab="${tabName}"]`);
     document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
     document.querySelectorAll(".bottom-nav-item").forEach((bnav) => bnav.classList.toggle("active", bnav.dataset.tab === tabName));
     document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${tabName}-view`));
     
-    if (targetTabBtn) {
-      targetTabBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    if (targetNavBtn) {
+      targetNavBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
-    updateTabScrollIndicators();
-  }
-
-  function updateTabScrollIndicators() {
-    const tabsNav = document.getElementById("tabs-nav");
-    const wrapper = tabsNav ? tabsNav.closest(".tabs-wrapper") : null;
-    const prevBtn = document.getElementById("tabs-scroll-prev");
-    const nextBtn = document.getElementById("tabs-scroll-next");
-    if (!tabsNav || !wrapper) return;
-
-    const scrollLeft = tabsNav.scrollLeft;
-    const maxScroll = tabsNav.scrollWidth - tabsNav.clientWidth;
-    const hasOverflow = maxScroll > 4;
-
-    const canScrollLeft = hasOverflow && scrollLeft > 6;
-    const canScrollRight = hasOverflow && (maxScroll - scrollLeft) > 6;
-
-    wrapper.classList.toggle("can-scroll-left", canScrollLeft);
-    wrapper.classList.toggle("can-scroll-right", canScrollRight);
-
-    if (prevBtn) prevBtn.hidden = !canScrollLeft;
-    if (nextBtn) nextBtn.hidden = !canScrollRight;
   }
 
   document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
@@ -1696,33 +1674,6 @@
   document.querySelectorAll(".bottom-nav-item").forEach((button) => button.addEventListener("click", () => {
     switchTab(button.dataset.tab);
   }));
-
-  const tabsNavElem = document.getElementById("tabs-nav");
-  if (tabsNavElem) {
-    tabsNavElem.addEventListener("scroll", updateTabScrollIndicators, { passive: true });
-    window.addEventListener("resize", updateTabScrollIndicators);
-    // Initial indicator calculation
-    setTimeout(updateTabScrollIndicators, 100);
-    setTimeout(updateTabScrollIndicators, 600);
-  }
-
-  const prevScrollBtn = document.getElementById("tabs-scroll-prev");
-  if (prevScrollBtn) {
-    prevScrollBtn.addEventListener("click", () => {
-      if (tabsNavElem) {
-        tabsNavElem.scrollBy({ left: -160, behavior: "smooth" });
-      }
-    });
-  }
-
-  const nextScrollBtn = document.getElementById("tabs-scroll-next");
-  if (nextScrollBtn) {
-    nextScrollBtn.addEventListener("click", () => {
-      if (tabsNavElem) {
-        tabsNavElem.scrollBy({ left: 160, behavior: "smooth" });
-      }
-    });
-  }
   $("#refresh").addEventListener("click", () => load().catch((error) => toast(error.message)));
   $("#inventory-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-use-item]");
