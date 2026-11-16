@@ -149,7 +149,7 @@ def remember_command_member(message):
         # BotFather's Mini App URL is separate from this runtime setting.
         # Keep a working default so /app still replies when the host variable
         # has not been configured.
-        app_url = os.getenv('MINIAPP_URL', 'https://danilatuevbot.wispbyte.app:10178').strip()
+        app_url = os.getenv('MINIAPP_URL', 'https://danilatuevbot.wispbyte.app').strip()
         if app_url.startswith('https://'):
             # A group-launched /start deep link preserves that group's context
             # when the Mini App has to open in a private chat.
