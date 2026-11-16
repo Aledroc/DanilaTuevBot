@@ -305,6 +305,22 @@ def init_chat_state(chat_id: int):
     today = date.today().isoformat()
     if chat_id in chat_states and chat_states[chat_id].get('date') == today:
         return
+    old_state = chat_states.get(chat_id)
+    if old_state and old_state.get('date') and old_state.get('date') != today:
+        old_name = old_state.get('full_name', 'Персонаж')
+        old_desc = old_state.get('desc', '')
+        try:
+            recap_text = generate_daily_recap(chat_id, old_name, old_desc)
+            if recap_text:
+                inventory_store.save_daily_recap(chat_id, old_name, recap_text)
+                bot.send_message(
+                    chat_id,
+                    f"📜 <b>Итог дня от {html.escape(old_name)}:</b>\n{html.escape(recap_text)}",
+                    parse_mode='HTML',
+                )
+        except Exception:
+            logging.exception("init_chat_state: не удалось отправить итог дня в чат %s", chat_id)
+
     custom_prompts.pop(chat_id, None)
     chat_histories[chat_id] = []
     chat_goals.pop(chat_id, None)

@@ -880,6 +880,32 @@ def use_item_cmd(message):
             bot.send_message(cid, error_text)
 
 
+@bot.message_handler(commands=['recap', 'daily_recap', 'summary'])
+def manual_daily_recap_cmd(message):
+    """Показывает свежий остроумный итог смены от лица текущего персонажа."""
+    cid = message.chat.id
+    init_chat_state(cid)
+    state = chat_states.get(cid)
+    if not state:
+        bot.reply_to(message, "Смена ещё не началась, чат пуст!")
+        return
+
+    char_name = state.get('full_name', 'Персонаж')
+    char_desc = state.get('desc', '')
+    bot.send_chat_action(cid, 'typing')
+    from chat_manager import generate_daily_recap
+    recap = generate_daily_recap(cid, char_name, char_desc)
+    if recap:
+        inventory_store.save_daily_recap(cid, char_name, recap)
+        bot.reply_to(
+            message,
+            f"📜 <b>Остроумный итог смены от {html.escape(char_name)}:</b>\n\n{html.escape(recap)}",
+            parse_mode='HTML'
+        )
+    else:
+        bot.reply_to(message, "Сегодня в качалке было подозрительно тихо... Итог подводить рано!")
+
+
 @bot.message_handler(commands=['hall', 'fame', 'top'])
 def hall_of_fame_cmd(message):
     cid = message.chat.id
