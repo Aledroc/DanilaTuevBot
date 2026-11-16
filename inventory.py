@@ -2717,18 +2717,21 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
     if not spend_coins(user_id, price, reason=f"buy:{item_id}"):
         return {"success": False, "message": "Ошибка списания средств"}
 
-    # Записываем перк
-    try:
-        with _connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO user_perks (user_id, chat_id, perk_id, extra_data, active, purchased_at, expires_at)
-                VALUES (?, ?, ?, ?, 1, ?, ?)
-                """,
-                (int(user_id), int(chat_id) if chat_id else None, item_id, extra_str, now, expires_at),
-            )
-    except Exception:
-        pass
+    # Записываем перк только для долгосрочных/постоянных перков (VIP, кастомные титулы и т.д.)
+    # Одноразовые события (комплимент, лещ, бан, залп, мегафон) не должны засорять активные перки
+    one_time_items = {"compliment_bomb", "slap_friend", "fake_ban", "golden_fart", "shout_announcement"}
+    if item_id not in one_time_items:
+        try:
+            with _connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO user_perks (user_id, chat_id, perk_id, extra_data, active, purchased_at, expires_at)
+                    VALUES (?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (int(user_id), int(chat_id) if chat_id else None, item_id, extra_str, now, expires_at),
+                )
+        except Exception:
+            pass
 
     new_balance = get_user_coins(user_id)
     try:

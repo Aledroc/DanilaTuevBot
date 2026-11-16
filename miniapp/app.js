@@ -805,8 +805,21 @@
         }
       }
 
-      let name = typeof perk === "string" ? perk : (perk.title || perk.name || "Активный перк");
-      let icon = (typeof perk === "object" && perk.icon) || "⚡";
+      let name = typeof perk === "string" ? perk : (perk.title || perk.name || "");
+      let icon = (typeof perk === "object" && perk.icon) || "";
+
+      if (!name && typeof perk === "object" && perk.perk_id) {
+        const matchingShopItem = DEFAULT_SHOP_ITEMS.find(s => s.id === perk.perk_id);
+        if (matchingShopItem) {
+          name = matchingShopItem.name;
+          icon = matchingShopItem.icon || "⚡";
+        } else {
+          name = perk.perk_id;
+          icon = "⚡";
+        }
+      }
+      if (!name) name = "Активный перк";
+      if (!icon) icon = "⚡";
       if (isVip) {
         icon = "👑";
         name = `LORD VIP${extraTimeLabel || " (на 7 дн.)"}`;
