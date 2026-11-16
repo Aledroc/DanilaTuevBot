@@ -577,19 +577,33 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(400, {"error": result.get("message", "Ошибка покупки товара")})
                     return
 
-                # Мгновенная активация в группе, если товар является интерактивом
-                if chat_id and item_id in {"compliment_bomb", "slap_friend", "fake_ban", "custom_roast", "golden_fart"}:
+                # Оповещение в чат группы о любой совершенной покупке в магазине
+                if chat_id:
                     try:
                         import threading
                         import chat_manager as cm
-                        buyer_name = user.get("first_name") or "Aledroc"
-                        threading.Thread(
-                            target=cm.execute_shop_action_instantly,
-                            args=(chat_id, user["id"], buyer_name, item_id, extra_data),
-                            daemon=True
-                        ).start()
+                        buyer_name = user.get("first_name") or "Игрок"
+                        item_name = result.get("item_name") or item_id
+                        price = result.get("price") or 0
+
+                        def _announce_and_trigger():
+                            try:
+                                # 1. Сервисное оповещение о факте покупки
+                                notice = f"🛒 <b>{html.escape(buyer_name)}</b> приобрёл в магазине: <b>{html.escape(item_name)}</b> (-{price} 🪙)"
+                                target_user_name = str(extra_data.get("target_user") or extra_data.get("target_name") or "").strip()
+                                if target_user_name:
+                                    notice += f" для <b>{html.escape(target_user_name)}</b>"
+                                cm.bot.send_message(chat_id, notice, parse_mode='HTML')
+                            except Exception:
+                                pass
+
+                            # 2. Если товар интерактивный, бот сразу отыгрывает реакцию в чате
+                            if item_id in {"compliment_bomb", "slap_friend", "fake_ban", "custom_roast", "golden_fart"}:
+                                cm.execute_shop_action_instantly(chat_id, user["id"], buyer_name, item_id, extra_data)
+
+                        threading.Thread(target=_announce_and_trigger, daemon=True).start()
                     except Exception as act_err:
-                        print(f"Failed to trigger instant shop action: {act_err}", flush=True)
+                        print(f"Failed to trigger shop announcement: {act_err}", flush=True)
             elif route in {"/api/archetypes/custom", "/api/archetypes"}:
                 u_id = data.get("user_id") or user["id"]
                 u_name = data.get("user_name") or user.get("first_name", "")

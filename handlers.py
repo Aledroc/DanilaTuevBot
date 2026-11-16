@@ -1069,9 +1069,15 @@ def shop_buy_cmd(message):
     if not res.get("success"):
         bot.reply_to(message, f"❌ {res.get('message', 'Ошибка покупки')}")
     else:
-        bot.reply_to(
-            message,
-            f"✅ {res.get('message')}\n🪙 Оставшийся баланс: <b>{res.get('balance', 0)}</b> монет.",
+        # Сервисное объявление в группу о покупке
+        u_name = user.first_name or "Игрок"
+        target_info = f" для <b>{html.escape(target_name)}</b>" if target_name else ""
+        item_disp = res.get("item_name") or item_id
+        price_disp = res.get("price") or ""
+        price_str = f" (-{price_disp} 🪙)" if price_disp else ""
+        bot.send_message(
+            cid,
+            f"🛒 <b>{html.escape(u_name)}</b> приобрёл в магазине: <b>{html.escape(item_disp)}</b>{price_str}{target_info}!",
             parse_mode='HTML'
         )
         # Если куплен golden_fart, сразу выдаем смачную реплику
