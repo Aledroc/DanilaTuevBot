@@ -137,7 +137,93 @@ h2 {
 }
 
 /* Navigation Tabs - Deep Dark Gym Chrome */
+.tabs-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.tabs-wrapper::before,
+.tabs-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 32px;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.25s ease;
+  opacity: 0;
+  border-radius: 12px;
+}
+
+.tabs-wrapper::before {
+  left: 1px;
+  background: linear-gradient(90deg, rgba(8, 12, 24, 0.98) 0%, rgba(8, 12, 24, 0) 100%);
+}
+
+.tabs-wrapper::after {
+  right: 1px;
+  background: linear-gradient(270deg, rgba(8, 12, 24, 0.98) 0%, rgba(8, 12, 24, 0) 100%);
+}
+
+.tabs-wrapper.can-scroll-left::before {
+  opacity: 1;
+}
+
+.tabs-wrapper.can-scroll-right::after {
+  opacity: 1;
+}
+
+.tabs-scroll-btn {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(10, 15, 29, 0.95);
+  color: var(--neon-blue);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+}
+
+.tabs-scroll-btn:hover {
+  background: rgba(30, 58, 138, 0.8);
+  box-shadow: 0 0 18px var(--neon-blue-glow);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.tabs-scroll-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.tabs-scroll-prev {
+  left: -12px;
+}
+
+.tabs-scroll-next {
+  right: -12px;
+}
+
+@media (min-width: 480px) {
+  .tabs-scroll-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 .tabs {
+  width: 100%;
   padding: 6px;
   background: rgba(8, 12, 24, 0.9);
   border: 1px solid rgba(56, 189, 248, 0.3);
@@ -145,10 +231,11 @@ h2 {
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.5);
   display: flex;
   overflow-x: auto;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   gap: 6px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .tabs::-webkit-scrollbar {
@@ -170,6 +257,14 @@ h2 {
   background: transparent;
   border: 1px solid transparent;
   transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tab .tab-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .tab:hover:not(:disabled) {
@@ -1605,3 +1700,74 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 }
 
 
+
+
+/* Bottom Navigation Bar for Mobile - Gachi Chrome Style */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(8, 12, 24, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  max-width: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #94a3b8;
+  font-family: Impact, "Arial Narrow", sans-serif;
+  letter-spacing: 0.03em;
+  transition: all 0.18s ease;
+}
+
+.bottom-nav-item .bnav-icon {
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.bottom-nav-item .bnav-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.bottom-nav-item:hover {
+  color: #f0f6fc;
+}
+
+.bottom-nav-item.active {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+.bottom-nav-item.active .bnav-icon {
+  transform: translateY(-3px) scale(1.15);
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}
