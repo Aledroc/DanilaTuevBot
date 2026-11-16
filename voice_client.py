@@ -25,7 +25,7 @@ from config import (
 OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech"
 OPENROUTER_VOICE_MODEL = "fish-audio/s2.1-pro-free:free"
 _last_tts_call = 0.0
-_TTS_MIN_INTERVAL = 3.0
+_TTS_MIN_INTERVAL = 0.5
 
 
 def transcribe_audio(data: bytes, filename: str, mime: str, timeout: int = 60) -> str | None:
@@ -173,9 +173,9 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                 "references": [ref_item],
                 "temperature": 0.65,
                 "top_p": 0.8,
-                "latency": "normal",
+                "latency": "balanced",
                 "normalize": True,
-                "chunk_length": 250,
+                "chunk_length": 200,
             }
             if reference_id:
                 payload["reference_id"] = reference_id

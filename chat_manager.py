@@ -788,6 +788,10 @@ def _maybe_send_voice(cid, plain: str, reply_to=None) -> bool:
         return False
     ref = voice_refs[cid]
     try:
+        try:
+            bot.send_chat_action(cid, 'record_voice')
+        except Exception:
+            pass
         audio = synthesize_speech(text, ref.get('audio_b64'), ref.get('mime', 'audio/ogg'),
                                   ref.get('transcript'))
         if audio:
