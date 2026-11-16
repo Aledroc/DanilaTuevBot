@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import json
+from decimal import Decimal
 import mimetypes
 import os
 import re
@@ -140,12 +141,18 @@ def validate_init_data(init_data: str, fallback_query_user: dict | None = None) 
     return user
 
 
+def _json_default(obj):
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "InventoryMiniApp/1.0"
 
     def _send(self, status: int, payload, content_type="application/json; charset=utf-8"):
         body = payload if isinstance(payload, bytes) else (
-            json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            json.dumps(payload, ensure_ascii=False, default=_json_default).encode("utf-8")
             if content_type.startswith("application/json") else str(payload).encode("utf-8")
         )
         self.send_response(status)
