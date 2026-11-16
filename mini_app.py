@@ -527,7 +527,7 @@ class Handler(BaseHTTPRequestHandler):
                     except Exception as sync_err:
                         print(f"Mini App archetype sync warning for chat {target_chat_id}: {sync_err}", flush=True)
                 result["sync"] = sync_info
-            elif route == "/api/game/submit_score":
+            elif route in {"/api/game/submit_score", "/api/game/score"}:
                 game_name = data.get("game_name") or data.get("game") or data.get("game_id") or "timberjack"
                 score = int(data.get("score", 0))
                 user_name = data.get("user_name") or user.get("first_name") or f"Игрок {user['id']}"

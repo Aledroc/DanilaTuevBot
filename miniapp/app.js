@@ -1238,6 +1238,7 @@
       }
 
       list.innerHTML = leaders.map((item, index) => {
+        const rank = item.rank || (index + 1);
         const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
         const bonusPrize = rank === 1 ? " • 👑 +500 🪙" : rank === 2 ? " • 🥈 +250 🪙" : rank === 3 ? " • 🥉 +100 🪙" : "";
         const scoreVal = item.total_score != null ? item.total_score : (item.points != null ? item.points : (item.score != null ? item.score : 0));
