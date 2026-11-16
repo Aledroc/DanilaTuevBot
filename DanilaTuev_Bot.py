@@ -437,11 +437,17 @@ def handle_text(message):
     container_loss_target = inventory_store.resolve_container_loss_target(
         cid, message.from_user.id if message.from_user else 0, text
     )
-    # Explicit inventory actions should be handled even when addressed to another user.
+    # Проверяем, есть ли для автора сообщения или цели купленный розыгрыш/подкол
+    pending_prank = inventory_store.get_pending_prank(cid, target_user_id=requester_id) if requester_id else None
+    pending_roast = inventory_store.get_pending_roast(cid, target_user_id=requester_id) if requester_id else None
+    has_pending_interaction = bool(pending_prank or pending_roast)
+
+    # Explicit inventory actions and paid shop pranks should be handled even when addressed to another user.
     addressed = bool(
         is_private or is_reply or is_mention or called or take_intent
         or (give_intent and give_intent.get("explicit"))
         or container_loss_target
+        or has_pending_interaction
     )
 
     if not addressed:
