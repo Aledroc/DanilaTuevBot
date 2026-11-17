@@ -1,10 +1,13 @@
 import re
+import json
 import base64
 import os
 import time
 import random
 import html
 import urllib.parse
+import urllib.request
+import requests
 import logging
 
 import config
@@ -192,25 +195,15 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
 
 
 def _build_final_image_prompt(user_prompt: str) -> str:
-    """Точный перевод и подготовка промпта для FLUX с поддержкой сленга и образа Данилы."""
+    """Точный перевод и подготовка промпта для FLUX с поддержкой сленга и каноничного образа Данилы."""
     import urllib.parse
     import urllib.request
 
-    slang = {
-        'альтушк': 'cute gothic anime e-girl with dyed split hair and eyeliner',
-        'альтух': 'cute gothic anime e-girl with dyed split hair and eyeliner',
-        'скуф': 'middle-aged chubby balding man with beer',
-        'масик': 'caring sweet handsome boyfriend',
-        'тюбик': 'skinny trendy indie boy',
-        'чечик': 'regular casual guy'
-    }
+    danila_desc = "handsome young man with wavy chestnut hair and subtle stubble"
+    danila_mentioned = bool(re.search(r'(?i)\b(данил[а-я]*|туев[а-я]*|данечк[а-я]*|даньк[а-я]*|даня)\b', user_prompt))
 
-    # 1. Заменяем сленг до перевода
-    p = user_prompt.lower()
-    for k, v in slang.items():
-        p = re.sub(rf'\b\w*{k}\w*\b', v, p)
-
-    # 2. Прямой и надежный перевод через Google Translate API (без рассуждений и галлюцинаций моделей)
+    # 1. Прямой перевод исходного текста через Google Translate API
+    p = user_prompt.strip()
     translated = ""
     try:
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={urllib.parse.quote(p)}"
@@ -224,20 +217,53 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     if not translated:
         translated = p
 
-    # 3. Детализируем внешность Данилы для генератора
+    # 2. Обработка интернет-сленга (в переведенном и транслитерированном виде)
+    slang_map = {
+        'altushka': 'cute gothic anime e-girl with dyed split hair and eyeliner',
+        'skuf': 'middle-aged chubby balding man with beer',
+        'masik': 'caring sweet handsome boyfriend',
+        'tyubik': 'skinny trendy indie boy',
+        'chechik': 'regular casual guy'
+    }
+    for k, v in slang_map.items():
+        translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
+
+    # Запасная замена русских корней сленга, если переводчик оставил их
+    rus_slang = {
+        'альтушк': 'cute gothic anime e-girl with dyed split hair and eyeliner',
+        'альтух': 'cute gothic anime e-girl with dyed split hair and eyeliner',
+        'скуф': 'middle-aged chubby balding man with beer',
+        'масик': 'caring sweet handsome boyfriend',
+        'тюбик': 'skinny trendy indie boy',
+        'чечик': 'regular casual guy'
+    }
+    for k, v in rus_slang.items():
+        translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
+
+    # 3. Детализируем внешность Данилы для генератора изображений
     translated = re.sub(
-        r'\b(Danila|Danil|Daniil|Tuev|DanilaTuev)\b',
-        'handsome young man with wavy chestnut hair and subtle stubble',
-        translated,
-        flags=re.IGNORECASE
+        r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev)\b',
+        danila_desc,
+        translated
     )
 
-    # 4. Защита от ошибочных животных
-    if 'pig' in translated.lower() or 'swine' in translated.lower():
-        translated = re.sub(r'\b(pig|piggy|swine)\b', 'girl', translated, flags=re.IGNORECASE)
+    # Если в русском запросе явно был Данила, но описание не появилось
+    if danila_mentioned and 'handsome young man' not in translated.lower():
+        translated = f"{danila_desc}, {translated}"
 
-    # 5. Теги студийного качества
-    return f"{translated}, masterpiece, cinematic lighting, sharp focus, 8k resolution, highly detailed"
+    # 4. Улучшение формулировок для курения сигареты (динамичный глагол smoking вместо smokes)
+    translated = re.sub(r'(?i)\bsmokes\s+a\s+cigarette\b', 'smoking a cigarette', translated)
+    translated = re.sub(r'(?i)\bsmokes\b', 'smoking', translated)
+
+    # Удаляем возможное дублирование описания
+    translated = re.sub(rf'({re.escape(danila_desc)}[,\s]*)+', f'{danila_desc}, ', translated).strip(' ,')
+
+    # 5. Защита от ошибочной подстановки животных
+    if 'pig' in translated.lower() or 'swine' in translated.lower():
+        translated = re.sub(r'(?i)\b(pig|piggy|swine)\b', 'girl', translated)
+
+    # 6. Теги студийного качества и портрета
+    return f"{translated}, highly detailed portrait, masterpiece, cinematic lighting, sharp focus, 8k resolution"
 
 
 @bot.message_handler(commands=['img'])

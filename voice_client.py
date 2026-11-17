@@ -1,5 +1,6 @@
 import base64
 import logging
+import re
 import subprocess
 import tempfile
 import time
@@ -105,6 +106,57 @@ def transcribe_audio(data: bytes, filename: str, mime: str, timeout: int = 60) -
         return None
 
 
+_CHUNK_MAX_CHARS = 450
+
+
+def split_text_into_chunks(text: str, max_chars: int = _CHUNK_MAX_CHARS) -> list[str]:
+    """
+    Разбивает длинный текст на логические предложения / части (не более max_chars),
+    чтобы TTS не обрезал реплику, не тайм-аутился и выдавал стабильную интонацию.
+    """
+    text = (text or "").strip()
+    if not text:
+        return []
+    if len(text) <= max_chars:
+        return [text]
+
+    # Делим по границам предложений (. ! ? … \n)
+    sentences = re.split(r'(?<=[.!?…\n])\s+', text)
+    chunks = []
+    current_chunk = ""
+
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        if len(current_chunk) + len(s) + 1 <= max_chars:
+            current_chunk = f"{current_chunk} {s}".strip() if current_chunk else s
+        else:
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = ""
+            if len(s) <= max_chars:
+                current_chunk = s
+            else:
+                # Если отдельное предложение длиннее лимита, делим по словам
+                words = s.split(" ")
+                sub_chunk = ""
+                for w in words:
+                    if len(sub_chunk) + len(w) + 1 <= max_chars:
+                        sub_chunk = f"{sub_chunk} {w}".strip() if sub_chunk else w
+                    else:
+                        if sub_chunk:
+                            chunks.append(sub_chunk)
+                        sub_chunk = w
+                if sub_chunk:
+                    current_chunk = sub_chunk
+
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+
+
 def _throttle_tts():
     global _last_tts_call
     wait = _TTS_MIN_INTERVAL - (time.time() - _last_tts_call)
@@ -185,6 +237,7 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                 FISH_AUDIO_TTS_URL,
                 headers=headers,
                 data=packed_body,
+                stream=True,
                 timeout=timeout,
             )
         else:
@@ -201,18 +254,24 @@ def _fish_audio_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                 FISH_AUDIO_TTS_URL,
                 headers=headers,
                 json=payload,
+                stream=True,
                 timeout=timeout,
             )
 
-        if response.status_code == 200 and response.content:
-            data = response.content
+        chunks = []
+        for chunk in response.iter_content(chunk_size=16384):
+            if chunk:
+                chunks.append(chunk)
+        data = b"".join(chunks)
+
+        if response.status_code == 200 and data:
             logging.info("Fish Audio TTS returned %d bytes", len(data))
             if data.startswith(b"OggS"):
                 return data
             converted = _convert_audio_to_ogg(data, timeout=timeout)
             return converted or data
 
-        logging.error("Fish Audio TTS failed: HTTP %s %s", response.status_code, response.text[:300])
+        logging.error("Fish Audio TTS failed: HTTP %s %s", response.status_code, data[:300].decode("utf-8", errors="replace"))
         return None
     except Exception:
         logging.exception("Fish Audio TTS request failed")
@@ -272,20 +331,75 @@ def _openrouter_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
         return None
 
 
+def _clean_speech_text(text: str) -> str:
+    """Очищает текст от markdown, ссылок и тегов для стабильного синтеза TTS."""
+    if not text:
+        return ""
+    # Убираем HTML
+    text = re.sub(r"(?is)<.*?>", "", text)
+    # Убираем блоки кода и инлайн код
+    text = re.sub(r"```[\s\S]*?```", "", text)
+    text = re.sub(r"`[^`]*`", "", text)
+    # Убираем действия в звёздочках (*вздыхает*) и тильдах (~зевает~)
+    text = re.sub(r"\*[^*]*\*", " ", text)
+    text = re.sub(r"~[^~]*~", " ", text)
+    # Убираем ссылки markdown [текст](url) -> текст
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    # Убираем прямые URL ссылки
+    text = re.sub(r"https?://\S+", "", text)
+    # Убираем символы заголовков, цитат и маркеров списков в начале строк
+    text = re.sub(r"(?m)^[\s*#>\-]+", "", text)
+    # Очищаем спецсимволы markdown разметки, оставляя обычную пунктуацию
+    text = re.sub(r"[_*~`#><|]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                       ref_transcript: str | None = None, reference_id: str | None = None,
                       timeout: int = 60) -> bytes | None:
     """
     Озвучивает текст голосом.
-    Приоритет:
-    1. Прямой вызов Fish Audio API (https://api.fish.audio/v1/tts) с поддержкой образца голоса и fallback.
-    2. Fallback на OpenRouter TTS при наличии настроенного OPENROUTER_API_KEY.
+    Если текст длинный, разбивает его на смысловые предложения/куски (до ~450 символов),
+    озвучивает каждый кусок и склеивает аудиопоток.
     """
-    text = (text or "").strip()
+    text = _clean_speech_text(text)
     if not text:
-        logging.error("TTS unavailable: empty text")
+        logging.error("TTS unavailable: empty text after cleaning")
         return None
 
+    chunks = split_text_into_chunks(text, max_chars=_CHUNK_MAX_CHARS)
+    if not chunks:
+        return None
+
+    audio_parts = []
+    for idx, chunk in enumerate(chunks):
+        audio_chunk = _synthesize_single_chunk(
+            text=chunk,
+            ref_b64=ref_b64,
+            ref_mime=ref_mime,
+            ref_transcript=ref_transcript,
+            reference_id=reference_id,
+            timeout=timeout,
+        )
+        if not audio_chunk:
+            logging.warning("TTS failed on chunk %d/%d: '%s'", idx + 1, len(chunks), chunk[:40])
+            # Если хотя бы часть уже синтезирована, не теряем всё, но логируем предупреждение
+            continue
+        audio_parts.append(audio_chunk)
+
+    if not audio_parts:
+        logging.error("TTS failed across all chunks and configured providers")
+        return None
+
+    if len(audio_parts) == 1:
+        return audio_parts[0]
+
+    return b"".join(audio_parts)
+
+
+def _synthesize_single_chunk(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
+                             ref_transcript: str | None = None, reference_id: str | None = None,
+                             timeout: int = 60) -> bytes | None:
     # 1. Пробуем прямой вызов Fish Audio
     if FISH_AUDIO_API_KEY:
         audio = _fish_audio_tts(
@@ -311,10 +425,5 @@ def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
         )
         if audio:
             return audio
-
-    if not FISH_AUDIO_API_KEY and not OPENROUTER_API_KEY:
-        logging.error("TTS unavailable: neither FISH_AUDIO_API_KEY nor OPENROUTER_API_KEY is configured")
-    else:
-        logging.error("TTS failed across all configured providers")
 
     return None
