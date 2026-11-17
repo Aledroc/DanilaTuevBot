@@ -144,19 +144,20 @@ def _generate_image(prompt_en: str) -> bytes | None:
 
 
 def _swap_danila_face(target_img_bytes: bytes) -> bytes:
-    """Заменяет лицо на сгенерированном арте на лицо Данилы с ультра-четким HD восстановлением (GPEN-512)."""
+    """Заменяет лицо на сгенерированном арте на лицо Данилы с ультра-четким HD восстановлением (GPEN-512).
+    Мыльный 128px сваппер полностью отключен, чтобы не портить качество арта."""
     face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
     if not os.path.exists(face_path):
         return target_img_bytes
 
-    # 1. Приоритетный путь: ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, резкость глаз и пор кожи)
+    # ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, четкие поры, ресницы, глаза и волосы)
     try:
         reactor_url = 'https://v0pr0s-comfyui-reactor-fast-face-swap-cpu.hf.space'
         with open(face_path, 'rb') as f:
             src_bytes = f.read()
 
-        r_src = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('face.jpg', src_bytes, 'image/jpeg')}, timeout=20)
-        r_dst = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')}, timeout=20)
+        r_src = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('face.jpg', src_bytes, 'image/jpeg')}, timeout=25)
+        r_dst = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')}, timeout=25)
         if r_src.status_code == 200 and r_dst.status_code == 200:
             src_path = r_src.json()[0]
             dst_path = r_dst.json()[0]
@@ -168,14 +169,14 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                     0,                      # Target face index
                     'hyperswap_1b_256.onnx',# 256px Face Swap
                     'GPEN-BFR-512.onnx',    # 512px Face Restore
-                    0.8                     # Restore strength
+                    0.85                    # Restore strength
                 ]
             }
-            res = requests.post(f'{reactor_url}/gradio_api/call/generate_image', json=payload, timeout=20)
+            res = requests.post(f'{reactor_url}/gradio_api/call/generate_image', json=payload, timeout=25)
             if res.status_code == 200:
                 eid = res.json().get('event_id')
                 if eid:
-                    stream_res = requests.get(f'{reactor_url}/gradio_api/call/generate_image/{eid}', stream=True, timeout=60)
+                    stream_res = requests.get(f'{reactor_url}/gradio_api/call/generate_image/{eid}', stream=True, timeout=90)
                     for line in stream_res.iter_lines():
                         if line:
                             dec = line.decode('utf-8', errors='ignore')
@@ -184,55 +185,15 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                                 if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
                                     out_url = data[0].get('url')
                                     if out_url:
-                                        img_res = requests.get(out_url, timeout=25)
+                                        img_res = requests.get(out_url, timeout=30)
                                         if img_res.status_code == 200 and len(img_res.content) > 5000:
+                                            logging.info("[_swap_danila_face] HD GPEN-512 Swap successful!")
                                             return img_res.content
                                 break
     except Exception as e:
-        logging.warning(f"[_swap_danila_face] HD ReActor failed: {e}")
+        logging.error(f"[_swap_danila_face] HD ReActor failed: {e}")
 
-    # 2. Запасной фолбэк: TonyAssi Face Swap
-    try:
-        with open(face_path, 'rb') as f:
-            src_b64 = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode()
-
-        dst_b64 = 'data:image/jpeg;base64,' + base64.b64encode(target_img_bytes).decode()
-        headers = {'Content-Type': 'application/json'}
-        hf_token = getattr(config, 'HUGGINGFACE_TOKEN', None)
-        if hf_token:
-            headers['Authorization'] = f'Bearer {hf_token}'
-
-        payload = {'data': [{'url': src_b64}, {'url': dst_b64}]}
-        post_res = requests.post(
-            'https://tonyassi-face-swap.hf.space/gradio_api/call/swap_faces',
-            json=payload,
-            headers=headers,
-            timeout=25,
-        )
-        if post_res.status_code == 200:
-            event_id = post_res.json().get('event_id')
-            if event_id:
-                stream_res = requests.get(
-                    f'https://tonyassi-face-swap.hf.space/gradio_api/call/swap_faces/{event_id}',
-                    headers=headers,
-                    stream=True,
-                    timeout=30,
-                )
-                for line in stream_res.iter_lines():
-                    if line:
-                        decoded = line.decode('utf-8', errors='ignore')
-                        if decoded.startswith('data:'):
-                            data = json.loads(decoded[5:].strip())
-                            if isinstance(data, list) and len(data) > 0:
-                                out_url = data[0].get('url') if isinstance(data[0], dict) else None
-                                if out_url:
-                                    img_res = requests.get(out_url, headers=headers, timeout=20)
-                                    if img_res.status_code == 200 and len(img_res.content) > 5000:
-                                        return img_res.content
-                            break
-    except Exception as e:
-        logging.warning(f"[_swap_danila_face] Fallback face swap failed: {e}")
-
+    # Если HD сервис недоступен, возвращаем оригинальный качественный арт FLUX без ухудшения
     return target_img_bytes
 
 
