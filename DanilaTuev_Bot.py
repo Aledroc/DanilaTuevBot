@@ -7,6 +7,7 @@ import html
 import urllib.parse
 import logging
 
+import config
 from config import (
     bot, BOT_ID, BOT_USERNAME, HISTORY_LIMIT,
     chat_states, chat_histories, TELEGRAM_TOKEN
@@ -26,7 +27,9 @@ import mini_app
 # какая версия файлов реально запущена (полезно, когда правки заливаются по одному файлу).
 BOT_BUILD = "2026-11-13-proactive"
 
-_IMAGE_MODEL_CHAIN = ("seedream5", "zimage", "nanobanana", "flux")
+_HF_SPACES = (
+    "black-forest-labs/FLUX.1-schnell",
+)
 
 
 def _track_incoming_message_activity(message):
@@ -59,20 +62,46 @@ bot.set_update_listener(lambda messages: [_track_incoming_message_activity(m) fo
 
 
 def _generate_image(prompt_en: str) -> bytes | None:
+    """Генерирует изображение через Hugging Face Space (FLUX.1-schnell) с авторизацией по токену."""
+    hf_token = getattr(config, 'HUGGINGFACE_TOKEN', '') or os.getenv('HUGGINGFACE_TOKEN', '')
+
+    # 1. Основной путь — бесплатный выделенный Space с FLUX.1
+    for space_name in _HF_SPACES:
+        try:
+            from gradio_client import Client
+            client_kwargs = {}
+            if hf_token:
+                client_kwargs['headers'] = {'Authorization': f'Bearer {hf_token}'}
+
+            client = Client(space_name, **client_kwargs)
+            result = client.predict(
+                prompt=prompt_en,
+                seed=random.randint(1, 1_000_000),
+                randomize_seed=True,
+                width=1024,
+                height=1024,
+                num_inference_steps=4,
+                api_name='/infer',
+            )
+            if result and len(result) > 0 and result[0]:
+                with open(result[0], 'rb') as f:
+                    return f.read()
+        except Exception as e:
+            logging.warning(f"[_generate_image] Space {space_name} failed: {e}")
+            continue
+
+    # 2. Резервный фолбэк при перегрузке Space
     encoded = urllib.parse.quote(prompt_en)
     seed = random.randint(1, 1_000_000)
-    import requests
-    for model in _IMAGE_MODEL_CHAIN:
-        try:
-            url = (
-                f"https://image.pollinations.ai/prompt/{encoded}"
-                f"?seed={seed}&nologo=true&model={model}&width=1024&height=1024&enhance=true"
-            )
-            res = requests.get(url, timeout=90)
-            if res.status_code == 200 and len(res.content) > 5000:
-                return res.content
-        except Exception:
-            continue
+    try:
+        import requests
+        url = f"https://pollinations.ai/p/{encoded}?width=1024&height=1024&seed={seed}"
+        res = requests.get(url, timeout=40)
+        if res.status_code == 200 and len(res.content) > 5000:
+            return res.content
+    except Exception as e:
+        logging.warning(f"[_generate_image] Fallback failed: {e}")
+
     return None
 
 
