@@ -249,7 +249,7 @@ def generate_image_cmd(message):
         return
     user_prompt = args[1].strip()
     bot.send_chat_action(cid, 'upload_photo')
-    bot.reply_to(message, "<i>*прищурился, достал холст и начал что-то кропотливо вырисовывать...*</i>", parse_mode='HTML')
+    status_msg = bot.reply_to(message, "<i>*прищурился, достал холст и начал что-то кропотливо вырисовывать...*</i>", parse_mode='HTML')
     en_prompt = _build_final_image_prompt(user_prompt)
     image_data = _generate_image(en_prompt)
     if image_data:
@@ -259,8 +259,20 @@ def generate_image_cmd(message):
         if should_swap:
             image_data = _swap_danila_face(image_data)
 
+        # Удаляем временное статусное сообщение перед отправкой готовой картины
+        if status_msg:
+            try:
+                bot.delete_message(cid, status_msg.message_id)
+            except Exception:
+                pass
+
         bot.send_photo(cid, image_data, caption=f"🎨 <b>Твоя идея:</b> {html.escape(user_prompt)}", parse_mode='HTML')
     else:
+        if status_msg:
+            try:
+                bot.delete_message(cid, status_msg.message_id)
+            except Exception:
+                pass
         bot.send_message(cid, "<i>*в сердцах порвал холст*</i> Тьфу, краска кончилась! Ошибка генерации.", parse_mode='HTML')
 
 
