@@ -30,6 +30,9 @@ else:
 TELEGRAM_TOKEN = '8849496078:AAHCpL3iUdTGDKOdAIwaVMon8nYOaV3qnxU'
 XKIRO_API_KEY = 'sk-xt-a44f6abc9a75ecc9cca657e926a3c841f906ea1012f9a7ec'
 
+# Pollinations API Key for watermark-free FLUX image generation
+POLLINATIONS_API_KEY = os.getenv('POLLINATIONS_API_KEY', 'sk_TnYiKcF2ro95qGL42TqQNOZLKQsRLDVI').strip()
+
 # Hugging Face Access Token for image generation via Spaces
 _HF_PARTS = ("hf_pwUwRzQyPseoBZDh", "MjvlyfSqchjZDaMtwk")
 HUGGINGFACE_TOKEN = os.getenv('HUGGINGFACE_TOKEN', "".join(_HF_PARTS)).strip()

@@ -62,21 +62,35 @@ bot.set_update_listener(lambda messages: [_track_incoming_message_activity(m) fo
 
 
 def _generate_image(prompt_en: str) -> bytes | None:
-    """Генерирует изображение через Hugging Face Space (FLUX.1-schnell)."""
+    """Генерирует изображение через авторизованный FLUX API без ватермарок."""
     import json
     import requests
 
+    polli_key = getattr(config, 'POLLINATIONS_API_KEY', '') or os.getenv('POLLINATIONS_API_KEY', '')
     hf_token = getattr(config, 'HUGGINGFACE_TOKEN', '') or os.getenv('HUGGINGFACE_TOKEN', '')
+    encoded = urllib.parse.quote(prompt_en)
+    seed = random.randint(1, 1_000_000)
+
+    # 1. Приоритетный путь: авторизованный Pollinations API (FLUX 1024x1024 без ватермарки, моментальный ответ)
+    if polli_key:
+        try:
+            url = f"https://gen.pollinations.ai/image/{encoded}?model=flux&width=1024&height=1024&seed={seed}&nologo=true&key={polli_key}"
+            res = requests.get(url, timeout=35)
+            if res.status_code == 200 and len(res.content) > 5000:
+                return res.content
+        except Exception as e:
+            logging.warning(f"[_generate_image] Auth Pollinations failed: {e}")
+
+    # 2. Попытка через Hugging Face Space (FLUX.1-schnell)
     headers = {'Content-Type': 'application/json'}
     if hf_token:
         headers['Authorization'] = f'Bearer {hf_token}'
 
-    # 1. Основной путь: прямой вызов Gradio REST API Space без сторонних библиотек
     try:
         payload = {
             'data': [
                 prompt_en,
-                random.randint(1, 1_000_000),
+                seed,
                 True,
                 1024,
                 1024,
@@ -114,31 +128,7 @@ def _generate_image(prompt_en: str) -> bytes | None:
     except Exception as e:
         logging.warning(f"[_generate_image] Space direct HTTP failed: {e}")
 
-    # 2. Попытка через gradio_client (если библиотека установлена)
-    try:
-        from gradio_client import Client
-        client_kwargs = {}
-        if hf_token:
-            client_kwargs['headers'] = {'Authorization': f'Bearer {hf_token}'}
-        client = Client('black-forest-labs/FLUX.1-schnell', **client_kwargs)
-        result = client.predict(
-            prompt=prompt_en,
-            seed=random.randint(1, 1_000_000),
-            randomize_seed=True,
-            width=1024,
-            height=1024,
-            num_inference_steps=4,
-            api_name='/infer',
-        )
-        if result and len(result) > 0 and result[0]:
-            with open(result[0], 'rb') as f:
-                return f.read()
-    except Exception as e:
-        logging.warning(f"[_generate_image] gradio_client failed: {e}")
-
-    # 3. Резервный фолбэк при недоступности Space (чистый FLUX без ватермарки)
-    encoded = urllib.parse.quote(prompt_en)
-    seed = random.randint(1, 1_000_000)
+    # 3. Резервный фолбэк при недоступности
     try:
         url = f"https://pollinations.ai/p/{encoded}?model=flux&nologo=true&width=1024&height=1024&seed={seed}"
         res = requests.get(url, timeout=30)
