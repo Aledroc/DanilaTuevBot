@@ -191,84 +191,53 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
     return target_img_bytes
 
 
-def _sanitize_image_prompt(raw_text: str, original_user_prompt: str) -> str:
-    """Очищает промпт от вводных слов, русских рассуждений нейросети и неверных трактовок сленга."""
-    if not raw_text:
-        raw_text = original_user_prompt or ""
+def _build_final_image_prompt(user_prompt: str) -> str:
+    """Точный перевод и подготовка промпта для FLUX с поддержкой сленга и образа Данилы."""
+    import urllib.parse
+    import urllib.request
 
-    # Словарь популярных русских интернет-мемов и сленга для надежного преобразования
-    slang_map = {
-        'альтушк': 'cute alternative gothic anime girl with dyed split-color hair and eyeliner',
-        'альтух': 'cute alternative gothic anime girl with dyed split-color hair',
-        'данил': 'handsome young stylish man',
-        'скуф': 'middle aged chubby balding man relaxing with beer',
+    slang = {
+        'альтушк': 'cute gothic anime e-girl with dyed split hair and eyeliner',
+        'альтух': 'cute gothic anime e-girl with dyed split hair and eyeliner',
+        'скуф': 'middle-aged chubby balding man with beer',
         'масик': 'caring sweet handsome boyfriend',
         'тюбик': 'skinny trendy indie boy',
-        'чечик': 'regular casual guy',
+        'чечик': 'regular casual guy'
     }
 
-    # Если в ответе нейросети есть вводные русские фразы вроде "Вот несколько вариантов...",
-    # "Перевод:", "Вариант 1:", "Интерпретация:" — очищаем их
-    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
-    cleaned_english = []
-    
-    # Ищем английские строки или кавычки
-    for line in lines:
-        # Проверяем, есть ли в строке английский текст
-        # Удаляем нумерацию вроде "1. ", "* "
-        clean_line = re.sub(r'^\s*[\d\.\*\-\•]+\s*', '', line).strip()
-        # Если строка начинается с кавычек
-        quote_match = re.search(r'["\']([^"\']{10,})["\']', clean_line)
-        if quote_match:
-            candidate = quote_match.group(1).strip()
-            # Проверяем, в основном ли на английском
-            if re.search(r'[a-zA-Z]', candidate) and not re.search(r'[а-яА-ЯёЁ]', candidate):
-                cleaned_english.append(candidate)
-                break
-        # Если строка состоит в основном из латиницы
-        latin_letters = len(re.findall(r'[a-zA-Z]', clean_line))
-        cyrillic_letters = len(re.findall(r'[а-яА-ЯёЁ]', clean_line))
-        if latin_letters > 15 and cyrillic_letters == 0:
-            cleaned_english.append(clean_line)
-            break
+    # 1. Заменяем сленг до перевода
+    p = user_prompt.lower()
+    for k, v in slang.items():
+        p = re.sub(rf'\b\w*{k}\w*\b', v, p)
 
-    if cleaned_english:
-        final_prompt = cleaned_english[0]
-    else:
-        # Если нейросеть вернула чисто русский текст или рассуждения
-        # Делаем прямую замену сленга в исходном пользовательском запросе
-        fallback = original_user_prompt.lower()
-        for ru_key, en_val in slang_map.items():
-            fallback = re.sub(rf'\b\w*{ru_key}\w*\b', en_val, fallback, flags=re.IGNORECASE)
-        
-        # Переводим базовые глаголы если остались
-        ru_verbs = {
-            'ловит рыбу': 'is catching fish with a fishing rod by a lake',
-            'рыбачит': 'fishing by a scenic lake with a fishing rod',
-            'в виде': 'dressed as, looking like',
-            'играет': 'playing',
-            'сидит': 'sitting',
-            'пьет': 'drinking',
-        }
-        for ru_v, en_v in ru_verbs.items():
-            fallback = fallback.replace(ru_v, en_v)
-            
-        final_prompt = fallback
+    # 2. Прямой и надежный перевод через Google Translate API (без рассуждений и галлюцинаций моделей)
+    translated = ""
+    try:
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={urllib.parse.quote(p)}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            translated = ''.join([part[0] for part in data[0] if part[0]])
+    except Exception as e:
+        logging.warning(f"[_build_final_image_prompt] GT error: {e}")
 
-    # Дополнительно применяем сленг-маппинг, если в тексте промелькнуло слово altushka/altushki
-    for ru_key, en_val in slang_map.items():
-        if ru_key in final_prompt.lower():
-            final_prompt = re.sub(rf'\b\w*{ru_key}\w*\b', en_val, final_prompt, flags=re.IGNORECASE)
+    if not translated:
+        translated = p
 
-    # Защита от неправильного понимания "альтушки" как "altushka" или животных/свиней
-    if 'pig' in final_prompt.lower() or 'swine' in final_prompt.lower():
-        final_prompt = re.sub(r'\b(pig|piggy|swine)\b', 'girl', final_prompt, flags=re.IGNORECASE)
+    # 3. Детализируем внешность Данилы для генератора
+    translated = re.sub(
+        r'\b(Danila|Danil|Daniil|Tuev|DanilaTuev)\b',
+        'handsome young man with wavy chestnut hair and subtle stubble',
+        translated,
+        flags=re.IGNORECASE
+    )
 
-    # Обязательные теги качества
-    if 'masterpiece' not in final_prompt.lower():
-        final_prompt = f"{final_prompt}, vibrant colors, masterpiece, cinematic lighting, highly detailed, 8k resolution"
+    # 4. Защита от ошибочных животных
+    if 'pig' in translated.lower() or 'swine' in translated.lower():
+        translated = re.sub(r'\b(pig|piggy|swine)\b', 'girl', translated, flags=re.IGNORECASE)
 
-    return final_prompt.strip()
+    # 5. Теги студийного качества
+    return f"{translated}, masterpiece, cinematic lighting, sharp focus, 8k resolution, highly detailed"
 
 
 @bot.message_handler(commands=['img'])
@@ -281,22 +250,12 @@ def generate_image_cmd(message):
     user_prompt = args[1].strip()
     bot.send_chat_action(cid, 'upload_photo')
     bot.reply_to(message, "<i>*прищурился, достал холст и начал что-то кропотливо вырисовывать...*</i>", parse_mode='HTML')
-    raw_en = get_ai_response(
-        "You are an expert image prompt translator for FLUX. "
-        "Task: translate the user description into a single aesthetic English prompt. "
-        "CRITICAL: "
-        "- Output ONLY the English prompt. "
-        "- NEVER output Russian text, explanations, or multiple choices. "
-        "- 'альтушка' = 'cute alternative gothic anime girl with dyed hair'. "
-        "- 'Данила' = 'handsome young man'.",
-        [{"role": "user", "content": user_prompt}],
-        max_tokens=100,
-    )
-    en_prompt = _sanitize_image_prompt(raw_en, user_prompt)
+    en_prompt = _build_final_image_prompt(user_prompt)
     image_data = _generate_image(en_prompt)
     if image_data:
-        # Если в запросе упоминается Данила, парень, я, бот или автопортрет — применяем Face Swap
-        should_swap = any(w in user_prompt.lower() for w in ['данил', 'даня', 'туев', 'парн', 'себя', 'автопортрет', 'лицо', 'я ', 'мне']) or ('man' in en_prompt.lower() or 'guy' in en_prompt.lower())
+        # Если в запросе упоминается Данила, парень, лицо, я, автопортрет — всегда применяем Face Swap
+        keywords = ['данил', 'даня', 'туев', 'парн', 'себя', 'автопортрет', 'лицо', 'я ', 'мне', 'человек', 'мужчин']
+        should_swap = any(w in user_prompt.lower() for w in keywords) or ('man' in en_prompt.lower() or 'guy' in en_prompt.lower())
         if should_swap:
             image_data = _swap_danila_face(image_data)
 
