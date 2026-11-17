@@ -237,14 +237,10 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
 
 
 def _build_final_image_prompt(user_prompt: str) -> str:
-    """Точный перевод и подготовка промпта для FLUX с поддержкой сленга и каноничного образа Данилы."""
+    """Точный перевод запроса пользователя для генератора изображений без навязанных шаблонов."""
     import urllib.parse
     import urllib.request
 
-    danila_desc = "22-year-old Slavic handsome young man, medium wavy tousled chestnut-brown hair framing forehead, piercing blue-grey eyes, slight stubble on jawline"
-    danila_mentioned = bool(re.search(r'(?i)\b(данил[а-я]*|туев[а-я]*|данечк[а-я]*|даньк[а-я]*|даня)\b', user_prompt))
-
-    # 1. Прямой перевод исходного текста через Google Translate API (через requests с надёжными таймаутами)
     p = user_prompt.strip()
     translated = ""
     try:
@@ -259,7 +255,7 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     if not translated:
         translated = p
 
-    # 2. Обработка интернет-сленга (в переведенном и транслитерированном виде)
+    # Обработка сленга (если встретится)
     slang_map = {
         'altushka': 'cute gothic anime e-girl with dyed split hair and eyeliner',
         'skuf': 'middle-aged chubby balding man with beer',
@@ -270,7 +266,6 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     for k, v in slang_map.items():
         translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
 
-    # Запасная замена русских корней сленга, если переводчик оставил их
     rus_slang = {
         'альтушк': 'cute gothic anime e-girl with dyed split hair and eyeliner',
         'альтух': 'cute gothic anime e-girl with dyed split hair and eyeliner',
@@ -282,36 +277,14 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     for k, v in rus_slang.items():
         translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
 
-    # 3. Детализируем внешность Данилы для генератора изображений
+    # Заменяем имена Данилы просто на 'young man', чтобы нейросеть не фантазировала
     translated = re.sub(
-        r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev)\b',
-        danila_desc,
+        r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev|Данила|Даня|Туев)\b',
+        'young man',
         translated
     )
 
-    # Если в русском запросе явно был Данила, но описание не появилось
-    if danila_mentioned and 'handsome young man' not in translated.lower():
-        translated = f"{danila_desc}, {translated}"
-
-    # 4. Улучшение формулировок для курения сигареты (динамичный глагол smoking вместо smokes)
-    translated = re.sub(r'(?i)\bsmokes\s+a\s+cigarette\b', 'smoking a cigarette', translated)
-    translated = re.sub(r'(?i)\bsmokes\b', 'smoking', translated)
-
-    # Удаляем возможное дублирование описания
-    translated = re.sub(rf'({re.escape(danila_desc)}[,\s]*)+', f'{danila_desc}, ', translated).strip(' ,')
-
-    # 5. Защита от ошибочной подстановки животных
-    if 'pig' in translated.lower() or 'swine' in translated.lower():
-        translated = re.sub(r'(?i)\b(pig|piggy|swine)\b', 'girl', translated)
-
-    # 6. Теги композиции: строгий общий/дальний план (wide-angle shot / full body view)
-    # Полностью предотвращает приближение камеры к лицу, показывая человека в полный рост или на общем плане.
-    return (
-        f"flawless authentic RAW wide-angle photograph, wide shot, full-length view showing full body in environment, "
-        f"{translated}, full figure standing or sitting at a distance, wide field of view, cinematic natural lighting, "
-        f"24mm wide lens street photography, clear environmental background, sharp focus, "
-        f"no close-up, no headshot, no cropped face, no zoomed-in face, no portrait framing"
-    )
+    return translated.strip()
 
 
 # Кэш последних обработанных сообщений для защиты от двойной отправки в Telegram
