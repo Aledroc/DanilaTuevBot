@@ -62,41 +62,86 @@ bot.set_update_listener(lambda messages: [_track_incoming_message_activity(m) fo
 
 
 def _generate_image(prompt_en: str) -> bytes | None:
-    """Генерирует изображение через Hugging Face Space (FLUX.1-schnell) с авторизацией по токену."""
+    """Генерирует изображение через Hugging Face Space (FLUX.1-schnell)."""
+    import json
+    import requests
+
     hf_token = getattr(config, 'HUGGINGFACE_TOKEN', '') or os.getenv('HUGGINGFACE_TOKEN', '')
+    headers = {'Content-Type': 'application/json'}
+    if hf_token:
+        headers['Authorization'] = f'Bearer {hf_token}'
 
-    # 1. Основной путь — бесплатный выделенный Space с FLUX.1
-    for space_name in _HF_SPACES:
-        try:
-            from gradio_client import Client
-            client_kwargs = {}
-            if hf_token:
-                client_kwargs['headers'] = {'Authorization': f'Bearer {hf_token}'}
+    # 1. Основной путь: прямой вызов Gradio REST API Space без сторонних библиотек
+    try:
+        payload = {
+            'data': [
+                prompt_en,
+                random.randint(1, 1_000_000),
+                True,
+                1024,
+                1024,
+                4,
+            ]
+        }
+        res_post = requests.post(
+            'https://black-forest-labs-flux-1-schnell.hf.space/gradio_api/call/infer',
+            json=payload,
+            headers=headers,
+            timeout=25,
+        )
+        if res_post.status_code == 200:
+            event_id = res_post.json().get('event_id')
+            if event_id:
+                res_stream = requests.get(
+                    f'https://black-forest-labs-flux-1-schnell.hf.space/gradio_api/call/infer/{event_id}',
+                    headers=headers,
+                    stream=True,
+                    timeout=45,
+                )
+                for line in res_stream.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8', errors='ignore')
+                        if decoded.startswith('data:'):
+                            data_block = json.loads(decoded[5:].strip())
+                            if data_block and isinstance(data_block, list) and len(data_block) > 0:
+                                item = data_block[0]
+                                img_url = item.get('url') if isinstance(item, dict) else None
+                                if img_url:
+                                    img_res = requests.get(img_url, headers=headers, timeout=20)
+                                    if img_res.status_code == 200 and len(img_res.content) > 5000:
+                                        return img_res.content
+                            break
+    except Exception as e:
+        logging.warning(f"[_generate_image] Space direct HTTP failed: {e}")
 
-            client = Client(space_name, **client_kwargs)
-            result = client.predict(
-                prompt=prompt_en,
-                seed=random.randint(1, 1_000_000),
-                randomize_seed=True,
-                width=1024,
-                height=1024,
-                num_inference_steps=4,
-                api_name='/infer',
-            )
-            if result and len(result) > 0 and result[0]:
-                with open(result[0], 'rb') as f:
-                    return f.read()
-        except Exception as e:
-            logging.warning(f"[_generate_image] Space {space_name} failed: {e}")
-            continue
+    # 2. Попытка через gradio_client (если библиотека установлена)
+    try:
+        from gradio_client import Client
+        client_kwargs = {}
+        if hf_token:
+            client_kwargs['headers'] = {'Authorization': f'Bearer {hf_token}'}
+        client = Client('black-forest-labs/FLUX.1-schnell', **client_kwargs)
+        result = client.predict(
+            prompt=prompt_en,
+            seed=random.randint(1, 1_000_000),
+            randomize_seed=True,
+            width=1024,
+            height=1024,
+            num_inference_steps=4,
+            api_name='/infer',
+        )
+        if result and len(result) > 0 and result[0]:
+            with open(result[0], 'rb') as f:
+                return f.read()
+    except Exception as e:
+        logging.warning(f"[_generate_image] gradio_client failed: {e}")
 
-    # 2. Резервный фолбэк при перегрузке Space
+    # 3. Резервный фолбэк при недоступности Space
     encoded = urllib.parse.quote(prompt_en)
     seed = random.randint(1, 1_000_000)
     try:
-        import requests
         url = f"https://pollinations.ai/p/{encoded}?width=1024&height=1024&seed={seed}"
-        res = requests.get(url, timeout=40)
+        res = requests.get(url, timeout=30)
         if res.status_code == 200 and len(res.content) > 5000:
             return res.content
     except Exception as e:

@@ -360,6 +360,19 @@ def list_group_chats(user_id: int) -> list[dict]:
     ]
 
 
+def get_all_group_chat_ids() -> list[int]:
+    """Returns all unique group chat IDs recorded in chat_members."""
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT chat_id FROM chat_members WHERE chat_id < 0"
+            ).fetchall()
+        return [int(r[0]) for r in rows if r and r[0] is not None]
+    except Exception as e:
+        logger.warning(f"[get_all_group_chat_ids] failed: {e}")
+        return []
+
+
 def get_last_group_chat(user_id: int) -> dict | None:
     """Most recently used group chat of this player, for Mini App drafts."""
     chats = list_group_chats(user_id)
