@@ -311,22 +311,8 @@ def init_chat_state(chat_id: int):
     if chat_id in chat_states and chat_states[chat_id].get('date') == today:
         return
     old_state = chat_states.get(chat_id)
-    if old_state and old_state.get('date') and old_state.get('date') != today:
-        old_name = old_state.get('full_name', 'Персонаж')
-        old_desc = old_state.get('desc', '')
-        old_date = old_state.get('date')
-        if not inventory_store.has_daily_recap(chat_id, old_date):
-            try:
-                recap_text = generate_daily_recap(chat_id, old_name, old_desc)
-                if recap_text:
-                    inventory_store.save_daily_recap(chat_id, old_name, recap_text, recap_date=old_date)
-                    bot.send_message(
-                        chat_id,
-                        f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
-                        parse_mode='HTML',
-                    )
-            except Exception:
-                logging.exception("init_chat_state: не удалось отправить итог дня в чат %s", chat_id)
+    # Итоги дня рассылаются строго по расписанию в 00:00 через midnight_reset.
+    # В init_chat_state генерацию и отправку итогов не вызываем во избежание спама при перезапусках бота или дневных сбросах.
 
     custom_prompts.pop(chat_id, None)
     chat_histories[chat_id] = []
@@ -459,24 +445,6 @@ def generate_daily_recap(cid: int, old_name: str, old_desc: str = "") -> str:
 
 def sync_archetype_to_chat(chat_id: int, archetype_title: str, desc: str) -> dict:
     """Мгновенно переключает архетип в указанном чате и отправляет анонс."""
-    old_state = chat_states.get(chat_id)
-    old_name = old_state.get('full_name') if old_state else None
-    old_desc = old_state.get('desc', '') if old_state else ''
-
-    # Если меняется активный персонаж, генерируем и отправляем итог дня/смены
-    if old_name:
-        try:
-            recap_text = generate_daily_recap(chat_id, old_name, old_desc)
-            if recap_text:
-                inventory_store.save_daily_recap(chat_id, old_name, recap_text)
-                bot.send_message(
-                    chat_id,
-                    f"📜 <b>Итог смены от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
-                    parse_mode='HTML',
-                )
-        except Exception:
-            pass
-
     reset_chat_state(chat_id, desc)
     state = chat_states[chat_id]
     new_name = state.get('full_name', '???')
@@ -621,7 +589,9 @@ def midnight_reset() -> None:
         )
         sleep_secs = (next_midnight - now).total_seconds()
         logging.info("midnight_reset: до 00:00 по МСК осталось %.1f сек (сон до %s)", sleep_secs, next_midnight.isoformat())
-        time.sleep(max(sleep_secs, 1))
+        # Спим до наступления полуночи плюс небольшой буфер (2 секунды),
+        # чтобы проснуться гарантированно в 00:00:01-00:00:02 следующего дня, а не за долю секунды до полуночи
+        time.sleep(max(sleep_secs, 0) + 2)
 
         # Наступила полночь 00:00 по МСК!
         # Подводим итог за только что завершившийся вчерашний день
