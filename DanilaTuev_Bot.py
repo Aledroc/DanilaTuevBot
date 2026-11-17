@@ -144,11 +144,54 @@ def _generate_image(prompt_en: str) -> bytes | None:
 
 
 def _swap_danila_face(target_img_bytes: bytes) -> bytes:
-    """Заменяет лицо на сгенерированном арте на реальное лицо Данилы (danila_face.jpg)."""
+    """Заменяет лицо на сгенерированном арте на лицо Данилы с ультра-четким HD восстановлением (GPEN-512)."""
     face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
     if not os.path.exists(face_path):
         return target_img_bytes
 
+    # 1. Приоритетный путь: ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, резкость глаз и пор кожи)
+    try:
+        reactor_url = 'https://v0pr0s-comfyui-reactor-fast-face-swap-cpu.hf.space'
+        with open(face_path, 'rb') as f:
+            src_bytes = f.read()
+
+        r_src = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('face.jpg', src_bytes, 'image/jpeg')}, timeout=20)
+        r_dst = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')}, timeout=20)
+        if r_src.status_code == 200 and r_dst.status_code == 200:
+            src_path = r_src.json()[0]
+            dst_path = r_dst.json()[0]
+
+            payload = {
+                'data': [
+                    {'path': src_path},
+                    {'path': dst_path},
+                    0,                      # Target face index
+                    'hyperswap_1b_256.onnx',# 256px Face Swap
+                    'GPEN-BFR-512.onnx',    # 512px Face Restore
+                    0.8                     # Restore strength
+                ]
+            }
+            res = requests.post(f'{reactor_url}/gradio_api/call/generate_image', json=payload, timeout=20)
+            if res.status_code == 200:
+                eid = res.json().get('event_id')
+                if eid:
+                    stream_res = requests.get(f'{reactor_url}/gradio_api/call/generate_image/{eid}', stream=True, timeout=60)
+                    for line in stream_res.iter_lines():
+                        if line:
+                            dec = line.decode('utf-8', errors='ignore')
+                            if dec.startswith('data:'):
+                                data = json.loads(dec[5:].strip())
+                                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                                    out_url = data[0].get('url')
+                                    if out_url:
+                                        img_res = requests.get(out_url, timeout=25)
+                                        if img_res.status_code == 200 and len(img_res.content) > 5000:
+                                            return img_res.content
+                                break
+    except Exception as e:
+        logging.warning(f"[_swap_danila_face] HD ReActor failed: {e}")
+
+    # 2. Запасной фолбэк: TonyAssi Face Swap
     try:
         with open(face_path, 'rb') as f:
             src_b64 = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode()
@@ -188,7 +231,7 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                                         return img_res.content
                             break
     except Exception as e:
-        logging.warning(f"[_swap_danila_face] Face swap failed: {e}")
+        logging.warning(f"[_swap_danila_face] Fallback face swap failed: {e}")
 
     return target_img_bytes
 
@@ -271,8 +314,20 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     )
 
 
+# Кэш последних обработанных сообщений для защиты от двойной отправки в Telegram
+_processed_img_messages = set()
+
 @bot.message_handler(commands=['img'])
 def generate_image_cmd(message):
+    cid = message.chat.id
+    mid = message.message_id
+
+    # Защита от дублей: если это сообщение уже обрабатывается или обработано, игнорируем
+    if mid in _processed_img_messages:
+        return
+    _processed_img_messages.add(mid)
+    if len(_processed_img_messages) > 1000:
+        _processed_img_messages.clear()
     args = message.text.split(maxsplit=1)
     cid = message.chat.id
     if len(args) < 2:
