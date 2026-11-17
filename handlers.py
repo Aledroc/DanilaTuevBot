@@ -1031,10 +1031,11 @@ def shop_catalog_cmd(message):
         )
     lines.append("💡 Для покупки титула: <code>/buy custom_title Ваш Титул</code>")
     lines.append("💡 Для смены настроения: <code>/buy mood_override Вайб</code>")
+    lines.append("💡 Для сплетни / секрета: <code>/buy bot_whisper Текст секрета</code> (или просто <code>/buy bot_whisper</code>)")
     lines.append("💡 Для подкола: ответьте <code>/buy custom_roast</code> на сообщение друга (или укажите ник)")
     lines.append("💡 Для комплимента: ответьте <code>/buy compliment_bomb</code> на сообщение друга")
     lines.append("💡 Для фейкового бана: ответьте <code>/buy fake_ban Причина</code> на сообщение друга")
-    lines.append("💡 Для гачи-выхлопа: <code>/buy golden_fart</code> | Дискотека: <code>/buy dungeon_party</code> | Тишина: <code>/buy silent_muter</code>")
+    lines.append("💡 Для гачи-выхлопа: <code>/buy golden_fart</code> | Дискотека: <code>/buy dungeon_party</code> | Тишина: <code>/buy silent_muter</code> | Паранойя: <code>/buy paranoia_mode</code> | Иммунитет: <code>/buy dungeon_immunity</code>")
     bot.reply_to(message, "\n".join(lines), parse_mode='HTML')
 
 
@@ -1060,6 +1061,8 @@ def shop_buy_cmd(message):
         extra_data = {"mood": extra_arg}
     elif item_id == "shout_announcement":
         extra_data = {"text": extra_arg}
+    elif item_id in ("bot_whisper", "rumor", "gossip", "secret"):
+        extra_data = {"whisper_text": extra_arg}
     elif item_id in ("custom_roast", "compliment_bomb", "fake_ban", "slap_friend"):
         target_id = None
         target_name = ""
@@ -1106,19 +1109,17 @@ def shop_buy_cmd(message):
             f"🛒 <b>{html.escape(u_name)}</b> приобрёл в магазине: <b>{html.escape(item_disp)}</b>{price_str}{target_info}!",
             parse_mode='HTML'
         )
-        # Если куплен golden_fart, сразу выдаем смачную реплику
-        if item_id == "golden_fart":
-            import random
-            fart_phrases = [
-                "💨 *БР-Р-Р-БА-А-АХ!* 💥 В раздевалке задрожали шкафчики! Кто-то зарядил протеиновый выхлоп на все 500 лошадей!",
-                "💨 *Ф-Ф-Ф-ПУУУУК!* 🔊 Эхо разнеслось по всему подземелью! «Three hundred bucks за проветривание зала!»",
-                "💨 *БА-БАХ!* ⚡ Стены качалки содрогнулись! Это был легендарный Золотой Залп Boss of the Gym!",
-            ]
-            bot.send_message(cid, random.choice(fart_phrases))
-        elif item_id == "silent_muter":
-            bot.send_message(cid, "🤐 <b>Режим Тишины (15 минут) активирован!</b> Бот замолк и ушел на восстановительный перерыв в качалке (ответит только если позвать лично).", parse_mode='HTML')
-        elif item_id == "dungeon_party":
-            bot.send_message(cid, "🎉 <b>PARTY HARD В КАЧАЛКЕ НА 30 МИНУТ!</b> 🕺 Врубаем бас, достаем ремиксы! Let's celebrate and party!", parse_mode='HTML')
+        # Интерактивный мгновенный отыгрыш персонажа в чате
+        try:
+            import threading
+            import chat_manager as cm
+            threading.Thread(
+                target=cm.execute_shop_action_instantly,
+                args=(cid, user.id, u_name, item_id, extra_data),
+                daemon=True
+            ).start()
+        except Exception:
+            pass
 
 
 @bot.message_handler(commands=['cup', 'tournament'])

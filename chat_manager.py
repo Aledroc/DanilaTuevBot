@@ -307,30 +307,33 @@ def _build_state(desc: str) -> dict:
 
 
 def init_chat_state(chat_id: int):
-    today = date.today().isoformat()
+    today = datetime.now(_MSK).date().isoformat()
     if chat_id in chat_states and chat_states[chat_id].get('date') == today:
         return
     old_state = chat_states.get(chat_id)
     if old_state and old_state.get('date') and old_state.get('date') != today:
         old_name = old_state.get('full_name', 'Персонаж')
         old_desc = old_state.get('desc', '')
-        try:
-            recap_text = generate_daily_recap(chat_id, old_name, old_desc)
-            if recap_text:
-                inventory_store.save_daily_recap(chat_id, old_name, recap_text)
-                bot.send_message(
-                    chat_id,
-                    f"📜 <b>Итог дня от {html.escape(old_name)}:</b>\n{html.escape(recap_text)}",
-                    parse_mode='HTML',
-                )
-        except Exception:
-            logging.exception("init_chat_state: не удалось отправить итог дня в чат %s", chat_id)
+        old_date = old_state.get('date')
+        if not inventory_store.has_daily_recap(chat_id, old_date):
+            try:
+                recap_text = generate_daily_recap(chat_id, old_name, old_desc)
+                if recap_text:
+                    inventory_store.save_daily_recap(chat_id, old_name, recap_text, recap_date=old_date)
+                    bot.send_message(
+                        chat_id,
+                        f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
+                        parse_mode='HTML',
+                    )
+            except Exception:
+                logging.exception("init_chat_state: не удалось отправить итог дня в чат %s", chat_id)
 
     custom_prompts.pop(chat_id, None)
     chat_histories[chat_id] = []
     chat_goals.pop(chat_id, None)
     _, desc = _selected_chat_archetype(chat_id) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
     chat_states[chat_id] = _build_state(desc)
+    chat_states[chat_id]['date'] = today
     chat_goals[chat_id] = _generate_archetype_goal(chat_id, desc)
 
 
@@ -343,25 +346,115 @@ def reset_chat_state(chat_id: int, desc: str):
     chat_goals[chat_id] = _generate_archetype_goal(chat_id, desc)
 
 
-def generate_daily_recap(cid: int, old_name: str, old_desc: str = "") -> str:
-    """Генерирует через AI краткий остроумный итог дня (1-2 предложения) от уходящего персонажа."""
-    tail = _history_tail(cid, n=10, limit=1200)
-    prompt = (
-        f"Ты — {old_name}. Твой характер/роль: {old_desc or 'персонаж чата'}.\n"
-        f"Сегодня твой день в этом чате подошёл к концу. Вот последние сообщения из чата:\n{tail or '—'}\n\n"
-        "Напиши очень краткий, остроумный финал смены / итог дня от своего лица (строго 1-2 предложения): "
-        "чем запомнился этот день и кого из участников ты особенно отметил или за что поблагодарил/подколол. "
-        "Без приветствий, без лишних вступлений, строго по-русски, в своём характере."
-    )
+def _get_chat_day_context(cid: int) -> dict:
+    """Собирает живой контекст активности чата из БД и оперативной памяти для составления развернутого итога."""
+    chat_title = ""
+    active_members = []
+    notable_items = []
+    
     try:
-        recap = get_ai_response(prompt, max_tokens=150, filter_leak=False) or ""
-        recap = " ".join(recap.strip().split())
+        import inventory as inventory_store
+        with inventory_store._connect() as conn:
+            # 1. Название чата
+            t_row = conn.execute(
+                "SELECT title FROM chat_targets WHERE chat_id = ? AND title != '' LIMIT 1",
+                (int(cid),),
+            ).fetchone()
+            if t_row and t_row[0]:
+                chat_title = t_row[0]
+
+            # 2. Активные участники (из chat_members за сегодня или топ по chat_stats)
+            today_str = datetime.now(_MSK).date().isoformat()
+            m_rows = conn.execute(
+                "SELECT display_name FROM chat_members WHERE chat_id = ? AND (last_seen_date = ? OR last_reward_date = ?) LIMIT 10",
+                (int(cid), today_str, today_str),
+            ).fetchall()
+            if m_rows:
+                active_members = [r[0] for r in m_rows if r and r[0]]
+
+            if len(active_members) < 3:
+                # Добираем из chat_stats
+                stats_rows = conn.execute(
+                    "SELECT COALESCE(m.display_name, CAST(s.user_id AS CHAR)) "
+                    "FROM chat_stats s "
+                    "LEFT JOIN chat_members m ON m.chat_id = s.chat_id AND m.user_id = s.user_id "
+                    "WHERE s.chat_id = ? ORDER BY s.messages_count DESC LIMIT 5",
+                    (int(cid),),
+                ).fetchall()
+                for sr in stats_rows:
+                    if sr and sr[0] and sr[0] not in active_members:
+                        active_members.append(sr[0])
+
+            # 3. Предметы инвентаря участников чата
+            inv_rows = conn.execute(
+                "SELECT COALESCE(m.display_name, 'Участник'), i.item_name "
+                "FROM inventory i "
+                "LEFT JOIN chat_members m ON m.chat_id = i.chat_id AND m.user_id = i.user_id "
+                "WHERE i.chat_id = ? ORDER BY i.quantity DESC LIMIT 8",
+                (int(cid),),
+            ).fetchall()
+            for ir in inv_rows:
+                if ir and ir[1]:
+                    notable_items.append(f"{ir[0]}: {ir[1]}")
+    except Exception as exc:
+        logging.warning("_get_chat_day_context error for %s: %s", cid, exc)
+
+    return {
+        "title": chat_title or f"Чат {cid}",
+        "members": active_members,
+        "items": notable_items,
+    }
+
+
+def generate_daily_recap(cid: int, old_name: str, old_desc: str = "") -> str:
+    """Генерирует через AI подробный, смешной, колоритный общий анализ/итог дня от лица персонажа."""
+    tail = _history_tail(cid, n=15, limit=2000)
+    ctx = _get_chat_day_context(cid)
+    
+    context_lines = [f"- Название тусовки/чата: {ctx['title']}"]
+    if ctx["members"]:
+        context_lines.append(f"- Главные действующие лица дня: {', '.join(ctx['members'][:6])}")
+    if ctx["items"]:
+        context_lines.append(f"- Предметы и трофеи в качалке/чате: {', '.join(ctx['items'][:5])}")
+    if tail:
+        context_lines.append(f"- Последние события и реплики:\n{tail}")
+    else:
+        context_lines.append("- (Прямых свежих реплик в оперативной памяти мало, опирайся на участников и обстановку)")
+
+    context_str = "\n".join(context_lines)
+
+    prompt = (
+        f"Ты — {old_name}.\n"
+        f"Твой образ, профессия и характер: {old_desc or 'колоритный обитатель качалки'}.\n\n"
+        f"Наступила полночь по Москве (00:00). Твоя смена подошла к концу, ты уходишь на заслуженный отдых "
+        f"и оставляешь участникам чата ПОДРОБНЫЙ, СМЕШНОЙ, СОЧНЫЙ И УГАРНЫЙ ОБЩИЙ АНАЛИЗ / ИТОГ ДНЯ.\n\n"
+        f"Факты и контекст этого чата за день:\n{context_str}\n\n"
+        f"ТРЕБОВАНИЯ К АНАЛИЗУ:\n"
+        f"1. Напиши развёрнутый, сочный разбор полётов (2-4 живых абзаца, не 1 строчку!).\n"
+        f"2. Подробно пройдись по происходившему: как кипела жизнь в чате/качалке, кто отличился, кто таскал железо/предметы, кто филонил или нес чушь.\n"
+        f"3. Обязательно персонально упомяни ключевых участников ({', '.join(ctx['members'][:4]) if ctx['members'] else 'братанов'}), раздай им шуточные респекты или дружеские подколы в своем стиле.\n"
+        f"4. Сделай смешной философский вывод о жизни и оставь колоритное прощальное напутствие перед сдачей смены новому персонажу.\n"
+        f"5. Пиши строго от первого лица своего персонажа, с его манерой речи, сленгом и шутками. "
+        f"БЕЗ сухих канцеляризмов, БЕЗ технических слов ('бот', 'сервер', 'промпт'). Живой юмор и огонь!"
+    )
+
+    try:
+        recap = get_ai_response(prompt, max_tokens=700, filter_leak=False) or ""
+        recap = recap.strip()
         recap = re.sub(r"^\[.*?\]\s*", "", recap)
-        if len(recap) >= 10:
-            return recap[:350]
+        if len(recap) >= 40:
+            return recap
     except Exception as e:
         logging.warning("generate_daily_recap: ошибка генерации для чата %s: %s", cid, e)
-    return f"Смена окончена! Спасибо всем за этот насыщенный день, дальше будет только интереснее."
+
+    # Запасной колоритный итог, если нейросеть временно недоступна
+    members_shoutout = f"Особенно запомнились сегодня {', '.join(ctx['members'][:3])} — вы задали жару! " if ctx["members"] else ""
+    return (
+        f"Ну что, братва, стрелки на часах пробили полночь, а значит, моя смена подошла к концу! "
+        f"День в «{ctx['title']}» выдался поистине легендарным: пыль стояла столбом, железо гнулось, а страсти кипели ярче сварочного аппарата. "
+        f"{members_shoutout}Я ухожу на заслуженный покой перевести дух, а вам оставляю эту качалку в целости и сохранности. "
+        f"Не роняйте планку, берегите связки и готовьтесь — следующий персонаж уже топчется у входа!"
+    )
 
 
 def sync_archetype_to_chat(chat_id: int, archetype_title: str, desc: str) -> dict:
@@ -378,7 +471,7 @@ def sync_archetype_to_chat(chat_id: int, archetype_title: str, desc: str) -> dic
                 inventory_store.save_daily_recap(chat_id, old_name, recap_text)
                 bot.send_message(
                     chat_id,
-                    f"📜 <b>Итог смены от {html.escape(old_name)}:</b>\n{html.escape(recap_text)}",
+                    f"📜 <b>Итог смены от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
                     parse_mode='HTML',
                 )
         except Exception:
@@ -413,72 +506,146 @@ def sync_archetype_to_chat(chat_id: int, archetype_title: str, desc: str) -> dic
 
 
 # ---------------------------------------------------------------------------
-# P0-фикс 1: ежедневный сброс архетипа в 00:00 МСК
+# P0-фикс 1: ежедневный сброс архетипа и публикация итогов в 00:00 МСК
 # ---------------------------------------------------------------------------
 
+def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
+    """Выполняет отправку итога дня и смену персонажа для указанного чата.
+    
+    Гарантированно проверяет БД (daily_recaps): если за целевую дату итог
+    уже был отправлен, повторно не отправляет.
+    """
+    if not target_date:
+        target_date = datetime.now(_MSK).date().isoformat()
+
+    # 1. Проверяем, был ли уже отправлен итог за этот день в БД
+    if inventory_store.has_daily_recap(cid, target_date):
+        return False
+
+    try:
+        # Определяем уходящего персонажа
+        state = chat_states.get(cid)
+        if state and state.get('full_name'):
+            old_name = state.get('full_name')
+            old_desc = state.get('desc', '')
+        else:
+            # Если чат не был в памяти, подбираем активный/выбранный архетип
+            arch_info = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
+            old_title, old_desc = arch_info
+            old_name = ai_generate_name(old_desc)
+
+        # 2. Генерируем смешной, подробный и сочный итог дня
+        logging.info("Генерация подробного итога дня для чата %s (%s)...", cid, old_name)
+        recap_text = generate_daily_recap(cid, old_name, old_desc)
+        if recap_text:
+            inventory_store.save_daily_recap(cid, old_name, recap_text, recap_date=target_date)
+            try:
+                bot.send_message(
+                    cid,
+                    f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
+                    parse_mode='HTML',
+                )
+                logging.info("Итог дня успешно отправлен в чат %s!", cid)
+            except Exception as send_err:
+                logging.warning("Не удалось отправить сообщение с итогом дня в чат %s: %s", cid, send_err)
+
+        # 3. Переключаем на нового персонажа следующего дня
+        arch_next = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
+        _, next_desc = arch_next
+        new_state = _build_state(next_desc)
+        new_state['date'] = target_date
+        chat_states[cid] = new_state
+        chat_histories[cid] = []
+        chat_goals[cid] = _generate_archetype_goal(cid, next_desc)
+        custom_prompts.pop(cid, None)
+        _proactive_streak.pop(cid, None)
+
+        try:
+            bot.send_message(
+                cid,
+                f"🌅 Наступила полночь: в чат заходит <b>{html.escape(new_state['full_name'])}</b>.",
+                parse_mode='HTML',
+            )
+        except Exception:
+            pass  # чат мог стать недоступен
+        return True
+    except Exception as exc:
+        logging.exception("process_chat_daily_reset error for chat %s: %s", cid, exc)
+        return False
+
+
+def check_and_run_missed_daily_recaps() -> None:
+    """Проверяет при старте бота, не был ли пропущен итог за вчера/сегодня.
+    
+    Вызывается сразу при запуске DanilaTuev_Bot, не дожидаясь полуночи и сообщений от людей!
+    """
+    try:
+        msk_now = datetime.now(_MSK)
+        yesterday_str = (msk_now.date() - timedelta(days=1)).isoformat()
+        today_str = msk_now.date().isoformat()
+        
+        # Получаем все группы из базы данных
+        group_ids = inventory_store.get_all_group_chat_ids()
+        logging.info("check_and_run_missed_daily_recaps: найдено групп в БД: %s", group_ids)
+
+        for cid in group_ids:
+            # Если бот запустился утром, а за вчера итог не был отправлен (бот был выключен в 00:00)
+            if not inventory_store.has_daily_recap(cid, yesterday_str):
+                logging.info("Чат %s: итог за вчера (%s) не отправлен! Отправляем сейчас...", cid, yesterday_str)
+                process_chat_daily_reset(cid, target_date=yesterday_str)
+            # Инициализируем текущий стейт на сегодня, если ещё нет в памяти
+            if cid not in chat_states:
+                init_chat_state(cid)
+    except Exception as exc:
+        logging.exception("check_and_run_missed_daily_recaps failure: %s", exc)
+
+
 def midnight_reset() -> None:
-    """Обновляет архетип во всех активных чатах и анонсирует нового персонажа.
+    """Обновляет архетип во всех активных чатах и гарантированно отправляет итог дня ровно в 00:00 МСК.
 
     Запускается в отдельном треде один раз при старте бота и крутится вечно.
-    Переходит в полночь по МСК (UTC+3), пересчитывая оставшееся время до 00:00.
+    Список чатов берется из базы данных (chat_members / chat_targets), поэтому итог отправляется
+    ДАЖЕ если бот был перезапущен днем и никто ещё не написал ни одного сообщения.
     """
+    # Сразу при старте проверяем, не пропущены ли итоги за вчера
+    try:
+        check_and_run_missed_daily_recaps()
+    except Exception:
+        pass
+
     while True:
         now = datetime.now(_MSK)
-        # Следующая полночь по МСК
+        # Следующая полночь по МСК (00:00:00)
         next_midnight = (now + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         sleep_secs = (next_midnight - now).total_seconds()
+        logging.info("midnight_reset: до 00:00 по МСК осталось %.1f сек (сон до %s)", sleep_secs, next_midnight.isoformat())
         time.sleep(max(sleep_secs, 1))
 
-        today = date.today().isoformat()
-        for cid in list(chat_states.keys()):
+        # Наступила полночь 00:00 по МСК!
+        # Подводим итог за только что завершившийся вчерашний день
+        now_msk = datetime.now(_MSK)
+        finished_date = (now_msk.date() - timedelta(days=1)).isoformat()
+        today_date = now_msk.date().isoformat()
+
+        # Берем все группы из БД + любые группы из оперативной памяти
+        db_groups = inventory_store.get_all_group_chat_ids()
+        memory_groups = [cid for cid in chat_states.keys() if cid < 0]
+        all_targets = sorted(list(set(db_groups + memory_groups)))
+        logging.info("midnight_reset: наступила полночь! Сброс и отправка итогов для чатов: %s (дата: %s)", all_targets, finished_date)
+
+        for cid in all_targets:
             try:
-                state = chat_states.get(cid)
-                if not state:
-                    continue
-                # Уже обновился сегодня (могло произойти при первом сообщении)
-                if state.get('date') == today:
-                    continue
-                old_name = state.get('full_name', '???')
-                old_desc = state.get('desc', '')
+                process_chat_daily_reset(cid, target_date=finished_date)
+                # Убеждаемся, что текущее состояние зафиксировано на сегодня
+                if cid in chat_states:
+                    chat_states[cid]['date'] = today_date
+            except Exception as cid_exc:
+                logging.exception("midnight_reset error for chat %s: %s", cid, cid_exc)
 
-                # 1. Генерируем краткий остроумный итог дня от уходящего персонажа
-                try:
-                    recap_text = generate_daily_recap(cid, old_name, old_desc)
-                    if recap_text:
-                        inventory_store.save_daily_recap(cid, old_name, recap_text)
-                        bot.send_message(
-                            cid,
-                            f"📜 <b>Итог дня от {html.escape(old_name)}:</b>\n{html.escape(recap_text)}",
-                            parse_mode='HTML',
-                        )
-                except Exception:
-                    logging.exception("midnight_reset: ошибка отправки итога дня для чата %s", cid)
-
-                # 2. Переключаем на нового персонажа
-                _, desc = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
-                new_state = _build_state(desc)
-                new_state['date'] = today
-                chat_states[cid] = new_state
-                chat_histories[cid] = []
-                chat_goals[cid] = _generate_archetype_goal(cid, desc)
-                custom_prompts.pop(cid, None)
-                _proactive_streak.pop(cid, None)
-                try:
-                    bot.send_message(
-                        cid,
-                        f"🌅 Наступила полночь: в чат заходит <b>{html.escape(new_state['full_name'])}</b>.",
-                        parse_mode='HTML',
-                    )
-                except Exception:
-                    pass  # чат мог стать недоступен — не падаем
-            except Exception:
-                logging.exception("midnight_reset: ошибка для чата %s", cid)
-
-        # Каждое воскресенье в полночь (или в ночь с воскресенья на понедельник)
-        # подводим итоги недели Кубка чата
-        if now.weekday() == 6:  # Воскресенье
+        # Каждое воскресенье в полночь подводим итоги недели Кубка чата
+        if now_msk.weekday() == 6:  # Воскресенье
             try:
                 announce_weekly_cup_winners()
             except Exception:
@@ -612,7 +779,7 @@ def _selected_chat_archetype(chat_id: int):
                 "SELECT p.selected_archetype FROM user_preferences p "
                 "JOIN chat_members m ON m.user_id = p.user_id "
                 "WHERE m.chat_id = ? AND p.selected_archetype != '' "
-                "ORDER BY m.rowid DESC LIMIT 1",
+                "ORDER BY m.last_seen_date DESC LIMIT 1",
                 (int(chat_id),),
             ).fetchone()
         if not row:
@@ -629,7 +796,7 @@ def _selected_chat_archetype(chat_id: int):
             return builtins[key]
         with inventory_store._connect() as conn:
             custom_row = conn.execute(
-                "SELECT title, desc, action FROM custom_archetypes WHERE key = ? LIMIT 1",
+                "SELECT title, `desc`, `action` FROM custom_archetypes WHERE `key` = ? LIMIT 1",
                 (key,),
             ).fetchone()
             if custom_row:
@@ -887,6 +1054,13 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     "Ты признаешь его своим безоговорочным Боссом. Обращайся к нему исключительно уважительно: "
                     "'Вы, мой Босс' или 'Мой Лорд', с ритуальным поклоном в реплике, выражая преданность и почтение."
                 )
+            if user_perks.get("immunity"):
+                imm_days = user_perks.get("immunity_days_left", 7)
+                system_prompt += (
+                    f"\n\n🛡️ СТАТУС НЕПРИКАСАЕМОГО (Иммунитет активен еще {imm_days} дн.): участник {inventory_prompt_owner_name or 'Игрок'} "
+                    "обладает полным иммунитетом от подколов и критики. Категорически запрещено насмехаться над ним или подкалывать его. "
+                    "Относись к нему доброжелательно, поддерживай и защищай в любых спорах в раздевалке!"
+                )
         except Exception:
             pass
 
@@ -939,6 +1113,13 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
                     system_prompt += (
                         "\n\n📢 МЕГАФОН / КРИК НА ВСЮ КАЧАЛКУ: персонаж берет огромный рупор/мегафон и во всю глотку "
                         f"орёт на весь чат официальное объявление: «{p_extra}»! Отыграй это максимально громко, эпично и со спецэффектами!"
+                    )
+                elif p_type in {"bot_whisper", "rumor", "gossip", "secret"}:
+                    secret_hint = f" Суть инсайда/слуха: «{p_extra}»." if p_extra else ""
+                    system_prompt += (
+                        "\n\n🕵️ АНОНИМНЫЙ СЛУХ / СПЛЕТНЯ КАЧАЛКИ: персонаж заговорщицким шепотом делится сочной, эксклюзивной "
+                        f"закулисной сплетней или секретом про обитателей качалки!{secret_hint} Ни в коем случае не выдавай автора "
+                        "покупки! Отыграй шепотом (*оглядывается по сторонам, понижает голос*), сочно, смешно и в своем неповторимом стиле!"
                     )
         except Exception:
             pass
@@ -1471,6 +1652,63 @@ def execute_shop_action_instantly(chat_id: int, buyer_id: int, buyer_name: str, 
             action_desc = (
                 f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ЗОЛОТОЙ ЗАЛП: Участник {buyer_name} активировал фирменный залп! "
                 "Выдай смачный, громогласный звуковой эффект со звонким хлопком и прокомментируй мощь раздевалки!"
+            )
+        elif item_id in {"bot_whisper", "rumor", "gossip", "secret"}:
+            whisper_text = str(extra_data.get("whisper_text") or extra_data.get("text") or extra_data.get("whisper") or extra_data.get("gossip") or extra_data.get("rumor") or "").strip()
+            if whisper_text:
+                hint_str = f" Вбрось именно эту сплетню / секрет: «{whisper_text}»."
+            else:
+                hint_str = " Расскажи угарную, сочную, эксклюзивную закулисную сплетню или секрет про обитателей качалки (кто филонит жим, кто прячет синтол, кто занял все гантели или что творится в душевой)!"
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — АНОНИМНАЯ СПЛЕТНЯ / СЕКРЕТ КАЧАЛКИ: "
+                "К тебе только что анонимно поступил горячий инсайд! Заговорщицким шепотом (*оглядывается по сторонам, прикладывает палец к губам*), "
+                f"выдай в чат этот сочный инсайд!{hint_str} Ни в коем случае НЕ выдавай, кто купил или передал сплетню! "
+                "Сделай это максимально смешно, характерно для своего архетипа и интригующе!"
+            )
+        elif item_id == "mood_override":
+            mood_val = str(extra_data.get("mood") or extra_data.get("vibe") or extra_data.get("text") or "").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — СМЕНА НАСТРОЕНИЯ / ВАЙБА: Участник {buyer_name} только что переключил атмосферу подземелья на: «{mood_val}»! "
+                "Мгновенно продемонстрируй этот новый вайб! Выдай яркую, колоритную реплику, всецело погружаясь в заданный настрой и стиль общения!"
+            )
+        elif item_id == "dungeon_party":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ВЕЧЕРИНКА В КАЧАЛКЕ (PARTY HARD): Участник {buyer_name} врубил дискотеку в качалке! "
+                "Врубай безумный драйв на полную катушку! Цитируй гачи-ремиксы, кричи 'Let's celebrate and suck some...', танцуй и зажги раздевалку бешеной энергией!"
+            )
+        elif item_id == "shout_announcement":
+            announcement = str(extra_data.get("text") or extra_data.get("announcement") or extra_data.get("extra_text") or "").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — МЕГАФОН / КРИК НА ВСЮ КАЧАЛКУ: Участник {buyer_name} передал объявление в рупор! "
+                f"Хватай огромный мегафон и во всю мощь лёгких прокричи на весь зал объявление: «{announcement}» со смачными звуковыми спецэффектами!"
+            )
+        elif item_id == "paranoia_mode":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — РЕЖИМ ПАРАНОЙИ И МАСОНОВ: Участник {buyer_name} активировал режим паранойи! "
+                "Тебя охватила подозрительность! Огляди чат диким взглядом, начни подозревать всех в слежке мирового правительства, масонов, "
+                "рептилоидов или прослушке шкафчиков раздевалки агентами ФБР!"
+            )
+        elif item_id == "vip_badge":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — КОРОНАЦИЯ НОВОГО BOSS OF THIS GYM (VIP): Участник {buyer_name} только что приобрёл элитный VIP-статус на неделю! "
+                f"Торжественно преклони колено перед {buyer_name}, признай его полноправным Владельцем зала и своим Боссом качалки! "
+                "Обратись на 'Вы, мой Босс' или 'Мой Лорд' с глубочайшим уважением и восхищением!"
+            )
+        elif item_id == "custom_title":
+            new_title = str(extra_data.get("title") or extra_data.get("title_text") or extra_data.get("text") or "").strip()
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ВРУЧЕНИЕ КОЖАНОГО ТИТУЛА: Участник {buyer_name} получил уникальный титул «{new_title}»! "
+                f"Торжественно провозгласи присвоение этого титула бойцу {buyer_name} перед всем залом!"
+            )
+        elif item_id == "dungeon_immunity":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — ВРУЧЕНИЕ ИММУНИТЕТА: Участник {buyer_name} получил статус Неприкасаемого Слейва! "
+                f"Торжественно объяви, что боец {buyer_name} теперь под защитой высших сил качалки на целую неделю, и никто не посмеет его подкалывать!"
+            )
+        elif item_id == "silent_muter":
+            action_desc = (
+                f"\n\n🚨 МГНОВЕННОЕ СОБЫТИЕ — РЕЖИМ ТИШИНЫ: Участник {buyer_name} надел кляп / активировал режим тишины на 15 минут. "
+                "Выдай короткое, приглушенное прощальное бурчание (*вставляет кляп, уходит в угол со штангой отдыхать*) и объяви, что уходишь на 15 минут в релакс."
             )
             
         system_prompt += action_desc

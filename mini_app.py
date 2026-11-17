@@ -597,9 +597,8 @@ class Handler(BaseHTTPRequestHandler):
                             except Exception:
                                 pass
 
-                            # 2. Если товар интерактивный, бот сразу отыгрывает реакцию в чате
-                            if item_id in {"compliment_bomb", "slap_friend", "fake_ban", "custom_roast", "golden_fart"}:
-                                cm.execute_shop_action_instantly(chat_id, user["id"], buyer_name, item_id, extra_data)
+                            # 2. Бот мгновенно и гарантированно отыгрывает соответствующее действие в группе
+                            cm.execute_shop_action_instantly(chat_id, user["id"], buyer_name, item_id, extra_data)
 
                         threading.Thread(target=_announce_and_trigger, daemon=True).start()
                     except Exception as act_err:

@@ -2060,9 +2060,15 @@ def record_game_score(game_name: str, user_id: int, user_name: str, chat_id: int
             # Рассчитываем награду: базовые 5 монет за участие + 1 монета за каждые 10 очков (макс 50 за игру)
             coins_earned = max(5, min(50, 5 + max(0, score) // 10))
             add_coins(user_id, coins_earned, reason=f"game:{game_key}")
-            # Турнирные очки: соответствуют счёту или эквиваленту монет
-            tournament_pts = max(10, min(500, max(0, score) if score > 0 else 10))
-            add_tournament_points(user_id, user_name, tournament_pts, chat_id=cid)
+            # Турнирные очки: сумма лучших рекордов по каждой мини-игре за текущую неделю
+            t_res = update_tournament_game_score(
+                user_id=user_id,
+                user_name=user_name,
+                game_id=game_key,
+                score=score,
+                chat_id=cid,
+            )
+            tournament_pts = t_res.get("best_score", score)
         except Exception:
             pass
 
@@ -2512,6 +2518,8 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
             is_vip = False
             vip_expires_at = 0
             has_roast = False
+            has_immunity = False
+            immunity_expires_at = 0
             titles = []
 
             for r in rows:
@@ -2523,6 +2531,10 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
                     is_vip = True
                     if exp > vip_expires_at:
                         vip_expires_at = exp
+                elif p_id == "dungeon_immunity":
+                    has_immunity = True
+                    if exp > immunity_expires_at:
+                        immunity_expires_at = exp
                 elif p_id == "custom_roast":
                     has_roast = True
                 elif p_id == "custom_title":
@@ -2554,23 +2566,56 @@ def get_user_perks(user_id: int, chat_id: int | None = None) -> dict:
             elif is_vip and vip_expires_at == 0:
                 vip_days_left = 7  # дефолт на случай бесконечного
 
+            immunity_days_left = 0
+            if has_immunity and immunity_expires_at > now:
+                import math
+                immunity_days_left = max(1, math.ceil((immunity_expires_at - now) / 86400))
+            elif has_immunity and immunity_expires_at == 0:
+                immunity_days_left = 7
+
             return {
                 "vip": is_vip,
                 "vip_expires_at": vip_expires_at,
                 "vip_days_left": vip_days_left,
+                "immunity": has_immunity,
+                "immunity_expires_at": immunity_expires_at,
+                "immunity_days_left": immunity_days_left,
                 "has_roast": has_roast,
                 "titles": titles,
                 "perks": perks_list,
             }
     except Exception:
-        return {"vip": False, "vip_expires_at": 0, "vip_days_left": 0, "has_roast": False, "titles": [], "perks": []}
+        return {"vip": False, "vip_expires_at": 0, "vip_days_left": 0, "immunity": False, "immunity_expires_at": 0, "immunity_days_left": 0, "has_roast": False, "titles": [], "perks": []}
 
 
 def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_data: dict | None = None) -> dict:
     """Обрабатывает покупку товара в магазине."""
-    item = next((i for i in SHOP_ITEMS if i["item_id"] == item_id), None)
+    # Нормализация синонимов товаров
+    shop_id_aliases = {
+        "gossip": "bot_whisper",
+        "rumor": "bot_whisper",
+        "secret": "bot_whisper",
+        "whisper": "bot_whisper",
+        "mood_change": "mood_override",
+        "party": "dungeon_party",
+        "mute": "silent_muter",
+        "roast": "custom_roast",
+        "roast_friend": "custom_roast",
+        "compliment": "compliment_bomb",
+        "slap": "slap_friend",
+        "fart": "golden_fart",
+        "shout": "shout_announcement",
+        "announcement": "shout_announcement",
+        "paranoia": "paranoia_mode",
+        "immunity": "dungeon_immunity",
+        "vip": "vip_badge",
+        "title": "custom_title",
+    }
+    normalized_item_id = shop_id_aliases.get(item_id, item_id)
+    item = next((i for i in SHOP_ITEMS if i["item_id"] == normalized_item_id or i["item_id"] == item_id), None)
     if not item:
         return {"success": False, "message": "Товар не найден"}
+    item_id = item["item_id"]
 
     price = item["price"]
     current_coins = get_user_coins(user_id)
@@ -2696,6 +2741,31 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
         if chat_id:
             order_pending_prank(chat_id, user_id, target_id, target_name or f"Игрок {target_id}", "fake_ban", ban_reason)
 
+    elif item_id in {"bot_whisper", "rumor", "gossip", "secret"}:
+        whisper_text = ""
+        if extra_data and isinstance(extra_data, dict):
+            whisper_text = str(extra_data.get("whisper_text") or extra_data.get("text") or extra_data.get("whisper") or extra_data.get("gossip") or extra_data.get("rumor") or "").strip()
+        extra_str = whisper_text[:250]
+        if chat_id:
+            order_pending_prank(chat_id, user_id, 0, "Все в чате", "bot_whisper", extra_str)
+
+    elif item_id == "paranoia_mode":
+        paranoia_mood = "Режим паранойи и масонов! Персонаж везде видит заговор рептилоидов, тайные знаки иллюминатов, шпионов в качалке и слежку мирового правительства через шкафчики!"
+        extra_str = paranoia_mood
+        expires_at = now + 3600  # 1 час
+        if chat_id:
+            set_chat_mood_override(chat_id, user_id, paranoia_mood, duration_seconds=3600)
+
+    elif item_id == "dungeon_immunity":
+        # Неприкасаемый Слейв: иммунитет на 7 дней
+        perks = get_user_perks(user_id)
+        current_exp = perks.get("immunity_expires_at") or 0
+        if current_exp > now:
+            expires_at = current_exp + 7 * 86400
+        else:
+            expires_at = now + 7 * 86400
+        extra_str = "dungeon_immunity"
+
     elif item_id == "custom_roast":
         target_id = 0
         target_name = ""
@@ -2717,9 +2787,9 @@ def buy_shop_item(user_id: int, item_id: str, chat_id: int | None = None, extra_
     if not spend_coins(user_id, price, reason=f"buy:{item_id}"):
         return {"success": False, "message": "Ошибка списания средств"}
 
-    # Записываем перк только для долгосрочных/постоянных перков (VIP, кастомные титулы и т.д.)
-    # Одноразовые события (комплимент, лещ, бан, залп, мегафон) не должны засорять активные перки
-    one_time_items = {"compliment_bomb", "slap_friend", "fake_ban", "golden_fart", "shout_announcement"}
+    # Записываем перк только для долгосрочных/постоянных перков (VIP, иммунитет, кастомные титулы и т.д.)
+    # Одноразовые события (комплимент, лещ, бан, залп, мегафон, сплетня/слух) не должны засорять активные перки
+    one_time_items = {"compliment_bomb", "slap_friend", "fake_ban", "golden_fart", "shout_announcement", "bot_whisper", "rumor", "gossip", "secret"}
     if item_id not in one_time_items:
         try:
             with _connect() as conn:
@@ -3062,6 +3132,174 @@ def get_current_tournament(chat_id: int | None = None) -> dict:
     return tournament_info
 
 
+def _ensure_tournament_tables(conn) -> None:
+    """Гарантирует существование турнирных таблиц."""
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tournament_game_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season_id TEXT NOT NULL,
+                chat_id INTEGER,
+                user_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                game_id TEXT NOT NULL,
+                best_score INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL,
+                UNIQUE(season_id, chat_id, user_id, game_id)
+            )
+            """
+        )
+    except Exception:
+        pass
+
+
+def _sync_user_total_tournament_score(conn, season_id: str, chat_id: int | None, user_id: int, user_name: str, now: int) -> int:
+    """Пересчитывает суммарный турнирный балл (SUM(best_score)) пользователя за сезон и обновляет tournament_scores."""
+    cid = int(chat_id) if chat_id else None
+    if cid is not None:
+        row = conn.execute(
+            """
+            SELECT CAST(COALESCE(SUM(best_score), 0) AS SIGNED)
+            FROM tournament_game_scores
+            WHERE season_id = ? AND chat_id = ? AND user_id = ?
+            """,
+            (season_id, cid, int(user_id)),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT CAST(COALESCE(SUM(best_score), 0) AS SIGNED)
+            FROM tournament_game_scores
+            WHERE season_id = ? AND chat_id IS NULL AND user_id = ?
+            """,
+            (season_id, int(user_id)),
+        ).fetchone()
+
+    total = int(row[0]) if row and row[0] is not None else 0
+
+    conn.execute(
+        """
+        INSERT INTO tournament_scores (season_id, chat_id, user_id, user_name, points, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(season_id, chat_id, user_id) DO UPDATE SET
+            points = excluded.points,
+            user_name = excluded.user_name,
+            updated_at = excluded.updated_at
+        """,
+        (season_id, cid, int(user_id), user_name, total, now),
+    )
+    return total
+
+
+def update_tournament_game_score(user_id: int, user_name: str, game_id: str, score: int, chat_id: int | None = None) -> dict:
+    """Обновляет личный рекорд мини-игры в текущем турнирном сезоне.
+
+    Очки турнира рассчитываются исключительно как сумма лучших результатов (MAX score)
+    по каждой мини-игре за неделю турнира. Если новый результат не превышает рекорд,
+    очки турнира не увеличиваются.
+    """
+    if not user_id:
+        return {"season_id": "", "best_score": 0, "total_points": 0}
+    season_id, _, _, _ = _get_current_season_meta()
+    now = int(time.time())
+    u_name = str(user_name or "").strip()[:64] or f"Игрок {user_id}"
+    cid = int(chat_id) if chat_id else None
+    g_id = str(game_id or "").strip()[:32]
+    score_val = max(0, int(score))
+
+    try:
+        with _connect() as conn:
+            _ensure_tournament_tables(conn)
+            get_current_tournament(chat_id)
+
+            if cid is not None:
+                cur_row = conn.execute(
+                    """
+                    SELECT best_score FROM tournament_game_scores
+                    WHERE season_id = ? AND chat_id = ? AND user_id = ? AND game_id = ?
+                    """,
+                    (season_id, cid, int(user_id), g_id),
+                ).fetchone()
+            else:
+                cur_row = conn.execute(
+                    """
+                    SELECT best_score FROM tournament_game_scores
+                    WHERE season_id = ? AND chat_id IS NULL AND user_id = ? AND game_id = ?
+                    """,
+                    (season_id, int(user_id), g_id),
+                ).fetchone()
+
+            prev_best = int(cur_row[0]) if cur_row and cur_row[0] is not None else 0
+            new_best = max(prev_best, score_val)
+
+            if cur_row is None:
+                conn.execute(
+                    """
+                    INSERT INTO tournament_game_scores (season_id, chat_id, user_id, user_name, game_id, best_score, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (season_id, cid, int(user_id), u_name, g_id, new_best, now),
+                )
+            else:
+                if score_val > prev_best:
+                    if cid is not None:
+                        conn.execute(
+                            """
+                            UPDATE tournament_game_scores
+                            SET best_score = ?, user_name = ?, updated_at = ?
+                            WHERE season_id = ? AND chat_id = ? AND user_id = ? AND game_id = ?
+                            """,
+                            (new_best, u_name, now, season_id, cid, int(user_id), g_id),
+                        )
+                    else:
+                        conn.execute(
+                            """
+                            UPDATE tournament_game_scores
+                            SET best_score = ?, user_name = ?, updated_at = ?
+                            WHERE season_id = ? AND chat_id IS NULL AND user_id = ? AND game_id = ?
+                            """,
+                            (new_best, u_name, now, season_id, int(user_id), g_id),
+                        )
+
+            total_pts = _sync_user_total_tournament_score(conn, season_id, cid, int(user_id), u_name, now)
+
+            return {
+                "season_id": season_id,
+                "user_id": user_id,
+                "game_id": g_id,
+                "score": score_val,
+                "best_score": new_best,
+                "is_new_tournament_record": score_val > prev_best or (prev_best == 0 and score_val > 0),
+                "total_points": total_pts,
+            }
+    except Exception as e:
+        return {"error": str(e), "best_score": score_val}
+
+
+def reset_user_tournament_scores(user_id: int, season_id: str | None = None) -> bool:
+    """Полностью обнуляет турнирные очки пользователя за текущий или указанный сезон."""
+    if not user_id:
+        return False
+    if not season_id:
+        season_id, _, _, _ = _get_current_season_meta()
+    uid = int(user_id)
+    try:
+        with _connect() as conn:
+            _ensure_tournament_tables(conn)
+            conn.execute(
+                "DELETE FROM tournament_game_scores WHERE season_id = ? AND user_id = ?",
+                (season_id, uid),
+            )
+            conn.execute(
+                "DELETE FROM tournament_scores WHERE season_id = ? AND user_id = ?",
+                (season_id, uid),
+            )
+        return True
+    except Exception:
+        return False
+
+
 def add_tournament_points(user_id: int, user_name: str, points: int, chat_id: int | None = None) -> dict:
     """Начисляет турнирные очки игроку в текущий сезон."""
     if not user_id or points <= 0:
@@ -3073,6 +3311,7 @@ def add_tournament_points(user_id: int, user_name: str, points: int, chat_id: in
 
     try:
         with _connect() as conn:
+            _ensure_tournament_tables(conn)
             # Гарантируем регистрацию сезона
             get_current_tournament(chat_id)
             conn.execute(
@@ -3086,10 +3325,16 @@ def add_tournament_points(user_id: int, user_name: str, points: int, chat_id: in
                 """,
                 (season_id, cid, int(user_id), u_name, int(points), now),
             )
-            row = conn.execute(
-                "SELECT points FROM tournament_scores WHERE season_id = ? AND user_id = ? AND (chat_id = ? OR (chat_id IS NULL AND ? IS NULL))",
-                (season_id, int(user_id), cid, cid),
-            ).fetchone()
+            if cid is not None:
+                row = conn.execute(
+                    "SELECT points FROM tournament_scores WHERE season_id = ? AND user_id = ? AND chat_id = ?",
+                    (season_id, int(user_id), cid),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT points FROM tournament_scores WHERE season_id = ? AND user_id = ? AND chat_id IS NULL",
+                    (season_id, int(user_id)),
+                ).fetchone()
             total = row[0] if row else points
             return {"season_id": season_id, "user_id": user_id, "total_points": total}
     except Exception as e:
@@ -3101,58 +3346,104 @@ def get_tournament_leaderboard(season_id: str | None = None, chat_id: int | None
     if not season_id:
         season_id, _, _, _ = _get_current_season_meta()
     limit = max(1, min(int(limit or 10), 50))
+    cid = int(chat_id) if chat_id else None
 
     try:
         with _connect() as conn:
-            if chat_id:
-                query = """
-                    SELECT user_id, user_name, SUM(points) as total_pts
-                    FROM tournament_scores
-                    WHERE season_id = ? AND (chat_id = ? OR chat_id IS NULL)
+            _ensure_tournament_tables(conn)
+            # 1. Сначала пробуем получить лидерборд из tournament_game_scores (сумма лучших рекордов по каждой мини-игре)
+            if cid is not None:
+                t_query = """
+                    SELECT user_id, user_name, CAST(SUM(best_score) AS SIGNED) as total_pts
+                    FROM (
+                        SELECT user_id, MAX(user_name) as user_name, game_id, MAX(best_score) as best_score
+                        FROM tournament_game_scores
+                        WHERE season_id = ? AND (chat_id = ? OR chat_id IS NULL)
+                        GROUP BY user_id, game_id
+                    ) t
                     GROUP BY user_id
                     ORDER BY total_pts DESC
                     LIMIT ?
                 """
-                rows = conn.execute(query, (season_id, int(chat_id), limit)).fetchall()
+                rows = conn.execute(t_query, (season_id, cid, limit)).fetchall()
             else:
-                query = """
-                    SELECT user_id, user_name, SUM(points) as total_pts
-                    FROM tournament_scores
-                    WHERE season_id = ?
+                t_query = """
+                    SELECT user_id, user_name, CAST(SUM(best_score) AS SIGNED) as total_pts
+                    FROM (
+                        SELECT user_id, MAX(user_name) as user_name, game_id, MAX(best_score) as best_score
+                        FROM tournament_game_scores
+                        WHERE season_id = ?
+                        GROUP BY user_id, game_id
+                    ) t
                     GROUP BY user_id
                     ORDER BY total_pts DESC
                     LIMIT ?
                 """
-                rows = conn.execute(query, (season_id, limit)).fetchall()
+                rows = conn.execute(t_query, (season_id, limit)).fetchall()
+
+            # 2. Если в tournament_game_scores пока нет записей (например, турнир только начался),
+            # проверяем таблицу tournament_scores
+            if not rows:
+                if cid is not None:
+                    query = """
+                        SELECT user_id, user_name, CAST(SUM(points) AS SIGNED) as total_pts
+                        FROM tournament_scores
+                        WHERE season_id = ? AND (chat_id = ? OR chat_id IS NULL)
+                        GROUP BY user_id
+                        ORDER BY total_pts DESC
+                        LIMIT ?
+                    """
+                    rows = conn.execute(query, (season_id, cid, limit)).fetchall()
+                else:
+                    query = """
+                        SELECT user_id, user_name, CAST(SUM(points) AS SIGNED) as total_pts
+                        FROM tournament_scores
+                        WHERE season_id = ?
+                        GROUP BY user_id
+                        ORDER BY total_pts DESC
+                        LIMIT ?
+                    """
+                    rows = conn.execute(query, (season_id, limit)).fetchall()
 
             result = []
             for idx, r in enumerate(rows):
+                pts = int(r[2]) if r[2] is not None else 0
+                if pts <= 0:
+                    continue
                 badge = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"#{idx+1}"))
                 result.append({
                     "rank": idx + 1,
                     "badge": badge,
                     "user_id": r[0],
                     "user_name": r[1] or f"Игрок {r[0]}",
-                    "points": r[2] or 0,
+                    "points": pts,
                 })
 
-            # Если в турнирной таблице текущей недели пока нет очков,
-            # делаем фолбэк на суммарный рейтинг игроков из game_scores (чтобы лидерборд никогда не пустовал)
+            # 3. Если в текущем турнире еще никто не набрал очков,
+            # делаем фолбэк на сумму лучших рекордов игроков из game_scores (чтобы лидерборд никогда не пустовал)
             if not result:
-                if chat_id:
+                if cid is not None:
                     fallback_query = """
-                        SELECT user_id, user_name, SUM(score) as total_pts
-                        FROM game_scores
-                        WHERE (chat_id = ? OR chat_id IS NULL)
+                        SELECT user_id, user_name, CAST(SUM(best_score) AS SIGNED) as total_pts
+                        FROM (
+                            SELECT user_id, MAX(user_name) as user_name, game_id, MAX(score) as best_score
+                            FROM game_scores
+                            WHERE (chat_id = ? OR chat_id IS NULL)
+                            GROUP BY user_id, game_id
+                        ) t
                         GROUP BY user_id
                         ORDER BY total_pts DESC
                         LIMIT ?
                     """
-                    fb_rows = conn.execute(fallback_query, (int(chat_id), limit)).fetchall()
+                    fb_rows = conn.execute(fallback_query, (cid, limit)).fetchall()
                 else:
                     fallback_query = """
-                        SELECT user_id, user_name, SUM(score) as total_pts
-                        FROM game_scores
+                        SELECT user_id, user_name, CAST(SUM(best_score) AS SIGNED) as total_pts
+                        FROM (
+                            SELECT user_id, MAX(user_name) as user_name, game_id, MAX(score) as best_score
+                            FROM game_scores
+                            GROUP BY user_id, game_id
+                        ) t
                         GROUP BY user_id
                         ORDER BY total_pts DESC
                         LIMIT ?
@@ -3160,13 +3451,16 @@ def get_tournament_leaderboard(season_id: str | None = None, chat_id: int | None
                     fb_rows = conn.execute(fallback_query, (limit,)).fetchall()
 
                 for idx, r in enumerate(fb_rows):
+                    pts = int(r[2]) if r[2] is not None else 0
+                    if pts <= 0:
+                        continue
                     badge = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"#{idx+1}"))
                     result.append({
                         "rank": idx + 1,
                         "badge": badge,
                         "user_id": r[0],
                         "user_name": r[1] or f"Игрок {r[0]}",
-                        "points": r[2] or 0,
+                        "points": pts,
                     })
 
             return result
