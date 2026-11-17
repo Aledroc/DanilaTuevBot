@@ -136,11 +136,11 @@ def _generate_image(prompt_en: str) -> bytes | None:
     except Exception as e:
         logging.warning(f"[_generate_image] gradio_client failed: {e}")
 
-    # 3. Резервный фолбэк при недоступности Space
+    # 3. Резервный фолбэк при недоступности Space (чистый FLUX без ватермарки)
     encoded = urllib.parse.quote(prompt_en)
     seed = random.randint(1, 1_000_000)
     try:
-        url = f"https://pollinations.ai/p/{encoded}?width=1024&height=1024&seed={seed}"
+        url = f"https://pollinations.ai/p/{encoded}?model=flux&nologo=true&width=1024&height=1024&seed={seed}"
         res = requests.get(url, timeout=30)
         if res.status_code == 200 and len(res.content) > 5000:
             return res.content
