@@ -140,6 +140,86 @@ def _generate_image(prompt_en: str) -> bytes | None:
     return None
 
 
+def _sanitize_image_prompt(raw_text: str, original_user_prompt: str) -> str:
+    """Очищает промпт от вводных слов, русских рассуждений нейросети и неверных трактовок сленга."""
+    if not raw_text:
+        raw_text = original_user_prompt or ""
+
+    # Словарь популярных русских интернет-мемов и сленга для надежного преобразования
+    slang_map = {
+        'альтушк': 'cute alternative gothic anime girl with dyed split-color hair and eyeliner',
+        'альтух': 'cute alternative gothic anime girl with dyed split-color hair',
+        'данил': 'handsome young stylish man',
+        'скуф': 'middle aged chubby balding man relaxing with beer',
+        'масик': 'caring sweet handsome boyfriend',
+        'тюбик': 'skinny trendy indie boy',
+        'чечик': 'regular casual guy',
+    }
+
+    # Если в ответе нейросети есть вводные русские фразы вроде "Вот несколько вариантов...",
+    # "Перевод:", "Вариант 1:", "Интерпретация:" — очищаем их
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    cleaned_english = []
+    
+    # Ищем английские строки или кавычки
+    for line in lines:
+        # Проверяем, есть ли в строке английский текст
+        # Удаляем нумерацию вроде "1. ", "* "
+        clean_line = re.sub(r'^\s*[\d\.\*\-\•]+\s*', '', line).strip()
+        # Если строка начинается с кавычек
+        quote_match = re.search(r'["\']([^"\']{10,})["\']', clean_line)
+        if quote_match:
+            candidate = quote_match.group(1).strip()
+            # Проверяем, в основном ли на английском
+            if re.search(r'[a-zA-Z]', candidate) and not re.search(r'[а-яА-ЯёЁ]', candidate):
+                cleaned_english.append(candidate)
+                break
+        # Если строка состоит в основном из латиницы
+        latin_letters = len(re.findall(r'[a-zA-Z]', clean_line))
+        cyrillic_letters = len(re.findall(r'[а-яА-ЯёЁ]', clean_line))
+        if latin_letters > 15 and cyrillic_letters == 0:
+            cleaned_english.append(clean_line)
+            break
+
+    if cleaned_english:
+        final_prompt = cleaned_english[0]
+    else:
+        # Если нейросеть вернула чисто русский текст или рассуждения
+        # Делаем прямую замену сленга в исходном пользовательском запросе
+        fallback = original_user_prompt.lower()
+        for ru_key, en_val in slang_map.items():
+            fallback = re.sub(rf'\b\w*{ru_key}\w*\b', en_val, fallback, flags=re.IGNORECASE)
+        
+        # Переводим базовые глаголы если остались
+        ru_verbs = {
+            'ловит рыбу': 'is catching fish with a fishing rod by a lake',
+            'рыбачит': 'fishing by a scenic lake with a fishing rod',
+            'в виде': 'dressed as, looking like',
+            'играет': 'playing',
+            'сидит': 'sitting',
+            'пьет': 'drinking',
+        }
+        for ru_v, en_v in ru_verbs.items():
+            fallback = fallback.replace(ru_v, en_v)
+            
+        final_prompt = fallback
+
+    # Дополнительно применяем сленг-маппинг, если в тексте промелькнуло слово altushka/altushki
+    for ru_key, en_val in slang_map.items():
+        if ru_key in final_prompt.lower():
+            final_prompt = re.sub(rf'\b\w*{ru_key}\w*\b', en_val, final_prompt, flags=re.IGNORECASE)
+
+    # Защита от неправильного понимания "альтушки" как "altushka" или животных/свиней
+    if 'pig' in final_prompt.lower() or 'swine' in final_prompt.lower():
+        final_prompt = re.sub(r'\b(pig|piggy|swine)\b', 'girl', final_prompt, flags=re.IGNORECASE)
+
+    # Обязательные теги качества
+    if 'masterpiece' not in final_prompt.lower():
+        final_prompt = f"{final_prompt}, vibrant colors, masterpiece, cinematic lighting, highly detailed, 8k resolution"
+
+    return final_prompt.strip()
+
+
 @bot.message_handler(commands=['img'])
 def generate_image_cmd(message):
     args = message.text.split(maxsplit=1)
@@ -150,17 +230,18 @@ def generate_image_cmd(message):
     user_prompt = args[1].strip()
     bot.send_chat_action(cid, 'upload_photo')
     bot.reply_to(message, "<i>*прищурился, достал холст и начал что-то кропотливо вырисовывать...*</i>", parse_mode='HTML')
-    en_prompt = get_ai_response(
-        "You are an expert image prompt engineer for FLUX and Stable Diffusion models. "
-        "Translate the user's Russian description into a vivid, highly aesthetic English prompt. "
-        "Important rules: "
-        "- Slang like 'альтушка' translates to 'cute alternative gothic anime girl with dyed hair'. "
-        "- 'Данила' or Russian male names translate to 'handsome stylish young man'. "
-        "- Always add art style keywords: 'vibrant colors, masterpiece, cinematic lighting, sharp focus, 8k resolution, detailed'. "
-        "- Output ONLY the English prompt text, no quotes, no explanations.",
+    raw_en = get_ai_response(
+        "You are an expert image prompt translator for FLUX. "
+        "Task: translate the user description into a single aesthetic English prompt. "
+        "CRITICAL: "
+        "- Output ONLY the English prompt. "
+        "- NEVER output Russian text, explanations, or multiple choices. "
+        "- 'альтушка' = 'cute alternative gothic anime girl with dyed hair'. "
+        "- 'Данила' = 'handsome young man'.",
         [{"role": "user", "content": user_prompt}],
-        max_tokens=150,
-    ) or user_prompt
+        max_tokens=100,
+    )
+    en_prompt = _sanitize_image_prompt(raw_en, user_prompt)
     image_data = _generate_image(en_prompt)
     if image_data:
         bot.send_photo(cid, image_data, caption=f"🎨 <b>Твоя идея:</b> {html.escape(user_prompt)}", parse_mode='HTML')
