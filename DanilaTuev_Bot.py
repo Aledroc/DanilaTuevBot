@@ -131,10 +131,10 @@ def _generate_image(prompt_en: str) -> bytes | None:
     except Exception as e:
         logging.warning(f"[_generate_image] Space direct HTTP failed: {e}")
 
-    # 3. Резервный фолбэк при недоступности
+    # 3. Резервный фолбэк при недоступности (используем стабильный image.pollinations.ai)
     try:
-        url = f"https://pollinations.ai/p/{encoded}?model=flux&nologo=true&width=1024&height=1024&seed={seed}"
-        res = requests.get(url, timeout=30)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?model=flux&nologo=true&width=1024&height=1024&seed={seed}"
+        res = requests.get(url, timeout=35)
         if res.status_code == 200 and len(res.content) > 5000:
             return res.content
     except Exception as e:
@@ -201,14 +201,14 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     danila_desc = "22-year-old Slavic handsome young man, medium wavy tousled chestnut-brown hair framing forehead, piercing blue-grey eyes, slight stubble on jawline"
     danila_mentioned = bool(re.search(r'(?i)\b(данил[а-я]*|туев[а-я]*|данечк[а-я]*|даньк[а-я]*|даня)\b', user_prompt))
 
-    # 1. Прямой перевод исходного текста через Google Translate API
+    # 1. Прямой перевод исходного текста через Google Translate API (через requests с надёжными таймаутами)
     p = user_prompt.strip()
     translated = ""
     try:
-        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={urllib.parse.quote(p)}"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={requests.utils.quote(p)}"
+        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=7)
+        if resp.status_code == 200:
+            data = resp.json()
             translated = ''.join([part[0] for part in data[0] if part[0]])
     except Exception as e:
         logging.warning(f"[_build_final_image_prompt] GT error: {e}")
@@ -261,8 +261,14 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     if 'pig' in translated.lower() or 'swine' in translated.lower():
         translated = re.sub(r'(?i)\b(pig|piggy|swine)\b', 'girl', translated)
 
-    # 6. Теги аутентичного фотореализма и высокой четкости
-    return f"flawless authentic RAW photograph portrait of {translated}, natural soft ambient lighting, sharp focus on eyes, 35mm film photography, 8k resolution, highly detailed"
+    # 6. Теги композиции: строгий общий/дальний план (wide-angle shot / full body view)
+    # Полностью предотвращает приближение камеры к лицу, показывая человека в полный рост или на общем плане.
+    return (
+        f"flawless authentic RAW wide-angle photograph, wide shot, full-length view showing full body in environment, "
+        f"{translated}, full figure standing or sitting at a distance, wide field of view, cinematic natural lighting, "
+        f"24mm wide lens street photography, clear environmental background, sharp focus, "
+        f"no close-up, no headshot, no cropped face, no zoomed-in face, no portrait framing"
+    )
 
 
 @bot.message_handler(commands=['img'])
