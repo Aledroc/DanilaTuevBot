@@ -140,6 +140,57 @@ def _generate_image(prompt_en: str) -> bytes | None:
     return None
 
 
+def _swap_danila_face(target_img_bytes: bytes) -> bytes:
+    """Заменяет лицо на сгенерированном арте на лицо Данилы (danila_face.jpg)."""
+    face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
+    if not os.path.exists(face_path):
+        return target_img_bytes
+
+    try:
+        with open(face_path, 'rb') as f:
+            src_b64 = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode()
+
+        dst_b64 = 'data:image/jpeg;base64,' + base64.b64encode(target_img_bytes).decode()
+        headers = {'Content-Type': 'application/json'}
+        hf_token = getattr(config, 'HUGGINGFACE_TOKEN', None)
+        if hf_token:
+            headers['Authorization'] = f'Bearer {hf_token}'
+
+        payload = {'data': [{'url': src_b64}, {'url': dst_b64}]}
+        post_res = requests.post(
+            'https://tonyassi-face-swap.hf.space/gradio_api/call/swap_faces',
+            json=payload,
+            headers=headers,
+            timeout=25,
+        )
+        if post_res.status_code == 200:
+            event_id = post_res.json().get('event_id')
+            if event_id:
+                stream_res = requests.get(
+                    f'https://tonyassi-face-swap.hf.space/gradio_api/call/swap_faces/{event_id}',
+                    headers=headers,
+                    stream=True,
+                    timeout=30,
+                )
+                for line in stream_res.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8', errors='ignore')
+                        if decoded.startswith('data:'):
+                            data = json.loads(decoded[5:].strip())
+                            if isinstance(data, list) and len(data) > 0:
+                                out_url = data[0].get('url') if isinstance(data[0], dict) else None
+                                if out_url:
+                                    img_res = requests.get(out_url, headers=headers, timeout=20)
+                                    if img_res.status_code == 200 and len(img_res.content) > 5000:
+                                        return img_res.content
+                            break
+    except Exception as e:
+        logging.warning(f"[_swap_danila_face] Face swap failed: {e}")
+
+    # Если свап не удался или лица нет — возвращаем оригинальный арт
+    return target_img_bytes
+
+
 def _sanitize_image_prompt(raw_text: str, original_user_prompt: str) -> str:
     """Очищает промпт от вводных слов, русских рассуждений нейросети и неверных трактовок сленга."""
     if not raw_text:
@@ -244,6 +295,11 @@ def generate_image_cmd(message):
     en_prompt = _sanitize_image_prompt(raw_en, user_prompt)
     image_data = _generate_image(en_prompt)
     if image_data:
+        # Если в запросе упоминается Данила, парень, я, бот или автопортрет — применяем Face Swap
+        should_swap = any(w in user_prompt.lower() for w in ['данил', 'даня', 'туев', 'парн', 'себя', 'автопортрет', 'лицо', 'я ', 'мне']) or ('man' in en_prompt.lower() or 'guy' in en_prompt.lower())
+        if should_swap:
+            image_data = _swap_danila_face(image_data)
+
         bot.send_photo(cid, image_data, caption=f"🎨 <b>Твоя идея:</b> {html.escape(user_prompt)}", parse_mode='HTML')
     else:
         bot.send_message(cid, "<i>*в сердцах порвал холст*</i> Тьфу, краска кончилась! Ошибка генерации.", parse_mode='HTML')
