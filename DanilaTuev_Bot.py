@@ -198,7 +198,7 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     import urllib.parse
     import urllib.request
 
-    danila_desc = "handsome young man with wavy chestnut hair and subtle stubble"
+    danila_desc = "22-year-old Slavic handsome young man, medium wavy tousled chestnut-brown hair framing forehead, piercing blue-grey eyes, slight stubble on jawline"
     danila_mentioned = bool(re.search(r'(?i)\b(данил[а-я]*|туев[а-я]*|данечк[а-я]*|даньк[а-я]*|даня)\b', user_prompt))
 
     # 1. Прямой перевод исходного текста через Google Translate API
@@ -261,8 +261,8 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     if 'pig' in translated.lower() or 'swine' in translated.lower():
         translated = re.sub(r'(?i)\b(pig|piggy|swine)\b', 'girl', translated)
 
-    # 6. Теги студийного качества и портрета
-    return f"{translated}, highly detailed portrait, masterpiece, cinematic lighting, sharp focus, 8k resolution"
+    # 6. Теги аутентичного фотореализма и высокой четкости
+    return f"flawless authentic RAW photograph portrait of {translated}, natural soft ambient lighting, sharp focus on eyes, 35mm film photography, 8k resolution, highly detailed"
 
 
 @bot.message_handler(commands=['img'])
