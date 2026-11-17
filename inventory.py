@@ -1778,20 +1778,35 @@ def check_daily_reward(chat_id: int, user_id: int) -> bool:
 # Механики вовлечённости: Daily Recaps, User Titles, Hall of Fame / Stats
 # ---------------------------------------------------------------------------
 
-def save_daily_recap(chat_id: int, character_name: str, summary: str) -> None:
+def save_daily_recap(chat_id: int, character_name: str, summary: str, recap_date: str | None = None) -> None:
     """Сохраняет итог дня персонажа для чата."""
     from datetime import date as _date
-    recap_date = _date.today().isoformat()
+    if not recap_date:
+        recap_date = _date.today().isoformat()
     now_ts = int(time.time())
     try:
         with _connect() as conn:
             conn.execute(
                 "INSERT INTO daily_recaps (chat_id, recap_date, character_name, summary, created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (int(chat_id), recap_date, str(character_name or "").strip(), str(summary or "").strip(), now_ts),
+                (int(chat_id), str(recap_date).strip(), str(character_name or "").strip(), str(summary or "").strip(), now_ts),
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[save_daily_recap] failed: {e}")
+
+
+def has_daily_recap(chat_id: int, recap_date: str) -> bool:
+    """Проверяет, был ли уже сохранен/отправлен итог дня для этого чата за указанную дату."""
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM daily_recaps WHERE chat_id = ? AND recap_date = ? LIMIT 1",
+                (int(chat_id), str(recap_date).strip()),
+            ).fetchone()
+            return row is not None
+    except Exception as e:
+        logger.warning(f"[has_daily_recap] failed: {e}")
+        return False
 
 
 def get_latest_recaps(chat_id: int, limit: int = 5) -> list[dict]:
