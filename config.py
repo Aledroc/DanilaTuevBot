@@ -46,19 +46,20 @@ STT_API_URL = os.getenv('STT_API_URL', 'https://nordrouter.com/v1/chat/completio
 STT_MODEL = os.getenv('STT_MODEL', 'google/gemini-omni-flash-preview')
 
 TEXT_MODELS = [
-    "deepseek/deepseek-v4-pro",
-    "qwen/qwen3.8-max:free",
     "mistralai/mistral-large-2512",
-    "minimax/minimax-m3:free",
-    "qwen/qwen3.7-max:free",
+    "mistralai/ministral-14b",
+    "sensenova/sensenova-6.8-flash-lite",
+    "cohere/command-a",
+    "mistralai/mistral-small-2603",
+    "cohere/command-r7b-12-2024",
 ]
 
 VISION_MODELS = [
-    "qwen/qwen3-vl-plus:free",
-    "qwen/qwen3.8-max:free",
     "mistralai/mistral-large-2512",
-    "minimax/minimax-m3:free",
     "sensenova/sensenova-6.8-flash-lite",
+    "mistralai/ministral-14b",
+    "mistralai/mistral-small-2603",
+    "cohere/command-a",
 ]
 
 DEFAULT_GOAL = (
