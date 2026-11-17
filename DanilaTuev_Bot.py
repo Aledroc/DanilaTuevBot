@@ -161,9 +161,13 @@ def generate_image_cmd(message):
     bot.send_chat_action(cid, 'upload_photo')
     bot.reply_to(message, "<i>*прищурился, достал холст и начал что-то кропотливо вырисовывать...*</i>", parse_mode='HTML')
     en_prompt = get_ai_response(
-        "You are an expert image prompt engineer. Translate the user's Russian description "
-        "into a highly detailed, comma-separated English prompt for a text-to-image AI. "
-        "Output ONLY the English prompt, no other words.",
+        "You are an expert image prompt engineer for FLUX and Stable Diffusion models. "
+        "Translate the user's Russian description into a vivid, highly aesthetic English prompt. "
+        "Important rules: "
+        "- Slang like 'альтушка' translates to 'cute alternative gothic anime girl with dyed hair'. "
+        "- 'Данила' or Russian male names translate to 'handsome stylish young man'. "
+        "- Always add art style keywords: 'vibrant colors, masterpiece, cinematic lighting, sharp focus, 8k resolution, detailed'. "
+        "- Output ONLY the English prompt text, no quotes, no explanations.",
         [{"role": "user", "content": user_prompt}],
         max_tokens=150,
     ) or user_prompt
