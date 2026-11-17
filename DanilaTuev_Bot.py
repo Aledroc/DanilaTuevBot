@@ -143,12 +143,58 @@ def _generate_image(prompt_en: str) -> bytes | None:
     return None
 
 
+def _enhance_face_hd(img_bytes: bytes) -> bytes:
+    """Улучшает четкость лица до HD-качества с помощью нейросети CodeFormer."""
+    try:
+        b64_data = 'data:image/jpeg;base64,' + base64.b64encode(img_bytes).decode()
+        payload = {
+            'data': [
+                {'url': b64_data},
+                True,   # Pre_Face_Align
+                True,   # Background_Enhance
+                True,   # Face_Upsample
+                2,      # Rescaling_Factor
+                0.5     # Codeformer_Fidelity
+            ]
+        }
+        res = requests.post(
+            'https://sczhou-codeformer.hf.space/gradio_api/call/inference',
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=25,
+        )
+        if res.status_code == 200:
+            ev_id = res.json().get('event_id')
+            if ev_id:
+                stream = requests.get(
+                    f'https://sczhou-codeformer.hf.space/gradio_api/call/inference/{ev_id}',
+                    stream=True,
+                    timeout=35,
+                )
+                for line in stream.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8', errors='ignore')
+                        if decoded.startswith('data:'):
+                            data_block = json.loads(decoded[5:].strip())
+                            if isinstance(data_block, list) and len(data_block) > 0 and isinstance(data_block[0], dict):
+                                out_url = data_block[0].get('url')
+                                if out_url:
+                                    r_img = requests.get(out_url, timeout=20)
+                                    if r_img.status_code == 200 and len(r_img.content) > 10000:
+                                        return r_img.content
+                            break
+    except Exception as e:
+        logging.warning(f"[_enhance_face_hd] CodeFormer failed: {e}")
+    return img_bytes
+
+
 def _swap_danila_face(target_img_bytes: bytes) -> bytes:
-    """Заменяет лицо на сгенерированном арте на лицо Данилы (danila_face.jpg)."""
+    """Заменяет лицо на сгенерированном арте на лицо Данилы (danila_face.jpg) и повышает четкость до HD."""
     face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
     if not os.path.exists(face_path):
         return target_img_bytes
 
+    swapped_bytes = target_img_bytes
     try:
         with open(face_path, 'rb') as f:
             src_b64 = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode()
@@ -185,12 +231,15 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                                 if out_url:
                                     img_res = requests.get(out_url, headers=headers, timeout=20)
                                     if img_res.status_code == 200 and len(img_res.content) > 5000:
-                                        return img_res.content
+                                        swapped_bytes = img_res.content
                             break
     except Exception as e:
         logging.warning(f"[_swap_danila_face] Face swap failed: {e}")
 
-    # Если свап не удался или лица нет — возвращаем оригинальный арт
+    # Если лицо успешно заменено, прогоняем через CodeFormer для кристального HD-качества
+    if swapped_bytes != target_img_bytes:
+        return _enhance_face_hd(swapped_bytes)
+
     return target_img_bytes
 
 
