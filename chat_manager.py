@@ -307,20 +307,58 @@ def _build_state(desc: str) -> dict:
 
 
 def init_chat_state(chat_id: int):
+    """Инициализирует состояние чата. Загружает активный архетип из БД, если он есть на сегодня,
+    или назначает новый и сохраняет в БД."""
     today = datetime.now(_MSK).date().isoformat()
     if chat_id in chat_states and chat_states[chat_id].get('date') == today:
         return
-    old_state = chat_states.get(chat_id)
-    # Итоги дня рассылаются строго по расписанию в 00:00 через midnight_reset.
-    # В init_chat_state генерацию и отправку итогов не вызываем во избежание спама при перезапусках бота или дневных сбросах.
 
     custom_prompts.pop(chat_id, None)
     chat_histories[chat_id] = []
     chat_goals.pop(chat_id, None)
-    _, desc = _selected_chat_archetype(chat_id) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
-    chat_states[chat_id] = _build_state(desc)
-    chat_states[chat_id]['date'] = today
+
+    # 1. Проверяем постоянное хранилище (БД chat_active_archetype)
+    persisted = inventory_store.get_active_chat_archetype(chat_id)
+    if persisted and persisted.get('assigned_date') == today and persisted.get('prompt'):
+        desc = persisted['prompt']
+        full_name = persisted.get('full_name') or ai_generate_name(desc)
+        arch_title = persisted.get('archetype_name') or 'Персонаж'
+        state = _build_state(desc)
+        state['full_name'] = full_name
+        state['date'] = today
+        state['archetype_key'] = persisted.get('archetype_key', '')
+        state['archetype_title'] = arch_title
+        chat_states[chat_id] = state
+        chat_goals[chat_id] = _generate_archetype_goal(chat_id, desc)
+        logging.info("init_chat_state: восстановлен архетип из БД для чата %s: %s (%s)", chat_id, full_name, arch_title)
+        return
+
+    # 2. Если на сегодня ещё не назначен — выбираем активный/выбранный или случайный из пула
+    selected = _selected_chat_archetype(chat_id)
+    if selected:
+        arch_title, desc = selected
+        arch_key = getattr(selected, 'key', '') or ''
+    else:
+        arch_key = random.choice(MODIFIERS_KEYS)
+        arch_title, desc = ARCHETYPES[arch_key]
+
+    state = _build_state(desc)
+    state['date'] = today
+    state['archetype_key'] = arch_key
+    state['archetype_title'] = arch_title
+    chat_states[chat_id] = state
     chat_goals[chat_id] = _generate_archetype_goal(chat_id, desc)
+
+    # Сохраняем в БД, чтобы после любого перезапуска бот не менял персонажа посреди дня
+    inventory_store.save_active_chat_archetype(
+        chat_id=chat_id,
+        archetype_key=arch_key,
+        archetype_name=arch_title,
+        prompt=desc,
+        full_name=state['full_name'],
+        assigned_date=today
+    )
+    logging.info("init_chat_state: назначен и сохранен в БД новый архетип для чата %s: %s (%s)", chat_id, state['full_name'], arch_title)
 
 
 def reset_chat_state(chat_id: int, desc: str):
@@ -449,6 +487,19 @@ def sync_archetype_to_chat(chat_id: int, archetype_title: str, desc: str) -> dic
     reset_chat_state(chat_id, desc)
     state = chat_states[chat_id]
     new_name = state.get('full_name', '???')
+    today = datetime.now(_MSK).date().isoformat()
+    state['date'] = today
+    state['archetype_title'] = archetype_title
+
+    # Сохраняем в постоянное хранилище (БД)
+    inventory_store.save_active_chat_archetype(
+        chat_id=chat_id,
+        archetype_key='',
+        archetype_name=archetype_title,
+        prompt=desc,
+        full_name=new_name,
+        assigned_date=today
+    )
 
     title_escaped = html.escape(str(archetype_title or 'Персонаж').strip())
     name_escaped = html.escape(str(new_name).strip())
@@ -489,6 +540,7 @@ def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
 
     # 1. Проверяем, был ли уже отправлен итог за этот день в БД
     if inventory_store.has_daily_recap(cid, target_date):
+        logging.info("process_chat_daily_reset: для чата %s итог за %s уже сохранен в БД, пропускаем.", cid, target_date)
         return False
 
     try:
@@ -498,45 +550,77 @@ def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
             old_name = state.get('full_name')
             old_desc = state.get('desc', '')
         else:
-            # Если чат не был в памяти, подбираем активный/выбранный архетип
-            arch_info = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
-            old_title, old_desc = arch_info
-            old_name = ai_generate_name(old_desc)
+            # Проверяем БД chat_active_archetype
+            persisted = inventory_store.get_active_chat_archetype(cid)
+            if persisted and persisted.get('prompt'):
+                old_desc = persisted['prompt']
+                old_name = persisted.get('full_name') or ai_generate_name(old_desc)
+            else:
+                arch_info = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
+                old_title, old_desc = arch_info
+                old_name = ai_generate_name(old_desc)
 
         # 2. Генерируем смешной, подробный и сочный итог дня
         logging.info("Генерация подробного итога дня для чата %s (%s)...", cid, old_name)
         recap_text = generate_daily_recap(cid, old_name, old_desc)
         if recap_text:
             inventory_store.save_daily_recap(cid, old_name, recap_text, recap_date=target_date)
-            try:
-                bot.send_message(
-                    cid,
-                    f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
-                    parse_mode='HTML',
-                )
-                logging.info("Итог дня успешно отправлен в чат %s!", cid)
-            except Exception as send_err:
-                logging.warning("Не удалось отправить сообщение с итогом дня в чат %s: %s", cid, send_err)
+            # Отправка в Telegram с повторными попытками при сбоях сети/таймаутах
+            sent_ok = False
+            for attempt in range(3):
+                try:
+                    bot.send_message(
+                        cid,
+                        f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
+                        parse_mode='HTML',
+                    )
+                    logging.info("Итог дня успешно отправлен в чат %s!", cid)
+                    sent_ok = True
+                    break
+                except Exception as send_err:
+                    logging.warning("Попытка %d: не удалось отправить сообщение с итогом дня в чат %s: %s", attempt + 1, cid, send_err)
+                    time.sleep(2)
 
         # 3. Переключаем на нового персонажа следующего дня
-        arch_next = _selected_chat_archetype(cid) or ARCHETYPES[random.choice(MODIFIERS_KEYS)]
-        _, next_desc = arch_next
+        # Текущая дата сегодня по МСК (куда переключается персонаж)
+        current_today = datetime.now(_MSK).date().isoformat()
+        
+        selected = _selected_chat_archetype(cid)
+        if selected:
+            next_title, next_desc = selected
+            next_key = getattr(selected, 'key', '') or ''
+        else:
+            next_key = random.choice(MODIFIERS_KEYS)
+            next_title, next_desc = ARCHETYPES[next_key]
+
         new_state = _build_state(next_desc)
-        new_state['date'] = target_date
+        new_state['date'] = current_today
+        new_state['archetype_key'] = next_key
+        new_state['archetype_title'] = next_title
         chat_states[cid] = new_state
         chat_histories[cid] = []
         chat_goals[cid] = _generate_archetype_goal(cid, next_desc)
         custom_prompts.pop(cid, None)
         _proactive_streak.pop(cid, None)
 
+        # Сохраняем нового персонажа в БД
+        inventory_store.save_active_chat_archetype(
+            chat_id=cid,
+            archetype_key=next_key,
+            archetype_name=next_title,
+            prompt=next_desc,
+            full_name=new_state['full_name'],
+            assigned_date=current_today
+        )
+
         try:
             bot.send_message(
                 cid,
-                f"🌅 Наступила полночь: в чат заходит <b>{html.escape(new_state['full_name'])}</b>.",
+                f"🌅 Наступила полночь: в чат заходит <b>{html.escape(new_state['full_name'])}</b> ({html.escape(next_title)}).",
                 parse_mode='HTML',
             )
-        except Exception:
-            pass  # чат мог стать недоступен
+        except Exception as ann_err:
+            logging.warning("Не удалось отправить объявление о новом персонаже в чат %s: %s", cid, ann_err)
         return True
     except Exception as exc:
         logging.exception("process_chat_daily_reset error for chat %s: %s", cid, exc)
@@ -583,44 +667,48 @@ def midnight_reset() -> None:
         pass
 
     while True:
-        now = datetime.now(_MSK)
-        # Следующая полночь по МСК (00:00:00)
-        next_midnight = (now + timedelta(days=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        sleep_secs = (next_midnight - now).total_seconds()
-        logging.info("midnight_reset: до 00:00 по МСК осталось %.1f сек (сон до %s)", sleep_secs, next_midnight.isoformat())
-        # Спим до наступления полуночи плюс небольшой буфер (2 секунды),
-        # чтобы проснуться гарантированно в 00:00:01-00:00:02 следующего дня, а не за долю секунды до полуночи
-        time.sleep(max(sleep_secs, 0) + 2)
+        try:
+            now = datetime.now(_MSK)
+            # Следующая полночь по МСК (00:00:00)
+            next_midnight = (now + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            sleep_secs = (next_midnight - now).total_seconds()
+            logging.info("midnight_reset: до 00:00 по МСК осталось %.1f сек (сон до %s)", sleep_secs, next_midnight.isoformat())
+            # Спим до наступления полуночи плюс небольшой буфер (2 секунды),
+            # чтобы проснуться гарантированно в 00:00:01-00:00:02 следующего дня, а не за долю секунды до полуночи
+            time.sleep(max(sleep_secs, 0) + 2)
 
-        # Наступила полночь 00:00 по МСК!
-        # Подводим итог за только что завершившийся вчерашний день
-        now_msk = datetime.now(_MSK)
-        finished_date = (now_msk.date() - timedelta(days=1)).isoformat()
-        today_date = now_msk.date().isoformat()
+            # Наступила полночь 00:00 по МСК!
+            # Подводим итог за только что завершившийся вчерашний день
+            now_msk = datetime.now(_MSK)
+            finished_date = (now_msk.date() - timedelta(days=1)).isoformat()
+            today_date = now_msk.date().isoformat()
 
-        # Берем все группы из БД + любые группы из оперативной памяти
-        db_groups = inventory_store.get_all_group_chat_ids()
-        memory_groups = [cid for cid in chat_states.keys() if cid < 0]
-        all_targets = sorted(list(set(db_groups + memory_groups)))
-        logging.info("midnight_reset: наступила полночь! Сброс и отправка итогов для чатов: %s (дата: %s)", all_targets, finished_date)
+            # Берем все группы из БД (chat_members + chat_targets) + любые группы из оперативной памяти
+            db_groups = inventory_store.get_all_group_chat_ids()
+            memory_groups = [cid for cid in chat_states.keys() if cid < 0]
+            all_targets = sorted(list(set(db_groups + memory_groups)))
+            logging.info("midnight_reset: наступила полночь! Сброс и отправка итогов для чатов: %s (дата: %s)", all_targets, finished_date)
 
-        for cid in all_targets:
-            try:
-                process_chat_daily_reset(cid, target_date=finished_date)
-                # Убеждаемся, что текущее состояние зафиксировано на сегодня
-                if cid in chat_states:
-                    chat_states[cid]['date'] = today_date
-            except Exception as cid_exc:
-                logging.exception("midnight_reset error for chat %s: %s", cid, cid_exc)
+            for cid in all_targets:
+                try:
+                    process_chat_daily_reset(cid, target_date=finished_date)
+                    # Убеждаемся, что текущее состояние зафиксировано на сегодня
+                    if cid in chat_states:
+                        chat_states[cid]['date'] = today_date
+                except Exception as cid_exc:
+                    logging.exception("midnight_reset error for chat %s: %s", cid, cid_exc)
 
-        # Каждое воскресенье в полночь подводим итоги недели Кубка чата
-        if now_msk.weekday() == 6:  # Воскресенье
-            try:
-                announce_weekly_cup_winners()
-            except Exception:
-                logging.exception("midnight_reset: ошибка подведения итогов еженедельного кубка")
+            # Каждое воскресенье в полночь подводим итоги недели Кубка чата
+            if now_msk.weekday() == 6:  # Воскресенье
+                try:
+                    announce_weekly_cup_winners()
+                except Exception:
+                    logging.exception("midnight_reset: ошибка подведения итогов еженедельного кубка")
+        except Exception as loop_exc:
+            logging.exception("midnight_reset loop uncaught error: %s", loop_exc)
+            time.sleep(10)
 
 
 def announce_weekly_cup_winners(chat_id: int | None = None) -> list[dict]:
@@ -750,21 +838,16 @@ def _selected_chat_archetype(chat_id: int):
                 "SELECT p.selected_archetype FROM user_preferences p "
                 "JOIN chat_members m ON m.user_id = p.user_id "
                 "WHERE m.chat_id = ? AND p.selected_archetype != '' "
-                "ORDER BY m.last_seen_date DESC LIMIT 1",
+                "ORDER BY p.updated_at DESC, m.last_seen_date DESC LIMIT 1",
                 (int(chat_id),),
             ).fetchone()
         if not row:
             return None
         key = row[0]
-        from archetypes import BASE_ARCHETYPES, DEFAULT_ARCHETYPES
-        builtins = dict(DEFAULT_ARCHETYPES)
-        for builtin_key, value in BASE_ARCHETYPES.items():
-            if isinstance(value, str):
-                builtins[builtin_key] = (builtin_key.capitalize(), value)
-            elif isinstance(value, (tuple, list)) and len(value) >= 2:
-                builtins[builtin_key] = (value[0], value[1])
-        if key in builtins:
-            return builtins[key]
+        # Сначала проверяем общий реестр ARCHETYPES (со всеми 950 категориями)
+        from config import ARCHETYPES as ALL_ARCHETYPES
+        if key in ALL_ARCHETYPES:
+            return ALL_ARCHETYPES[key]
         with inventory_store._connect() as conn:
             custom_row = conn.execute(
                 "SELECT title, `desc`, `action` FROM custom_archetypes WHERE `key` = ? LIMIT 1",

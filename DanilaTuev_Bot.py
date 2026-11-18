@@ -28,7 +28,7 @@ import mini_app
 
 # Метка сборки — печатается при старте, чтобы в логах Pterodactyl сразу было видно,
 # какая версия файлов реально запущена (полезно, когда правки заливаются по одному файлу).
-BOT_BUILD = "2026-11-13-proactive"
+BOT_BUILD = "2026-11-18-daily-cycle-fix"
 
 _HF_SPACES = (
     "black-forest-labs/FLUX.1-schnell",

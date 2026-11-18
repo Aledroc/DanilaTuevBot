@@ -15,6 +15,17 @@ from telebot import apihelper
 
 from archetypes import BASE_ARCHETYPES, DEFAULT_ARCHETYPES
 
+try:
+    from cat1_nations import CAT1_NATIONS
+    from cat2_professions import CAT2_PROFESSIONS
+    from cat3_games import CAT3_GAMES
+    from cat4_cinema import CAT4_CINEMA
+    from cat5_modern_memes import CAT5_MODERN_MEMES
+    _EXTRA_CATS = [CAT1_NATIONS, CAT2_PROFESSIONS, CAT3_GAMES, CAT4_CINEMA, CAT5_MODERN_MEMES]
+except Exception as _extra_err:
+    logging.warning("Не удалось загрузить дополнительные категории архетипов: %s", _extra_err)
+    _EXTRA_CATS = []
+
 if BASE_ARCHETYPES and isinstance(BASE_ARCHETYPES, dict):
     _merged = dict(DEFAULT_ARCHETYPES)
     for k, v in BASE_ARCHETYPES.items():
@@ -22,6 +33,12 @@ if BASE_ARCHETYPES and isinstance(BASE_ARCHETYPES, dict):
             _merged[k] = (k.capitalize(), v)
         elif isinstance(v, (list, tuple)) and len(v) >= 2:
             _merged[k] = (v[0], v[1])
+    for _cat_dict in _EXTRA_CATS:
+        for k, v in _cat_dict.items():
+            if isinstance(v, str):
+                _merged[k] = (k.capitalize(), v)
+            elif isinstance(v, (list, tuple)) and len(v) >= 2:
+                _merged[k] = (v[0], v[1])
     ARCHETYPES = _merged
 else:
     ARCHETYPES = dict(DEFAULT_ARCHETYPES)

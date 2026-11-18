@@ -193,12 +193,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/api/public-archetypes":
-            builtins = dict(DEFAULT_ARCHETYPES)
-            for key, value in BASE_ARCHETYPES.items():
-                if isinstance(value, str):
-                    builtins[key] = (key.capitalize(), value)
-                elif isinstance(value, (tuple, list)) and len(value) >= 2:
-                    builtins[key] = (value[0], value[1])
+            from config import ARCHETYPES as ALL_ARCHETYPES
             items = [
                 {
                     "key": key,
@@ -212,7 +207,7 @@ class Handler(BaseHTTPRequestHandler):
                     "created_by_user_id": 0,
                     "created_by_name": "Система",
                 }
-                for key, value in builtins.items()
+                for key, value in ALL_ARCHETYPES.items()
             ]
             customs = inventory.get_custom_archetypes()
             known = {item["key"] for item in items}

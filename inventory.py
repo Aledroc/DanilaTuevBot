@@ -361,11 +361,15 @@ def list_group_chats(user_id: int) -> list[dict]:
 
 
 def get_all_group_chat_ids() -> list[int]:
-    """Returns all unique group chat IDs recorded in chat_members."""
+    """Returns all unique group chat IDs recorded in chat_members and chat_targets."""
     try:
         with _connect() as conn:
             rows = conn.execute(
-                "SELECT DISTINCT chat_id FROM chat_members WHERE chat_id < 0"
+                """
+                SELECT DISTINCT chat_id FROM chat_members WHERE chat_id < 0
+                UNION
+                SELECT DISTINCT chat_id FROM chat_targets WHERE chat_id < 0
+                """
             ).fetchall()
         return [int(r[0]) for r in rows if r and r[0] is not None]
     except Exception as e:
@@ -1186,14 +1190,7 @@ def get_custom_archetypes() -> list[dict]:
 
 
 def list_user_archetypes(user_id: int) -> list[dict]:
-    from archetypes import BASE_ARCHETYPES, DEFAULT_ARCHETYPES
-
-    builtins = dict(DEFAULT_ARCHETYPES)
-    for key, value in BASE_ARCHETYPES.items():
-        if isinstance(value, str):
-            builtins[key] = (key.capitalize(), value)
-        elif isinstance(value, (tuple, list)) and len(value) >= 2:
-            builtins[key] = (value[0], value[1])
+    from config import ARCHETYPES as ALL_ARCHETYPES
 
     items = [
         {
@@ -1208,7 +1205,7 @@ def list_user_archetypes(user_id: int) -> list[dict]:
             "created_by_user_id": 0,
             "created_by_name": "Система",
         }
-        for key, value in builtins.items()
+        for key, value in ALL_ARCHETYPES.items()
     ]
 
     # Добавляем все пользовательские архетипы
@@ -1288,11 +1285,12 @@ def select_user_archetype(user_id: int, key: str) -> dict:
     archetype = get_user_archetype(user_id, key)
     if not archetype:
         raise ValueError("Архетип не найден")
+    now_ts = int(time.time())
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO user_preferences (user_id, selected_archetype) VALUES (?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET selected_archetype = excluded.selected_archetype",
-            (int(user_id), str(key)),
+            "INSERT INTO user_preferences (user_id, selected_archetype, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET selected_archetype = excluded.selected_archetype, updated_at = excluded.updated_at",
+            (int(user_id), str(key), now_ts),
         )
     try:
         record_archetype_use(user_id, key)
@@ -1349,6 +1347,55 @@ def save_chat_style(chat_id: int, prompt: str) -> None:
             "updated_at = excluded.updated_at",
             (int(chat_id), prompt, int(time.time())),
         )
+
+
+def save_active_chat_archetype(chat_id: int, archetype_key: str, archetype_name: str,
+                               prompt: str, full_name: str, assigned_date: str) -> None:
+    """Сохраняет текущий активный архетип чата в базу данных."""
+    now_ts = int(time.time())
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO chat_active_archetype (chat_id, archetype_key, archetype_name, prompt, full_name, assigned_date, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET
+                    archetype_key = excluded.archetype_key,
+                    archetype_name = excluded.archetype_name,
+                    prompt = excluded.prompt,
+                    full_name = excluded.full_name,
+                    assigned_date = excluded.assigned_date,
+                    updated_at = excluded.updated_at
+                """,
+                (int(chat_id), str(archetype_key or ''), str(archetype_name or ''), str(prompt or ''), str(full_name or ''), str(assigned_date or ''), now_ts),
+            )
+    except Exception as e:
+        logger.warning(f"[save_active_chat_archetype] failed: {e}")
+
+
+def get_active_chat_archetype(chat_id: int) -> dict | None:
+    """Получает сохраненный активный архетип чата из базы данных."""
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                """
+                SELECT archetype_key, archetype_name, prompt, full_name, assigned_date, updated_at
+                FROM chat_active_archetype WHERE chat_id = ? LIMIT 1
+                """,
+                (int(chat_id),),
+            ).fetchone()
+            if row:
+                return {
+                    "archetype_key": row[0],
+                    "archetype_name": row[1],
+                    "prompt": row[2],
+                    "full_name": row[3],
+                    "assigned_date": row[4],
+                    "updated_at": row[5],
+                }
+    except Exception as e:
+        logger.warning(f"[get_active_chat_archetype] failed: {e}")
+    return None
 
 
 def get_chat_style(chat_id: int) -> str:
