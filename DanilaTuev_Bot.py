@@ -152,12 +152,25 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
 
     # ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, четкие поры, ресницы, глаза и волосы)
     try:
+        token = getattr(config, 'HUGGINGFACE_TOKEN', None)
+        headers = {'Authorization': f'Bearer {token}'} if token else {}
+
         reactor_url = 'https://v0pr0s-comfyui-reactor-fast-face-swap-cpu.hf.space'
         with open(face_path, 'rb') as f:
             src_bytes = f.read()
 
-        r_src = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('face.jpg', src_bytes, 'image/jpeg')}, timeout=25)
-        r_dst = requests.post(f'{reactor_url}/gradio_api/upload', files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')}, timeout=25)
+        r_src = requests.post(
+            f'{reactor_url}/gradio_api/upload',
+            files={'files': ('face.jpg', src_bytes, 'image/jpeg')},
+            headers=headers,
+            timeout=25
+        )
+        r_dst = requests.post(
+            f'{reactor_url}/gradio_api/upload',
+            files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')},
+            headers=headers,
+            timeout=25
+        )
         if r_src.status_code == 200 and r_dst.status_code == 200:
             src_path = r_src.json()[0]
             dst_path = r_dst.json()[0]
@@ -172,11 +185,21 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                     0.85                    # Restore strength
                 ]
             }
-            res = requests.post(f'{reactor_url}/gradio_api/call/generate_image', json=payload, timeout=25)
+            res = requests.post(
+                f'{reactor_url}/gradio_api/call/generate_image',
+                json=payload,
+                headers=headers,
+                timeout=25
+            )
             if res.status_code == 200:
                 eid = res.json().get('event_id')
                 if eid:
-                    stream_res = requests.get(f'{reactor_url}/gradio_api/call/generate_image/{eid}', stream=True, timeout=90)
+                    stream_res = requests.get(
+                        f'{reactor_url}/gradio_api/call/generate_image/{eid}',
+                        headers=headers,
+                        stream=True,
+                        timeout=90
+                    )
                     for line in stream_res.iter_lines():
                         if line:
                             dec = line.decode('utf-8', errors='ignore')
@@ -185,7 +208,7 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                                 if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
                                     out_url = data[0].get('url')
                                     if out_url:
-                                        img_res = requests.get(out_url, timeout=30)
+                                        img_res = requests.get(out_url, headers=headers, timeout=30)
                                         if img_res.status_code == 200 and len(img_res.content) > 5000:
                                             logging.info("[_swap_danila_face] HD GPEN-512 Swap successful!")
                                             return img_res.content
