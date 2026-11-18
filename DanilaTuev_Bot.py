@@ -221,7 +221,8 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
 
 
 def _build_final_image_prompt(user_prompt: str) -> str:
-    """Точный перевод запроса пользователя для генератора изображений без навязанных шаблонов."""
+    """Точный перевод запроса пользователя для генератора изображений.
+    Фиксирует направление взгляда строго в камеру для идеальной узнаваемости лица Данилы."""
     import urllib.parse
     import urllib.request
 
@@ -261,12 +262,18 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     for k, v in rus_slang.items():
         translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
 
-    # Заменяем имена Данилы просто на 'young man', чтобы нейросеть не фантазировала
+    # Заменяем имена Данилы на молодого человека, смотрящего прямо в камеру без бороды
     translated = re.sub(
         r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev|Данила|Даня|Туев)\b',
-        'young man',
+        'clean-shaven young man, face facing the camera, looking directly into the camera',
         translated
     )
+
+    # Если в запросе персонаж (мужчина / парень / автопортрет), гарантируем взгляд прямо в объектив
+    lower_t = translated.lower()
+    if any(w in lower_t for w in ['man', 'guy', 'male', 'boy', 'person']):
+        if 'camera' not in lower_t and 'facing' not in lower_t:
+            translated = f"{translated}, face facing the camera, looking directly into camera, clean-shaven"
 
     return translated.strip()
 
