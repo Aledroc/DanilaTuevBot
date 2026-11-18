@@ -182,7 +182,7 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                     0,                      # Target face index
                     'hyperswap_1b_256.onnx',# 256px Face Swap
                     'GPEN-BFR-512.onnx',    # 512px Face Restore
-                    0.85                    # Restore strength
+                    0.65                    # Restore strength (0.65 сохраняет точные черты и геометрию лица Данилы без размытия/усреднения)
                 ]
             }
             res = requests.post(
@@ -271,20 +271,28 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     return translated.strip()
 
 
-# Кэш последних обработанных сообщений для защиты от двойной отправки в Telegram
-_processed_img_messages = set()
+import threading
+from collections import OrderedDict
+
+# Потокобезопасный LRU-кэш и lock для дедупликации сообщений /img
+_img_lock = threading.Lock()
+_processed_img_messages = OrderedDict()
 
 @bot.message_handler(commands=['img'])
 def generate_image_cmd(message):
     cid = message.chat.id
     mid = message.message_id
+    key = (cid, mid)
 
-    # Защита от дублей: если это сообщение уже обрабатывается или обработано, игнорируем
-    if mid in _processed_img_messages:
-        return
-    _processed_img_messages.add(mid)
-    if len(_processed_img_messages) > 1000:
-        _processed_img_messages.clear()
+    # Атомарная блокировка от повторных апдейтов Telegram / дублирования потоков
+    with _img_lock:
+        if key in _processed_img_messages:
+            return
+        _processed_img_messages[key] = time.time()
+        # Ограничиваем размер кэша до 2000 последних сообщений
+        while len(_processed_img_messages) > 2000:
+            _processed_img_messages.popitem(last=False)
+
     args = message.text.split(maxsplit=1)
     cid = message.chat.id
     if len(args) < 2:
