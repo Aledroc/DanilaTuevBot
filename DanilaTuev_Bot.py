@@ -148,7 +148,10 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
     Мыльный 128px сваппер полностью отключен, чтобы не портить качество арта."""
     face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
     if not os.path.exists(face_path):
+        print(f"[SWAP] WARNING: danila_face.jpg not found at {face_path}!", flush=True)
         return target_img_bytes
+
+    print(f"[SWAP] Starting HD Face Swap for image ({len(target_img_bytes)} bytes)...", flush=True)
 
     # ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, четкие поры, ресницы, глаза и волосы)
     try:
@@ -210,10 +213,11 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                                     if out_url:
                                         img_res = requests.get(out_url, headers=headers, timeout=30)
                                         if img_res.status_code == 200 and len(img_res.content) > 5000:
-                                            logging.info("[_swap_danila_face] HD GPEN-512 Swap successful!")
+                                            print(f"[SWAP] SUCCESS! Output size: {len(img_res.content)} bytes", flush=True)
                                             return img_res.content
                                 break
     except Exception as e:
+        print(f"[SWAP] ERROR: HD ReActor failed: {e}", flush=True)
         logging.error(f"[_swap_danila_face] HD ReActor failed: {e}")
 
     # Если HD сервис недоступен, возвращаем оригинальный качественный арт FLUX без ухудшения
@@ -311,11 +315,17 @@ def generate_image_cmd(message):
     en_prompt = _build_final_image_prompt(user_prompt)
     image_data = _generate_image(en_prompt)
     if image_data:
-        # Если в запросе упоминается Данила, парень, лицо, я, автопортрет — всегда применяем Face Swap
-        keywords = ['данил', 'даня', 'туев', 'парн', 'себя', 'автопортрет', 'лицо', 'я ', 'мне', 'человек', 'мужчин']
-        should_swap = any(w in user_prompt.lower() for w in keywords) or ('man' in en_prompt.lower() or 'guy' in en_prompt.lower())
+        # Регулярка на ВСЕ производные и склонения имени Данила / Туев / парень / автопортрет / я / меня
+        danila_pattern = re.compile(
+            r'\b(данил\w*|дан[яеиюё]\w*|даньк\w*|данёк\w*|данек\w*|данич\w*|даниил\w*|даниэль\w*|туев\w*|парн\w*|парен\w*|мужчин\w*|мужик\w*|пацан\w*|человек\w*|себ[яе]\w*|автопортрет\w*|лиц\w*|босс\w*|тренер\w*|качок\w*|я|мне|меня|мной)\b',
+            re.IGNORECASE
+        )
+        should_swap = bool(danila_pattern.search(user_prompt)) or any(w in en_prompt.lower() for w in ['man', 'guy', 'male', 'boy', 'person', 'young man'])
+        print(f"[IMG] user_prompt='{user_prompt}' -> should_swap={should_swap}", flush=True)
         if should_swap:
-            image_data = _swap_danila_face(image_data)
+            swapped = _swap_danila_face(image_data)
+            if swapped and len(swapped) > 5000:
+                image_data = swapped
 
         # Удаляем временное статусное сообщение перед отправкой готовой картины
         if status_msg:
