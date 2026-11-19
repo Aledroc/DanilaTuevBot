@@ -200,12 +200,44 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
 
 
 def _build_final_image_prompt(user_prompt: str) -> str:
-    """Точный перевод запроса пользователя для генератора изображений.
-    Сохраняет полноценный сюжет, окружение, позу и атмосферу, аккуратно заменяя имя Данилы на молодого мужчину."""
-    import urllib.parse
-    import urllib.request
-
+    """Генерирует сочный, кинематографичный сюжетный промпт через нейросеть (Pollinations AI).
+    Гарантирует полноценную сцену (medium/wide shot, окружение, свет, действие),
+    а не скучный портрет в упор, сохраняя лицо персонажа для дальнейшего Face Swap."""
     p = user_prompt.strip()
+
+    # 1. Сначала пробуем умный промпт-инжиниринг через LLM (Pollinations API)
+    poll_key = getattr(config, 'POLLINATIONS_API_KEY', None)
+    if poll_key:
+        sys_prompt = (
+            "You are an expert prompt engineer for FLUX image generator.\n"
+            "The user enters a brief idea in Russian (e.g., 'данила играет в дедлок', 'данила на море', 'данила жарит шашлык').\n"
+            "Convert this idea into a vivid, cinematic, high-quality English prompt for FLUX.\n"
+            "Rules:\n"
+            "1. If Danila / Данила / Туев is mentioned, always replace him with 'a young clean-shaven man with visible face'.\n"
+            "2. NEVER produce just a headshot/close-up portrait unless the user explicitly requested 'портрет' or 'лицо крупным планом'.\n"
+            "3. Describe the whole scene: environment, action, lighting, camera shot (medium shot or wide shot), props (e.g. for Deadlock/gaming: sitting in front of PC gaming monitor displaying Deadlock game, keyboard, mouse, headphones, glowing room).\n"
+            "4. Return ONLY the English prompt text, nothing else. Maximum 60 words."
+        )
+        try:
+            headers = {'Authorization': f'Bearer {poll_key}', 'Content-Type': 'application/json'}
+            payload = {
+                'model': 'openai',
+                'messages': [
+                    {'role': 'system', 'content': sys_prompt},
+                    {'role': 'user', 'content': p}
+                ],
+                'max_tokens': 120
+            }
+            r = requests.post('https://gen.pollinations.ai/v1/chat/completions', headers=headers, json=payload, timeout=8)
+            if r.status_code == 200:
+                ai_prompt = r.json()['choices'][0]['message']['content'].strip()
+                if ai_prompt and len(ai_prompt) > 15:
+                    print(f"[IMG] AI Expanded Prompt: '{ai_prompt}'", flush=True)
+                    return ai_prompt
+        except Exception as ai_err:
+            logging.warning(f"[_build_final_image_prompt] AI expansion failed: {ai_err}")
+
+    # 2. Фолбэк через Google Translate, если сеть недоступна
     translated = ""
     try:
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={requests.utils.quote(p)}"
@@ -244,11 +276,11 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     # Заменяем имена Данилы на молодого мужчину, не ломая сюжет и позу
     translated = re.sub(
         r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev|Данила|Даня|Туев)\b',
-        'young man, visible face, clean-shaven',
+        'young clean-shaven man, visible face',
         translated
     )
 
-    return translated.strip()
+    return f"{translated.strip()}, medium cinematic shot, highly detailed environment"
 
 
 import threading
