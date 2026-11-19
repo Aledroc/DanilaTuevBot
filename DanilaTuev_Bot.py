@@ -144,92 +144,64 @@ def _generate_image(prompt_en: str) -> bytes | None:
 
 
 def _swap_danila_face(target_img_bytes: bytes) -> bytes:
-    """Заменяет лицо на сгенерированном арте на лицо Данилы с ультра-четким HD восстановлением (GPEN-512).
-    Мыльный 128px сваппер полностью отключен, чтобы не портить качество арта."""
+    """Заменяет лицо на сгенерированном арте на лицо Данилы.
+    Использует официальный gradio_client Client API с inswapper_128 + GPEN-BFR-512 для идеального сходства черт лица без мыла и артефактов."""
     face_path = os.path.join(os.path.dirname(__file__), 'danila_face.jpg')
     if not os.path.exists(face_path):
         print(f"[SWAP] WARNING: danila_face.jpg not found at {face_path}!", flush=True)
         return target_img_bytes
 
-    print(f"[SWAP] Starting HD Face Swap for image ({len(target_img_bytes)} bytes)...", flush=True)
+    print(f"[SWAP] Starting Face Swap via gradio_client ({len(target_img_bytes)} bytes)...", flush=True)
 
-    # ComfyUI ReActor + GPEN-512 (HD-разрешение 512px, четкие поры, ресницы, глаза и волосы)
+    target_tmp = None
     try:
+        from gradio_client import Client, handle_file
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            tmp.write(target_img_bytes)
+            target_tmp = tmp.name
+
         token = getattr(config, 'HUGGINGFACE_TOKEN', None)
-        headers = {'Authorization': f'Bearer {token}'} if token else {}
-
-        reactor_url = 'https://v0pr0s-comfyui-reactor-fast-face-swap-cpu.hf.space'
-        with open(face_path, 'rb') as f:
-            src_bytes = f.read()
-
-        r_src = requests.post(
-            f'{reactor_url}/gradio_api/upload',
-            files={'files': ('face.jpg', src_bytes, 'image/jpeg')},
-            headers=headers,
-            timeout=25
+        client = Client(
+            'V0pr0S/ComfyUI-Reactor-Fast-Face-Swap-CPU',
+            token=token,
+            verbose=False,
+            httpx_kwargs={'timeout': 60.0}
         )
-        r_dst = requests.post(
-            f'{reactor_url}/gradio_api/upload',
-            files={'files': ('target.jpg', target_img_bytes, 'image/jpeg')},
-            headers=headers,
-            timeout=25
-        )
-        if r_src.status_code == 200 and r_dst.status_code == 200:
-            src_path = r_src.json()[0]
-            dst_path = r_dst.json()[0]
 
-            payload = {
-                'data': [
-                    {'path': src_path},
-                    {'path': dst_path},
-                    0,                      # Target face index
-                    'hyperswap_1b_256.onnx',# 256px Face Swap
-                    'GPEN-BFR-512.onnx',    # 512px Face Restore
-                    0.65                    # Restore strength (0.65 сохраняет точные черты и геометрию лица Данилы без размытия/усреднения)
-                ]
-            }
-            res = requests.post(
-                f'{reactor_url}/gradio_api/call/generate_image',
-                json=payload,
-                headers=headers,
-                timeout=25
-            )
-            if res.status_code == 200:
-                eid = res.json().get('event_id')
-                if eid:
-                    stream_res = requests.get(
-                        f'{reactor_url}/gradio_api/call/generate_image/{eid}',
-                        headers=headers,
-                        stream=True,
-                        timeout=90
-                    )
-                    for line in stream_res.iter_lines():
-                        if line:
-                            dec = line.decode('utf-8', errors='ignore')
-                            if dec.startswith('data:'):
-                                try:
-                                    data = json.loads(dec[5:].strip())
-                                    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                                        out_url = data[0].get('url')
-                                        if out_url:
-                                            img_res = requests.get(out_url, headers=headers, timeout=30)
-                                            if img_res.status_code == 200 and len(img_res.content) > 5000:
-                                                print(f"[SWAP] SUCCESS! Output size: {len(img_res.content)} bytes", flush=True)
-                                                return img_res.content
-                                            break
-                                except Exception as parse_e:
-                                    pass
+        res_path = client.predict(
+            source_image=handle_file(face_path),
+            target_image=handle_file(target_tmp),
+            target_index=0,
+            swap_model='inswapper_128.onnx',
+            face_restore_model='GPEN-BFR-512.onnx',
+            restore_strength=0.8,
+            api_name='/generate_image'
+        )
+
+        if res_path and os.path.exists(res_path):
+            with open(res_path, 'rb') as f:
+                swapped_bytes = f.read()
+            if len(swapped_bytes) > 5000:
+                print(f"[SWAP] SUCCESS! Output size: {len(swapped_bytes)} bytes", flush=True)
+                return swapped_bytes
     except Exception as e:
-        print(f"[SWAP] ERROR: HD ReActor failed: {e}", flush=True)
-        logging.error(f"[_swap_danila_face] HD ReActor failed: {e}")
+        print(f"[SWAP] gradio_client primary failed: {e}, trying fallback...", flush=True)
+        logging.error(f"[_swap_danila_face] gradio_client failed: {e}")
+    finally:
+        if target_tmp and os.path.exists(target_tmp):
+            try:
+                os.remove(target_tmp)
+            except Exception:
+                pass
 
-    # Если HD сервис недоступен, возвращаем оригинальный качественный арт FLUX без ухудшения
     return target_img_bytes
 
 
 def _build_final_image_prompt(user_prompt: str) -> str:
     """Точный перевод запроса пользователя для генератора изображений.
-    Фиксирует направление взгляда строго в камеру для идеальной узнаваемости лица Данилы."""
+    Сохраняет полноценный сюжет, окружение, позу и атмосферу, аккуратно заменяя имя Данилы на молодого мужчину."""
     import urllib.parse
     import urllib.request
 
@@ -269,18 +241,12 @@ def _build_final_image_prompt(user_prompt: str) -> str:
     for k, v in rus_slang.items():
         translated = re.sub(rf'(?i)\b\w*{k}\w*\b', v, translated)
 
-    # Заменяем имена Данилы на молодого человека, смотрящего прямо в камеру без бороды
+    # Заменяем имена Данилы на молодого мужчину, не ломая сюжет и позу
     translated = re.sub(
         r'(?i)\b(Danila|Danil|Daniil|Danya|Danile|Danilo|Danyla|Tuev|DanilaTuev|Данила|Даня|Туев)\b',
-        'clean-shaven young man, face facing the camera, looking directly into the camera',
+        'young man, visible face, clean-shaven',
         translated
     )
-
-    # Если в запросе персонаж (мужчина / парень / автопортрет), гарантируем взгляд прямо в объектив
-    lower_t = translated.lower()
-    if any(w in lower_t for w in ['man', 'guy', 'male', 'boy', 'person']):
-        if 'camera' not in lower_t and 'facing' not in lower_t:
-            translated = f"{translated}, face facing the camera, looking directly into camera, clean-shaven"
 
     return translated.strip()
 
