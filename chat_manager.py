@@ -137,10 +137,10 @@ DEATH_INSTRUCTION = (
 
 LONG_REQUEST_KEYWORDS = [
     "расскажи", "объясни", "опиши", "подробно", "подробнее",
-    "историю", "легенду", "сказку", "стих", "песню",
-    "что ты думаешь", "как ты считаешь", "почему",
+    "историю", "легенду", "сказку", "стих", "песню", "спой", "зачитай", "рэп", "реп",
+    "что ты думаешь", "как ты считаешь", "почему", "полностью", "без остановки", "по куплетам",
     "расскажи мне", "расскажи нам", "давай поговорим",
-    "напиши длинно", "напиши много", "развернуто",
+    "напиши длинно", "напиши много", "развернуто", "сочини", "напиши текст",
     "поясни", "разбери", "сравни", "зачем", "что такое", "в чём", "в чем",
     "как работает", "как сделать", "как это", "по шагам", "какой план", "составь план",
     "давай обсудим", "поподробнее", "что случилось", "что было",
@@ -1283,15 +1283,14 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
     # сначала закончить текущую мысль, а затем остановиться. smart_trim дополнительно
     # оставляет только целые предложения, если API всё же оборвало генерацию.
     if is_long:
-        tokens, max_sent, max_chars = 1500, 8, 3800
+        tokens, max_sent, max_chars = 2500, 25, 4000
         if style_prompt and _STORY_TAIL_RE.search(style_prompt):
             # Reaction + 2-4 sentences of the story must both fit.
-            max_sent = 12
+            max_sent = 30
         system_prompt += (
-            "\n\nТЕКУЩИЙ ФОРМАТ: собеседник вовлекается в сцену или просит подробного раскрытия. "
-            "Дай атмосферный, развёрнутый и колоритный ответ в 5-8 предложениях: "
-            "яркое действие в *звёздочках* (взаимодействие с окружением и собеседником), "
-            "эмоциональная реплика и встречный сюжетный шаг или вопрос к собеседнику. Не обрывай мысль!"
+            "\n\nТЕКУЩИЙ ФОРМАТ: собеседник просит длинный развёрнутый текст (стих, рэп, песню, историю или подробный рассказ). "
+            "Выполни его просьбу ПОЛНОСТЬЮ от начала и до конца! Напиши полноценный длинный текст по куплетам/абзацам, "
+            "не обрывай на середине и НЕ отказывайся! Выполни творческую задачу на 100% в характере своего персонажа."
         )
     else:
         tokens, max_sent, max_chars = 1100, 5, 2000
@@ -1331,7 +1330,23 @@ def _generate_and_send(cid, system_prompt, messages, is_vision=False, reply_to=N
         target_id = inventory_target_user_id if inventory_target_user_id is not None else (target[0] if target else None)
         if target_id is not None:
             inventory_store.clear_inventory(cid, target_id)
-    processed = process_ai_response(inventory_store.strip_change_markers(raw), max_sent, max_chars)
+    # -----------------------------------------------------------------------
+    # Если в текущем сообщении пользователя явно просят песню/рэп/стих/полный текст,
+    # не урезаем его до обычных 5 предложений
+    # -----------------------------------------------------------------------
+    _user_wants_full_text = False
+    if messages:
+        _last_user_txt = str(messages[-1].get("content") or "").lower()
+        if any(w in _last_user_txt for w in ["рэп", "реп", "песн", "стих", "куплет", "полностью", "без остановки"]):
+            _user_wants_full_text = True
+            max_sent = 35
+            max_chars = 4000
+
+    processed = process_ai_response(
+        inventory_store.strip_change_markers(raw),
+        max_sentences=None if _user_wants_full_text else max_sent,
+        max_chars=max_chars
+    )
 
     if processed:
         _deliver_reply(cid, processed, raw, reply_to)
