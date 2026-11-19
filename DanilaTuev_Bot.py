@@ -207,15 +207,18 @@ def _swap_danila_face(target_img_bytes: bytes) -> bytes:
                         if line:
                             dec = line.decode('utf-8', errors='ignore')
                             if dec.startswith('data:'):
-                                data = json.loads(dec[5:].strip())
-                                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                                    out_url = data[0].get('url')
-                                    if out_url:
-                                        img_res = requests.get(out_url, headers=headers, timeout=30)
-                                        if img_res.status_code == 200 and len(img_res.content) > 5000:
-                                            print(f"[SWAP] SUCCESS! Output size: {len(img_res.content)} bytes", flush=True)
-                                            return img_res.content
-                                break
+                                try:
+                                    data = json.loads(dec[5:].strip())
+                                    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                                        out_url = data[0].get('url')
+                                        if out_url:
+                                            img_res = requests.get(out_url, headers=headers, timeout=30)
+                                            if img_res.status_code == 200 and len(img_res.content) > 5000:
+                                                print(f"[SWAP] SUCCESS! Output size: {len(img_res.content)} bytes", flush=True)
+                                                return img_res.content
+                                            break
+                                except Exception as parse_e:
+                                    pass
     except Exception as e:
         print(f"[SWAP] ERROR: HD ReActor failed: {e}", flush=True)
         logging.error(f"[_swap_danila_face] HD ReActor failed: {e}")

@@ -585,13 +585,25 @@ def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
         # Текущая дата сегодня по МСК (куда переключается персонаж)
         current_today = datetime.now(_MSK).date().isoformat()
         
-        selected = _selected_chat_archetype(cid)
-        if selected:
-            next_title, next_desc = selected
-            next_key = getattr(selected, 'key', '') or ''
-        else:
-            next_key = random.choice(MODIFIERS_KEYS)
-            next_title, next_desc = ARCHETYPES[next_key]
+        # Очищаем старые/зависшие ручные выборы участников этого чата,
+        # чтобы бот не застревал на одном архетипе (например, Итальянском шефе)
+        try:
+            with inventory_store._connect() as conn:
+                conn.execute(
+                    "UPDATE user_preferences SET selected_archetype = '' "
+                    "WHERE user_id IN (SELECT user_id FROM chat_members WHERE chat_id = ?)",
+                    (int(cid),)
+                )
+        except Exception as clear_err:
+            logging.warning("Не удалось очистить user_preferences для чата %s: %s", cid, clear_err)
+
+        # Выбираем строго НОВЫЙ архетип, исключая текущий
+        current_key = (state.get('archetype_key') if state else '') or ''
+        available_keys = [k for k in MODIFIERS_KEYS if k != current_key]
+        if not available_keys:
+            available_keys = list(MODIFIERS_KEYS)
+        next_key = random.choice(available_keys)
+        next_title, next_desc = ARCHETYPES[next_key]
 
         new_state = _build_state(next_desc)
         new_state['date'] = current_today
@@ -1041,13 +1053,14 @@ def _maybe_send_voice(cid, plain: str, reply_to=None) -> bool:
             bot.send_voice(
                 cid, ('voice.ogg', audio),
                 reply_to_message_id=reply_to.message_id if reply_to is not None else None,
+                timeout=15,
             )
             return True
         else:
             logging.error("TTS returned no audio for chat %s", cid)
             return False
-    except Exception:
-        logging.exception("Failed to send Telegram voice message")
+    except Exception as voice_err:
+        logging.warning("Failed to send Telegram voice message: %s", voice_err)
         return False
 
 
