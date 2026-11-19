@@ -783,10 +783,33 @@ if __name__ == '__main__':
     except Exception as cmd_err:
         print(f"[BOOT] Notice: Could not register Telegram bot commands: {cmd_err}")
 
-    while True:
+    import signal
+
+    global _bot_running
+    _bot_running = True
+
+    def _graceful_stop(signum, frame):
+        global _bot_running
+        print(f"\n[SHUTDOWN] Received signal {signum}, stopping gracefully...", flush=True)
+        _bot_running = False
+        try:
+            bot.stop_polling()
+        except Exception:
+            pass
+        os._exit(0)
+
+    signal.signal(signal.SIGINT, _graceful_stop)
+    signal.signal(signal.SIGTERM, _graceful_stop)
+
+    while _bot_running:
         try:
             # interval=1 задает паузу между запросами к Telegram, исключая tight loop и 100% CPU spike при разрывах связи
             bot.infinity_polling(timeout=30, long_polling_timeout=30, interval=1, logger_level=logging.ERROR)
+        except (KeyboardInterrupt, SystemExit):
+            print("\n[SHUTDOWN] Bot stopped by interrupt.", flush=True)
+            break
         except Exception as poll_err:
+            if not _bot_running:
+                break
             logging.error("Telegram polling error: %s", poll_err)
             time.sleep(5)
