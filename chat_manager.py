@@ -581,6 +581,13 @@ def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
                     logging.warning("Попытка %d: не удалось отправить сообщение с итогом дня в чат %s: %s", attempt + 1, cid, send_err)
                     time.sleep(2)
 
+            # Озвучиваем ночной итог дня голосом уходящего персонажа
+            try:
+                logging.info("Озвучиваем итог дня для чата %s...", cid)
+                _maybe_send_voice(cid, recap_text, reply_to=None)
+            except Exception as voice_err:
+                logging.warning("Не удалось отправить голосовой итог дня в чат %s: %s", cid, voice_err)
+
         # 3. Переключаем на нового персонажа следующего дня
         # Текущая дата сегодня по МСК (куда переключается персонаж)
         current_today = datetime.now(_MSK).date().isoformat()

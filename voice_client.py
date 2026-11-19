@@ -106,7 +106,115 @@ def transcribe_audio(data: bytes, filename: str, mime: str, timeout: int = 60) -
         return None
 
 
-_CHUNK_MAX_CHARS = 450
+_CHUNK_MAX_CHARS = 1000
+
+# Precomputed Ogg CRC32 table
+_OGG_CRC_LOOKUP = []
+for _i in range(256):
+    _r = _i << 24
+    for _ in range(8):
+        if _r & 0x80000000:
+            _r = ((_r << 1) ^ 0x04C11DB7) & 0xFFFFFFFF
+        else:
+            _r = (_r << 1) & 0xFFFFFFFF
+    _OGG_CRC_LOOKUP.append(_r)
+
+
+def _ogg_crc(page_bytes: bytearray | bytes) -> int:
+    crc = 0
+    for b in page_bytes:
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ _OGG_CRC_LOOKUP[((crc >> 24) & 0xFF) ^ b]
+    return crc
+
+
+def _parse_ogg_pages(data: bytes) -> list[dict]:
+    import struct
+    pos = 0
+    pages = []
+    while pos < len(data):
+        if data[pos:pos+4] != b"OggS":
+            break
+        header_type = data[pos+5]
+        granule = struct.unpack("<q", data[pos+6:pos+14])[0]
+        serial = struct.unpack("<I", data[pos+14:pos+18])[0]
+        seq = struct.unpack("<I", data[pos+18:pos+22])[0]
+        n_segs = data[pos+26]
+        seg_table = data[pos+27:pos+27+n_segs]
+        body_len = sum(seg_table)
+        total_page_len = 27 + n_segs + body_len
+        pages.append({
+            "type": header_type,
+            "granule": granule,
+            "serial": serial,
+            "seq": seq,
+            "n_segs": n_segs,
+            "seg_table": seg_table,
+            "body": data[pos+27+n_segs:pos+total_page_len],
+        })
+        pos += total_page_len
+    return pages
+
+
+def _stitch_ogg_opus_streams(chunks: list[bytes]) -> bytes:
+    """Бесшовно объединяет несколько OGG Opus аудиопотоков в один валидный аудиофайл."""
+    import struct
+    if not chunks:
+        return b""
+    valid = [c for c in chunks if c and c.startswith(b"OggS")]
+    if not valid:
+        return b"".join(chunks)
+    if len(valid) == 1:
+        return valid[0]
+
+    all_stream_pages = [_parse_ogg_pages(c) for c in valid]
+    all_stream_pages = [p for p in all_stream_pages if p]
+    if not all_stream_pages:
+        return b"".join(valid)
+
+    serial = all_stream_pages[0][0]["serial"]
+    out_pages = []
+    current_seq = 0
+    granule_offset = 0
+
+    for stream_idx, pages in enumerate(all_stream_pages):
+        last_page_idx = len(pages) - 1
+        # В первом потоке берем OpusHead (0) и OpusTags (1).
+        # Во всех последующих потоках пропускаем эти заголовки.
+        start_p = 0 if stream_idx == 0 else 2
+
+        for p_idx in range(start_p, len(pages)):
+            p = pages[p_idx]
+            is_last_overall = (stream_idx == len(all_stream_pages) - 1) and (p_idx == last_page_idx)
+
+            if stream_idx == 0 and p_idx == 0:
+                new_type = 2  # BOS (Beginning of Stream)
+            elif is_last_overall:
+                new_type = 4  # EOS (End of Stream)
+            else:
+                new_type = 0  # Regular stream page
+
+            new_granule = p["granule"] + granule_offset if p["granule"] != -1 else -1
+
+            header = bytearray()
+            header.extend(b"OggS\x00")
+            header.append(new_type)
+            header.extend(struct.pack("<q", new_granule))
+            header.extend(struct.pack("<I", serial))
+            header.extend(struct.pack("<I", current_seq))
+            header.extend(b"\x00\x00\x00\x00")  # Checksum field zeroed for calculation
+            header.append(p["n_segs"])
+            header.extend(p["seg_table"])
+
+            page_data = bytearray(header + p["body"])
+            calc_crc = _ogg_crc(page_data)
+            page_data[22:26] = struct.pack("<I", calc_crc)
+
+            out_pages.append(bytes(page_data))
+            current_seq += 1
+
+        granule_offset += pages[-1]["granule"]
+
+    return b"".join(out_pages)
 
 
 def split_text_into_chunks(text: str, max_chars: int = _CHUNK_MAX_CHARS) -> list[str]:
@@ -394,7 +502,7 @@ def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
     if len(audio_parts) == 1:
         return audio_parts[0]
 
-    return b"".join(audio_parts)
+    return _stitch_ogg_opus_streams(audio_parts)
 
 
 def _synthesize_single_chunk(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
