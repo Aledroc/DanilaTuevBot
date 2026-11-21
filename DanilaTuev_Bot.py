@@ -395,7 +395,10 @@ def remember_command_member(message):
         # Keep a working default so /app still replies when the host variable
         # has not been configured.
         app_url = os.getenv('MINIAPP_URL', 'https://danilatuevbot.wispbyte.app').strip()
-        if app_url.startswith('https://'):
+        short_app_name = os.getenv('MINIAPP_SHORT_NAME', 'app').strip()
+        bot_username = BOT_USERNAME or os.getenv('MINIAPP_BOT_USERNAME', 'DanilaTuev_Bot').strip().lstrip('@')
+
+        if app_url.startswith('https://') or app_url.startswith('http://'):
             # A group-launched /start deep link preserves that group's context
             # when the Mini App has to open in a private chat.
             start_arg = message.text.split(maxsplit=1)[1].strip() if message.text and len(message.text.split(maxsplit=1)) > 1 else ''
@@ -409,47 +412,72 @@ def remember_command_member(message):
                     inventory_store.remember_chat(
                         int(group_match.group(1)), user.id, "", group_match.group(2) or "",
                     )
+            elif message.chat.type in {'group', 'supergroup'}:
+                context['chat_id'] = str(message.chat.id)
+                if getattr(message.chat, 'username', None):
+                    context['chat_username'] = message.chat.username
+
             if user:
-                context['user_id'] = user.id
+                context['user_id'] = str(user.id)
                 context['username'] = getattr(user, 'username', '') or ''
                 context['first_name'] = getattr(user, 'first_name', '') or ''
+
             separator = '&' if '?' in app_url else '?'
-            app_url = f'{app_url}{separator}{urllib.parse.urlencode(context)}'
+            full_app_url = f'{app_url}{separator}{urllib.parse.urlencode(context)}' if context else app_url
 
             if message.chat.type in {'group', 'supergroup'}:
-                # Telegram only allows Web App buttons in a private chat with the bot.
-                # Route group users to the bot's private chat first.
+                # In groups, InlineKeyboardButton with web_app is prohibited by Telegram API.
+                # Provide direct t.me link (which launches Mini App in Telegram) + PM deep link + Web link.
                 group_username = getattr(message.chat, 'username', None) or ''
                 if not group_username:
                     group_username = os.getenv('MINIAPP_GROUP_USERNAME', '').strip().lstrip('@')
-                bot_url = (
-                    f'https://t.me/{BOT_USERNAME}?start=app_{message.chat.id}'
+                
+                chat_context_param = f"{message.chat.id}"
+                bot_pm_url = (
+                    f'https://t.me/{bot_username}?start=app_{message.chat.id}'
                     + (f'_{group_username}' if group_username else '')
                 )
-                keyboard = InlineKeyboardMarkup()
-                keyboard.add(InlineKeyboardButton('🎒 Открыть в личном чате', url=bot_url))
+                
+                # Direct Telegram Mini App links
+                # startapp query format: https://t.me/<bot>?startapp=<param>
+                # and BotFather direct mini app link: https://t.me/<bot>/<app_name>?startapp=<param>
+                tme_startapp_url = f'https://t.me/{bot_username}?startapp={urllib.parse.quote(chat_context_param)}'
+                tme_short_url = f'https://t.me/{bot_username}/{short_app_name}?startapp={urllib.parse.quote(chat_context_param)}' if short_app_name else tme_startapp_url
+
+                keyboard = InlineKeyboardMarkup(row_width=1)
+                keyboard.add(
+                    InlineKeyboardButton('🚀 Запустить Mini App', url=tme_short_url),
+                    InlineKeyboardButton('💬 Открыть через ЛС с ботом', url=bot_pm_url),
+                    InlineKeyboardButton('🌐 Открыть в браузере', url=full_app_url)
+                )
                 bot.send_message(
                     message.chat.id,
-                    'Telegram не позволяет запускать Mini App прямо из группы. '
-                    'Нажмите кнопку — бот откроется в личном чате, где можно запустить приложение.',
+                    '🎮 <b>Danila Mini App</b>\n\n'
+                    'Инвентарь, магазин, игры и профиль персонажа.\n'
+                    '<i>Выберите удобный способ открытия:</i>',
+                    parse_mode='HTML',
                     reply_markup=keyboard,
                 )
                 return
 
-            # In private chat also offer a direct t.me deep link: it opens the same
-            # Mini App even when the "app" menu button in BotFather points at
-            # another (older) URL.
-            deep_link = f'https://t.me/{BOT_USERNAME}?startapp=' + urllib.parse.quote(
-                urllib.parse.urlencode({'chat_id': group_match.group(1)}) if group_match else 'inventory',
-                safe='',
+            # In private chat:
+            # InlineKeyboardButton with web_app=WebAppInfo(...) works directly in the native Telegram Webview.
+            # Also provide direct t.me startapp link and direct browser link as fallbacks.
+            chat_context_param = group_match.group(1) if group_match else 'inventory'
+            tme_short_url = f'https://t.me/{bot_username}/{short_app_name}?startapp={urllib.parse.quote(chat_context_param)}' if short_app_name else f'https://t.me/{bot_username}?startapp={urllib.parse.quote(chat_context_param)}'
+
+            keyboard = InlineKeyboardMarkup(row_width=1)
+            keyboard.add(
+                InlineKeyboardButton('🎒 Открыть профиль игрока', web_app=WebAppInfo(url=full_app_url)),
+                InlineKeyboardButton('🚀 Запустить Mini App (Telegram)', url=tme_short_url),
+                InlineKeyboardButton('🌐 Открыть в браузере', url=full_app_url)
             )
-            keyboard = InlineKeyboardMarkup()
-            keyboard.add(InlineKeyboardButton('🎒 Открыть профиль игрока', web_app=WebAppInfo(url=app_url)))
-            keyboard.add(InlineKeyboardButton('↗ Открыть в новой вкладке', url=deep_link))
             bot.send_message(
                 message.chat.id,
-                'Инвентарь и архетипы персонажа. Если кнопка не открывает приложение, '
-                'используйте вторую — она ведёт на ту же страницу:',
+                '🎒 <b>Danila Mini App</b>\n\n'
+                'Инвентарь, магазин, игры и архетипы персонажа.\n'
+                '<i>Нажмите кнопку ниже для запуска Mini App:</i>',
+                parse_mode='HTML',
                 reply_markup=keyboard,
             )
         else:
