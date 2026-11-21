@@ -565,28 +565,30 @@ def process_chat_daily_reset(cid: int, target_date: str = "") -> bool:
         recap_text = generate_daily_recap(cid, old_name, old_desc)
         if recap_text:
             inventory_store.save_daily_recap(cid, old_name, recap_text, recap_date=target_date)
-            # Отправка в Telegram с повторными попытками при сбоях сети/таймаутах
-            sent_ok = False
-            for attempt in range(3):
-                try:
-                    bot.send_message(
-                        cid,
-                        f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
-                        parse_mode='HTML',
-                    )
-                    logging.info("Итог дня успешно отправлен в чат %s!", cid)
-                    sent_ok = True
-                    break
-                except Exception as send_err:
-                    logging.warning("Попытка %d: не удалось отправить сообщение с итогом дня в чат %s: %s", attempt + 1, cid, send_err)
-                    time.sleep(2)
-
-            # Озвучиваем ночной итог дня голосом уходящего персонажа
+            # Отправка в Telegram: если включена и удалась озвучка — отправляем ТОЛЬКО голос,
+            # если озвучка выключена или не удалась — отправляем текстовое сообщение.
+            voice_sent = False
             try:
                 logging.info("Озвучиваем итог дня для чата %s...", cid)
-                _maybe_send_voice(cid, recap_text, reply_to=None)
+                voice_sent = _maybe_send_voice(cid, recap_text, reply_to=None)
             except Exception as voice_err:
                 logging.warning("Не удалось отправить голосовой итог дня в чат %s: %s", cid, voice_err)
+
+            if not voice_sent:
+                sent_ok = False
+                for attempt in range(3):
+                    try:
+                        bot.send_message(
+                            cid,
+                            f"📜 <b>Общий итог дня от {html.escape(old_name)}:</b>\n\n{html.escape(recap_text)}",
+                            parse_mode='HTML',
+                        )
+                        logging.info("Итог дня успешно отправлен текстом в чат %s!", cid)
+                        sent_ok = True
+                        break
+                    except Exception as send_err:
+                        logging.warning("Попытка %d: не удалось отправить сообщение с итогом дня в чат %s: %s", attempt + 1, cid, send_err)
+                        time.sleep(2)
 
         # 3. Переключаем на нового персонажа следующего дня
         # Текущая дата сегодня по МСК (куда переключается персонаж)
