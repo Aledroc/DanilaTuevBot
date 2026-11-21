@@ -1,12 +1,19 @@
 import base64
+import io
 import logging
 import re
 import subprocess
 import tempfile
 import time
+import wave
 from pathlib import Path
 
 import requests
+
+try:
+    from gradio_client import Client, handle_file
+except ImportError:
+    Client, handle_file = None, None
 
 try:
     import msgpack
@@ -21,12 +28,39 @@ from config import (
     NORDROUTER_API_KEY,
     STT_API_URL,
     STT_MODEL,
+    HUGGINGFACE_TOKEN,
 )
 
+F5_TTS_SPACE = "hugging-apps/f5-tts-russian-emotional"
+_f5_client = None
+_f5_client_init_failed = False
 OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech"
 OPENROUTER_VOICE_MODEL = "fish-audio/s2.1-pro-free:free"
 _last_tts_call = 0.0
 _TTS_MIN_INTERVAL = 0.5
+
+
+def _get_f5_client():
+    """Возвращает инициализированный синглтон gradio_client для f5-tts-russian-emotional."""
+    global _f5_client, _f5_client_init_failed
+    if Client is None:
+        return None
+    if _f5_client is not None:
+        return _f5_client
+    if _f5_client_init_failed:
+        return None
+    try:
+        logging.info("Инициализация Gradio Client для F5-TTS (%s)...", F5_TTS_SPACE)
+        hf_tok = HUGGINGFACE_TOKEN or None
+        if hf_tok:
+            _f5_client = Client(F5_TTS_SPACE, token=hf_tok)
+        else:
+            _f5_client = Client(F5_TTS_SPACE)
+        return _f5_client
+    except Exception as exc:
+        logging.error("Не удалось подключиться к F5-TTS Hugging Face Space: %s", exc)
+        _f5_client_init_failed = True
+        return None
 
 
 def transcribe_audio(data: bytes, filename: str, mime: str, timeout: int = 60) -> str | None:
@@ -439,6 +473,195 @@ def _openrouter_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
         return None
 
 
+def _stitch_audio_streams(chunks: list[bytes]) -> bytes:
+    """Объединяет несколько аудиопотоков (WAV или OGG Opus)."""
+    if not chunks:
+        return b""
+    valid = [c for c in chunks if c]
+    if not valid:
+        return b""
+    if len(valid) == 1:
+        return valid[0]
+
+    # Если это WAV файлы:
+    if valid[0].startswith(b"RIFF"):
+        try:
+            out_io = io.BytesIO()
+            with wave.open(io.BytesIO(valid[0]), "rb") as w_first:
+                params = w_first.getparams()
+                with wave.open(out_io, "wb") as w_out:
+                    w_out.setparams(params)
+                    w_out.writeframes(w_first.readframes(w_first.getnframes()))
+                    for b in valid[1:]:
+                        if b.startswith(b"RIFF"):
+                            with wave.open(io.BytesIO(b), "rb") as w_next:
+                                w_out.writeframes(w_next.readframes(w_next.getnframes()))
+            return out_io.getvalue()
+        except Exception:
+            logging.exception("Failed to stitch WAV files, falling back to concatenation")
+            return valid[0]
+
+    # Если это OGG Opus:
+    if valid[0].startswith(b"OggS"):
+        return _stitch_ogg_opus_streams(valid)
+
+    return b"".join(valid)
+
+
+def _prepare_reference_for_f5(ref_b64: str = "", ref_mime: str = "audio/ogg",
+                              ref_transcript: str | None = None) -> tuple[str | None, str, bool]:
+    """
+    Возвращает (ref_audio_path, ref_text, is_temp_file).
+    Если передан ref_b64, декодирует во временный файл.
+    Если не передан, использует локальный эталон voices/danila.ogg и voices/danila.txt.
+    """
+    local_danila_ogg = Path("voices/danila.ogg")
+    local_danila_txt = Path("voices/danila.txt")
+
+    if ref_b64:
+        try:
+            data = base64.b64decode(ref_b64)
+            ext = ".ogg"
+            if "wav" in (ref_mime or "").lower() or data.startswith(b"RIFF"):
+                ext = ".wav"
+            elif "mp3" in (ref_mime or "").lower() or data.startswith(b"ID3"):
+                ext = ".mp3"
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            tfile.write(data)
+            tfile.flush()
+            tfile.close()
+
+            transcript = (ref_transcript or "").strip()
+            if not transcript and local_danila_txt.exists():
+                transcript = local_danila_txt.read_text(encoding="utf-8").strip()
+            return tfile.name, transcript, True
+        except Exception as exc:
+            logging.warning("Не удалось подготовить временный ref файл из base64: %s", exc)
+
+    if local_danila_ogg.exists():
+        transcript = ""
+        if local_danila_txt.exists():
+            try:
+                transcript = local_danila_txt.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass
+        return str(local_danila_ogg.resolve()), transcript, False
+
+    return None, "", False
+
+
+def _f5_russian_tts(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
+                    ref_transcript: str | None = None, timeout: int = 90) -> bytes | None:
+    """
+    Синтезирует речь через hugging-apps/f5-tts-russian-emotional (Gradio Client).
+    Возвращает байты сгенерированного аудио (.wav).
+    """
+    client = _get_f5_client()
+    if client is None:
+        logging.warning("F5-TTS client недоступен")
+        return None
+
+    ref_audio_path, ref_text, is_temp = _prepare_reference_for_f5(ref_b64, ref_mime, ref_transcript)
+    if not ref_audio_path:
+        logging.warning("F5-TTS: нет эталонного аудио (voices/danila.ogg не найден и ref_b64 пуст)")
+        return None
+
+    try:
+        _throttle_tts()
+        clean_text = _normalize_text_for_f5(text)
+        if not clean_text:
+            return None
+
+        logging.info("F5-TTS синтез (%d симв.): '%s'", len(clean_text), clean_text[:60])
+        # predict(ref_audio, ref_text, gen_text, speed=1.0, nfe_steps=32, api_name='/generate') -> (generated_speech_path, status)
+        res = client.predict(
+            handle_file(ref_audio_path),
+            ref_text,
+            clean_text,
+            1.0,
+            32,
+            api_name="/generate"
+        )
+        if isinstance(res, (list, tuple)) and len(res) > 0:
+            result_path = res[0]
+            if result_path and Path(result_path).exists():
+                wav_bytes = Path(result_path).read_bytes()
+                logging.info("F5-TTS успешно синтезировал %d байт аудио", len(wav_bytes))
+                return wav_bytes
+            else:
+                logging.error("F5-TTS вернул пустой путь к аудио: %s", res)
+        else:
+            logging.error("F5-TTS неожиданный ответ: %s", res)
+        return None
+    except Exception as exc:
+        logging.exception("F5-TTS запрос завершился ошибкой: %s", exc)
+        return None
+    finally:
+        if is_temp and ref_audio_path:
+            try:
+                Path(ref_audio_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+def _normalize_text_for_f5(text: str) -> str:
+    """
+    Нормализует русский текст перед отправкой в F5-TTS:
+    - очищает markdown, теги, действия
+    - нормализует пробелы, раскрывает частые сокращения
+    - расставляет базовые ударения в проблемных словах
+    """
+    if not text:
+        return ""
+    text = _clean_speech_text(text)
+
+    # Раскрываем частые сокращения для естественного чтения
+    abbreviations = [
+        (r"\bруб\b\.?", "рублей"),
+        (r"\bкоп\b\.?", "копеек"),
+        (r"\bтыс\b\.?", "тысяч"),
+        (r"\bмлн\b\.?", "миллионов"),
+        (r"\bмлрд\b\.?", "миллиардов"),
+        (r"\bг\b\.?", "года"),
+        (r"\bгг\b\.?", "годов"),
+        (r"\bсм\b\.?", "сантиметров"),
+        (r"\bкм\b\.?", "километров"),
+        (r"\bкг\b\.?", "килограмм"),
+        (r"\bул\b\.?", "улица"),
+        (r"\bд\b\.?\s*(\d+)", r"дом \1"),
+        (r"\bкв\b\.?\s*(\d+)", r"квартира \1"),
+        (r"\bт\.?е\.?\b", "то есть"),
+        (r"\bт\.?д\.?\b", "так далее"),
+        (r"\bт\.?п\.?\b", "тому подобное"),
+        (r"\bи\.?т\.?д\.?\b", "и так далее"),
+        (r"\bи\.?т\.?п\.?\b", "и тому подобное"),
+        (r"\bдр\.?\b", "другие"),
+        (r"\bпр\.?\b", "прочее"),
+    ]
+    for pattern, repl in abbreviations:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+
+    # Базовые проблемные ударения для F5-TTS (символ + перед гласной)
+    stress_fixes = [
+        (r"\bзвонит\b", "звон+ит"),
+        (r"\bзвонят\b", "звон+ят"),
+        (r"\bзвонишь\b", "звон+ишь"),
+        (r"\bвключит\b", "включ+ит"),
+        (r"\bвключат\b", "включ+ат"),
+        (r"\bоблегчит\b", "облегч+ит"),
+        (r"\bкрасивее\b", "крас+ивее"),
+        (r"\bторты\b", "т+орты"),
+        (r"\bшарфы\b", "ш+арфы"),
+        (r"\bбанты\b", "б+анты"),
+    ]
+    for pattern, repl in stress_fixes:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+
+    # Убираем дублирование пробелов и лишние знаки
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def _clean_speech_text(text: str) -> str:
     """Очищает текст от markdown, ссылок и тегов для стабильного синтеза TTS."""
     if not text:
@@ -464,18 +687,20 @@ def _clean_speech_text(text: str) -> str:
 
 def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                       ref_transcript: str | None = None, reference_id: str | None = None,
-                      timeout: int = 60) -> bytes | None:
+                      timeout: int = 90) -> bytes | None:
     """
     Озвучивает текст голосом.
-    Если текст длинный, разбивает его на смысловые предложения/куски (до ~450 символов),
+    Основной движок: бесплатный f5-tts-russian-emotional (Hugging Face Gradio).
+    Резервные движки: Fish Audio и OpenRouter.
+    Если текст длинный, разбивает его на смысловые предложения/куски,
     озвучивает каждый кусок и склеивает аудиопоток.
     """
-    text = _clean_speech_text(text)
+    text = _normalize_text_for_f5(text)
     if not text:
         logging.error("TTS unavailable: empty text after cleaning")
         return None
 
-    chunks = split_text_into_chunks(text, max_chars=_CHUNK_MAX_CHARS)
+    chunks = split_text_into_chunks(text, max_chars=400)
     if not chunks:
         return None
 
@@ -491,7 +716,6 @@ def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
         )
         if not audio_chunk:
             logging.warning("TTS failed on chunk %d/%d: '%s'", idx + 1, len(chunks), chunk[:40])
-            # Если хотя бы часть уже синтезирована, не теряем всё, но логируем предупреждение
             continue
         audio_parts.append(audio_chunk)
 
@@ -502,36 +726,57 @@ def synthesize_speech(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
     if len(audio_parts) == 1:
         return audio_parts[0]
 
-    return _stitch_ogg_opus_streams(audio_parts)
+    return _stitch_audio_streams(audio_parts)
 
 
 def _synthesize_single_chunk(text: str, ref_b64: str = "", ref_mime: str = "audio/ogg",
                              ref_transcript: str | None = None, reference_id: str | None = None,
-                             timeout: int = 60) -> bytes | None:
-    # 1. Пробуем прямой вызов Fish Audio
-    if FISH_AUDIO_API_KEY:
-        audio = _fish_audio_tts(
+                             timeout: int = 90) -> bytes | None:
+    # 1. Основной бесплатный движок: F5-TTS Russian Emotional
+    try:
+        audio = _f5_russian_tts(
             text=text,
             ref_b64=ref_b64,
             ref_mime=ref_mime,
             ref_transcript=ref_transcript,
-            reference_id=reference_id,
             timeout=timeout,
         )
         if audio:
             return audio
-        logging.warning("Direct Fish Audio TTS did not produce audio, attempting fallback if available")
+        logging.warning("F5-TTS Russian Emotional did not produce audio, attempting fallback")
+    except Exception as f5_err:
+        logging.warning("F5-TTS execution error: %s, attempting fallback", f5_err)
 
-    # 2. Пробуем OpenRouter как резервный вариант
+    # 2. Резервный вызов Fish Audio (если настроен ключ)
+    if FISH_AUDIO_API_KEY:
+        try:
+            audio = _fish_audio_tts(
+                text=text,
+                ref_b64=ref_b64,
+                ref_mime=ref_mime,
+                ref_transcript=ref_transcript,
+                reference_id=reference_id,
+                timeout=timeout,
+            )
+            if audio:
+                return audio
+            logging.warning("Fallback Fish Audio TTS did not produce audio")
+        except Exception as fish_err:
+            logging.warning("Fish Audio error: %s", fish_err)
+
+    # 3. Резервный вызов OpenRouter (если настроен ключ)
     if OPENROUTER_API_KEY:
-        audio = _openrouter_tts(
-            text=text,
-            ref_b64=ref_b64,
-            ref_mime=ref_mime,
-            ref_transcript=ref_transcript,
-            timeout=timeout,
-        )
-        if audio:
-            return audio
+        try:
+            audio = _openrouter_tts(
+                text=text,
+                ref_b64=ref_b64,
+                ref_mime=ref_mime,
+                ref_transcript=ref_transcript,
+                timeout=timeout,
+            )
+            if audio:
+                return audio
+        except Exception as or_err:
+            logging.warning("OpenRouter TTS error: %s", or_err)
 
     return None

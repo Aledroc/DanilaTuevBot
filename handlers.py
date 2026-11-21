@@ -289,9 +289,6 @@ def voice_toggle_cmd(message):
     arg = parts[1].strip() if len(parts) > 1 else ""
     action = arg.lower()
     if action in ("on", "вкл", "1", "вкл."):
-        if not config.FISH_AUDIO_API_KEY and not config.OPENROUTER_API_KEY:
-            bot.reply_to(message, "TTS не настроен: укажите FISH_AUDIO_API_KEY в окружении или config.py бота.")
-            return
         if cid not in voice_refs:
             # Пытаемся восстановить из БД
             saved = None
@@ -341,9 +338,6 @@ def voice_toggle_cmd(message):
             pass
         bot.reply_to(message, "🔇 Озвучка ответов выключена.")
     elif arg:
-        if not config.FISH_AUDIO_API_KEY and not config.OPENROUTER_API_KEY:
-            bot.reply_to(message, "TTS не настроен: укажите FISH_AUDIO_API_KEY в окружении или config.py бота.")
-            return
         filename = "danila" if action in ("danila", "данила") else arg
         try:
             voice_ref = _load_voice_file(filename)

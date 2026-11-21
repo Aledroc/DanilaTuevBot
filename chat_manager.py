@@ -1062,10 +1062,11 @@ def _maybe_send_voice(cid, plain: str, reply_to=None) -> bool:
                                   ref.get('transcript'))
         if audio:
             logging.info("Sending Telegram voice message: %d bytes", len(audio))
+            ext = 'wav' if audio.startswith(b'RIFF') else 'ogg'
             bot.send_voice(
-                cid, ('voice.ogg', audio),
+                cid, (f'voice.{ext}', audio),
                 reply_to_message_id=reply_to.message_id if reply_to is not None else None,
-                timeout=15,
+                timeout=20,
             )
             return True
         else:
